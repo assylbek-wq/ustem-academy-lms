@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>USTEM Academy — Blog admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body class="bg-slate-50">
+  <div id="header-root" data-active="admin"></div>
+  <main id="page-root"></main>
+  <div id="footer-root"></div>
+
+  <script src="assets/js/i18n.js"></script>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script>
+    if (!USTEM.requireAdmin()) { /* redirect */ }
+
+    function renderAdminBlog() {
+      document.getElementById('header-root').innerHTML = USTEM.renderHeader('admin');
+      document.getElementById('footer-root').innerHTML = USTEM.renderFooter();
+
+      const posts = Store.getPosts().sort((a, b) => new Date(b.date) - new Date(a.date));
+      const drafts = posts.filter(p => p.status === 'draft').length;
+      const published = posts.length - drafts;
+
+      document.getElementById('page-root').innerHTML = `
+        <section class="gradient-hero pt-28 pb-16 relative overflow-hidden">
+          <div class="absolute inset-0 opacity-30">
+            <div class="absolute top-10 right-20 w-72 h-72 rounded-full bg-purple-500 blur-[120px]"></div>
+          </div>
+          <div class="relative max-w-7xl mx-auto px-6 lg:px-8 text-white">
+            <div class="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <div class="text-purple-200 text-sm uppercase tracking-wider mb-1">${t('admin.label')}</div>
+                <h1 class="font-display font-bold text-3xl lg:text-5xl">${t('admin.blog.title')}</h1>
+              </div>
+              <a href="admin-post-edit.html" class="btn-primary">${t('admin.blog.new')}</a>
+            </div>
+            <!-- Tabs -->
+            <div class="flex gap-2 mt-8">
+              <a href="admin.html" class="px-5 py-2 rounded-lg bg-white/10 text-white/80 hover:bg-white/20 font-medium text-sm">${t('admin.tabs.courses')}</a>
+              <a href="admin-blog.html" class="px-5 py-2 rounded-lg bg-white text-purple-700 font-semibold text-sm shadow">${t('admin.tabs.blog')}</a>
+            </div>
+          </div>
+        </section>
+
+        <section class="py-10 -mt-8 relative z-10">
+          <div class="max-w-7xl mx-auto px-6 lg:px-8">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+              <div class="card p-5">
+                <div class="text-xs text-slate-500 uppercase mb-1">Всего постов</div>
+                <div class="font-display font-bold text-3xl text-slate-900">${posts.length}</div>
+              </div>
+              <div class="card p-5">
+                <div class="text-xs text-slate-500 uppercase mb-1">Опубликовано</div>
+                <div class="font-display font-bold text-3xl text-green-700">${published}</div>
+              </div>
+              <div class="card p-5">
+                <div class="text-xs text-slate-500 uppercase mb-1">Черновики</div>
+                <div class="font-display font-bold text-3xl text-amber-700">${drafts}</div>
+              </div>
+              <div class="card p-5">
+                <div class="text-xs text-slate-500 uppercase mb-1">В блоке «Свежее»</div>
+                <div class="font-display font-bold text-3xl text-purple-700">${posts.filter(p => p.featured).length}</div>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
+              <h2 class="font-display font-bold text-2xl">${t('admin.blog.title')}</h2>
+              <div class="flex items-center gap-3 flex-1 justify-end max-w-md">
+                <div class="relative flex-1">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+                  <input id="search" type="text" placeholder="${t('common.search')}..." class="input pl-9" oninput="filterPosts(this.value)" />
+                </div>
+                <a href="admin-post-edit.html" class="text-sm font-medium text-purple-700 hover:underline whitespace-nowrap">${t('admin.blog.add')}</a>
+              </div>
+            </div>
+
+            <div id="posts-list" class="card overflow-hidden divide-y divide-slate-100">
+              ${posts.length === 0 ? `<div class="p-10 text-center text-slate-500"><div class="text-4xl mb-2">📰</div>${t('admin.blog.empty').replace('→', '')}<a href="admin-post-edit.html" class="text-purple-700 hover:underline ml-1">→</a></div>` : ''}
+              ${posts.map(p => {
+                const status = p.status || 'published';
+                const statusBadge = status === 'draft'
+                  ? `<span class="badge-status badge-draft">${t('editor.status.draft')}</span>`
+                  : `<span class="badge-status badge-published">${t('editor.status.published')}</span>`;
+                const haystack = [loc(p.title), loc(p.excerpt), p.author, t(p.categoryKey), ...(p.tags || [])].join(' ').toLowerCase();
+                return `
+                <div class="course-row" data-search="${USTEM.escapeHtml(haystack)}">
+                  <div class="course-row-cover" style="background:${p.coverImage ? `url('${USTEM.escapeHtml(p.coverImage)}') center/cover, ${USTEM.Covers[p.cover] || USTEM.Covers.news}` : (USTEM.Covers[p.cover] || USTEM.Covers.news)}">${!p.coverImage ? (USTEM.CoverIcons[p.cover] || '📰') : ''}</div>
+                  <div class="course-row-main">
+                    <a href="admin-post-edit.html?id=${p.id}" class="course-row-title">${USTEM.escapeHtml(loc(p.title))}</a>
+                    <div class="course-row-meta">
+                      <span class="badge-cat">${t(p.categoryKey)}</span>
+                      ${statusBadge}
+                      ${p.featured ? '<span class="badge-status" style="background:#f3e8ff;color:#6d28d9">⭐ В свежих</span>' : ''}
+                      <span class="text-slate-400">·</span>
+                      <span>${USTEM.formatDate(p.date)}</span>
+                      <span class="text-slate-400">·</span>
+                      <span>${USTEM.escapeHtml(p.author || 'USTEM')}</span>
+                    </div>
+                  </div>
+                  <div class="course-row-actions">
+                    <a href="post.html?id=${p.id}" target="_blank" class="action-btn" title="${t('editor.previewCourse')}">👁</a>
+                    <a href="admin-post-edit.html?id=${p.id}" class="action-btn action-edit" title="${t('common.edit')}">✏️</a>
+                    <button onclick="duplicatePost('${p.id}')" class="action-btn action-dup" title="${t('admin.action.duplicate')}">📋</button>
+                    <button onclick="deletePost('${p.id}')" class="action-btn action-del" title="${t('common.delete')}">🗑️</button>
+                  </div>
+                </div>`;
+              }).join('')}
+              <div id="no-results" class="hidden p-10 text-center text-slate-500"><div class="text-4xl mb-2">🔍</div>Ничего не найдено</div>
+            </div>
+          </div>
+        </section>
+      `;
+      i18n.apply();
+    }
+
+    function deletePost(id) {
+      const post = Store.getPostById(id);
+      if (!confirm(t('admin.blog.deleteConfirm', { title: loc(post.title) }))) return;
+      Store.deletePost(id);
+      USTEM.showToast(t('admin.blog.deleteDone'), 'success');
+      renderAdminBlog();
+    }
+
+    function duplicatePost(id) {
+      const src = Store.getPostById(id);
+      if (!src) return;
+      const copy = JSON.parse(JSON.stringify(src));
+      copy.id = 'p_' + Math.random().toString(36).slice(2, 10);
+      copy.slug = (copy.slug || 'post') + '-copy-' + Math.random().toString(36).slice(2, 5);
+      const cpSuffix = { ru: ' (копия)', kk: ' (көшірме)', en: ' (copy)' };
+      ['ru','kk','en'].forEach(lang => {
+        if (copy.title?.[lang]) copy.title[lang] = copy.title[lang] + cpSuffix[lang];
+      });
+      copy.status = 'draft';
+      copy.featured = false;
+      copy.date = new Date().toISOString();
+      Store.savePost(copy);
+      USTEM.showToast(t('admin.duplicate.done'), 'success');
+      setTimeout(() => location.href = 'admin-post-edit.html?id=' + copy.id, 400);
+    }
+
+    function filterPosts(query) {
+      const q = query.trim().toLowerCase();
+      let visible = 0;
+      document.querySelectorAll('.course-row').forEach(row => {
+        const hay = row.dataset.search || '';
+        const match = !q || hay.includes(q);
+        row.style.display = match ? '' : 'none';
+        if (match) visible++;
+      });
+      const empty = document.getElementById('no-results');
+      if (empty) empty.classList.toggle('hidden', visible > 0 || !q);
+    }
+
+    window.deletePost = deletePost;
+    window.duplicatePost = duplicatePost;
+    window.filterPosts = filterPosts;
+
+    document.addEventListener('lang:change', renderAdminBlog);
+    if (Store.getSession()?.role === 'admin') renderAdminBlog();
+  </script>
+</body>
+</html>

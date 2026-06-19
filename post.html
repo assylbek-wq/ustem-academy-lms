@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>USTEM Academy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+  <!-- Prism.js for syntax highlighting -->
+  <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-python.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-cpp.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-java.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-bash.min.js"></script>
+</head>
+<body>
+  <div id="header-root" data-active="blog"></div>
+  <main id="page-root"></main>
+  <div id="footer-root"></div>
+
+  <script src="assets/js/i18n.js"></script>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script>
+    const postId = USTEM.getParam('id');
+
+    function renderAll() {
+      document.getElementById('header-root').innerHTML = USTEM.renderHeader('blog');
+      document.getElementById('footer-root').innerHTML = USTEM.renderFooter();
+
+      const post = Store.getPostById(postId);
+      const user = Store.getSession();
+      const isAdmin = user?.role === 'admin';
+
+      if (!post || (post.status === 'draft' && !isAdmin)) {
+        document.getElementById('page-root').innerHTML = `
+          <div class="pt-32 max-w-2xl mx-auto px-6 text-center">
+            <div class="text-6xl mb-4">🤔</div>
+            <h1 class="font-display font-bold text-3xl mb-3">${t('blog.notFound.title')}</h1>
+            <p class="text-slate-600 mb-6">${t('blog.notFound.desc')}</p>
+            <a href="blog.html" class="btn-primary">${t('blog.back')}</a>
+          </div>`;
+        i18n.apply();
+        return;
+      }
+
+      document.title = loc(post.title) + ' — USTEM Academy';
+
+      const title = loc(post.title);
+      const body = loc(post.body) || '<em>(пусто)</em>';
+      const cover = USTEM.Covers[post.cover] || USTEM.Covers.news;
+      const icon = USTEM.CoverIcons[post.cover] || '📰';
+      const dateStr = USTEM.formatDate(post.date);
+      const wordCount = body.replace(/<[^>]+>/g, '').trim().split(/\s+/).filter(Boolean).length;
+      const minutes = Math.max(1, Math.ceil(wordCount / 180));
+
+      // Related posts: same category, not this one, last 3
+      const related = Store.getPosts()
+        .filter(p => p.id !== post.id && p.status !== 'draft' && p.categoryKey === post.categoryKey)
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+        .slice(0, 3);
+
+      document.getElementById('page-root').innerHTML = `
+        <!-- Hero -->
+        <section class="relative overflow-hidden pt-28 pb-12" style="background:${post.coverImage ? `url('${USTEM.escapeHtml(post.coverImage)}') center/cover, ${cover}` : cover}">
+          <div class="absolute inset-0 bg-gradient-to-b from-black/20 via-black/40 to-black/70"></div>
+          <div class="relative max-w-4xl mx-auto px-6 lg:px-8 text-white">
+            <a href="blog.html" class="text-purple-100 text-sm hover:text-white inline-flex items-center gap-1 mb-6">${t('blog.back')}</a>
+            <div class="mb-4">
+              <span class="tag bg-white/95 backdrop-blur" style="color:#0f172a">${t(post.categoryKey)}</span>
+              ${post.status === 'draft' ? `<span class="tag tag-amber ml-2">${t('editor.status.draft')}</span>` : ''}
+            </div>
+            <h1 class="font-display font-bold text-3xl lg:text-5xl mb-5 leading-tight">${USTEM.escapeHtml(title)}</h1>
+            <div class="flex items-center gap-4 text-sm text-white/80 flex-wrap">
+              <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-sm font-semibold">${(post.author || '?').charAt(0).toUpperCase()}</div>
+                <span>${USTEM.escapeHtml(post.author || 'USTEM')}</span>
+              </div>
+              <span>·</span>
+              <span>${dateStr}</span>
+              <span>·</span>
+              <span>${minutes} ${t('blog.minRead')}</span>
+              ${isAdmin ? `<span>·</span><a href="admin-post-edit.html?id=${post.id}" class="text-amber-200 hover:text-white">✏️ ${t('common.edit')}</a>` : ''}
+            </div>
+          </div>
+        </section>
+
+        <!-- Body -->
+        <article class="py-12 lg:py-16">
+          <div class="max-w-3xl mx-auto px-6 lg:px-8">
+            <div class="prose-content text-base lg:text-lg">${body}</div>
+
+            <!-- Share -->
+            <div class="mt-12 pt-8 border-t border-slate-200 flex items-center justify-between flex-wrap gap-4">
+              <div class="text-sm text-slate-500">
+                ${post.tags?.length ? post.tags.map(tag => `<span class="tag tag-slate mr-1">#${USTEM.escapeHtml(tag)}</span>`).join('') : ''}
+              </div>
+              <div class="flex items-center gap-2 text-sm">
+                <span class="text-slate-500">${t('blog.share')}:</span>
+                <button onclick="copyLink()" class="btn-secondary text-sm py-1.5 px-3">🔗 Скопировать ссылку</button>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        ${related.length > 0 ? `
+        <!-- Related -->
+        <section class="py-12 bg-slate-50">
+          <div class="max-w-7xl mx-auto px-6 lg:px-8">
+            <h2 class="font-display font-bold text-2xl lg:text-3xl text-slate-900 mb-6">${t('blog.related')}</h2>
+            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              ${related.map(p => USTEM.renderPostCard(p)).join('')}
+            </div>
+          </div>
+        </section>` : ''}
+      `;
+      i18n.apply();
+      if (window.Prism) window.Prism.highlightAllUnder(document.body);
+    }
+
+    function copyLink() {
+      navigator.clipboard.writeText(location.href);
+      USTEM.showToast('Ссылка скопирована', 'success');
+    }
+    window.copyLink = copyLink;
+
+    document.addEventListener('lang:change', renderAll);
+    renderAll();
+  </script>
+</body>
+</html>

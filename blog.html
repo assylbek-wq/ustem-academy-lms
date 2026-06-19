@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-i18n="blog.title">Блог — USTEM Academy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body data-title-key="blog.title">
+  <div id="header-root" data-active="blog"></div>
+
+  <section class="gradient-hero pt-32 pb-20 relative overflow-hidden">
+    <div class="absolute inset-0 opacity-30">
+      <div class="absolute top-10 right-20 w-72 h-72 rounded-full bg-purple-500 blur-[120px]"></div>
+      <div class="absolute bottom-0 left-10 w-80 h-80 rounded-full bg-blue-500 blur-[150px]"></div>
+    </div>
+    <div class="relative max-w-7xl mx-auto px-6 lg:px-8 text-white">
+      <div class="text-purple-200 text-sm font-medium mb-3 uppercase tracking-wider" data-i18n="blog.hero.label">Блог</div>
+      <h1 class="font-display font-bold text-4xl lg:text-6xl mb-4" data-i18n="blog.hero.title">Новости академии</h1>
+      <p class="text-purple-100 text-lg max-w-2xl" data-i18n="blog.hero.desc">Объявления и обновления</p>
+    </div>
+  </section>
+
+  <section class="py-12">
+    <div class="max-w-7xl mx-auto px-6 lg:px-8">
+      <!-- Category filter -->
+      <div id="cat-filter" class="flex gap-2 flex-wrap mb-8 -mt-12 relative z-10"></div>
+
+      <!-- Featured post (large) -->
+      <div id="featured-post" class="mb-10"></div>
+
+      <!-- Posts grid -->
+      <div id="posts-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+
+      <div id="empty-state" class="hidden text-center py-20">
+        <div class="text-6xl mb-4">📭</div>
+        <h3 class="font-display font-semibold text-xl mb-2" data-i18n="blog.empty.title">Постов пока нет</h3>
+        <p class="text-slate-500" data-i18n="blog.empty.desc">Загляните позже</p>
+      </div>
+    </div>
+  </section>
+
+  <div id="footer-root"></div>
+
+  <script src="assets/js/i18n.js"></script>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script>
+    const user = Store.getSession();
+    const isAdmin = user?.role === 'admin';
+    let currentCat = USTEM.getParam('cat') || '';
+
+    function visiblePosts() {
+      return Store.getPosts()
+        .filter(p => isAdmin || p.status !== 'draft')
+        .sort((a, b) => new Date(b.date) - new Date(a.date));
+    }
+
+    function renderFilter() {
+      const cats = ['', 'post.cat.announcement', 'post.cat.update', 'post.cat.event', 'post.cat.story', 'post.cat.news'];
+      const labels = {
+        '': t('blog.cat.all'),
+        'post.cat.announcement': t('blog.cat.announcement'),
+        'post.cat.update': t('blog.cat.update'),
+        'post.cat.event': t('blog.cat.event'),
+        'post.cat.story': t('blog.cat.story'),
+        'post.cat.news': t('blog.cat.news'),
+      };
+      document.getElementById('cat-filter').innerHTML = cats.map(c => `
+        <button onclick="setCat('${c}')" class="px-4 py-2 rounded-full text-sm font-semibold transition shadow-sm
+          ${currentCat === c ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white' : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'}">
+          ${labels[c]}
+        </button>
+      `).join('');
+    }
+
+    function setCat(c) {
+      currentCat = c;
+      const url = new URL(location.href);
+      if (c) url.searchParams.set('cat', c); else url.searchParams.delete('cat');
+      history.replaceState({}, '', url);
+      renderAll();
+    }
+
+    function renderAll() {
+      document.getElementById('header-root').innerHTML = USTEM.renderHeader('blog');
+      document.getElementById('footer-root').innerHTML = USTEM.renderFooter();
+
+      let posts = visiblePosts();
+      if (currentCat) posts = posts.filter(p => p.categoryKey === currentCat);
+
+      renderFilter();
+
+      const featuredEl = document.getElementById('featured-post');
+      const gridEl = document.getElementById('posts-grid');
+      const emptyEl = document.getElementById('empty-state');
+
+      if (posts.length === 0) {
+        featuredEl.innerHTML = '';
+        gridEl.innerHTML = '';
+        emptyEl.classList.remove('hidden');
+      } else {
+        emptyEl.classList.add('hidden');
+        // Featured: take the first one if no filter or if first matches
+        const showFeatured = !currentCat && posts[0];
+        if (showFeatured) {
+          featuredEl.innerHTML = renderFeatured(posts[0]);
+          gridEl.innerHTML = posts.slice(1).map(p => USTEM.renderPostCard(p)).join('');
+        } else {
+          featuredEl.innerHTML = '';
+          gridEl.innerHTML = posts.map(p => USTEM.renderPostCard(p)).join('');
+        }
+      }
+      i18n.apply();
+    }
+
+    function renderFeatured(p) {
+      const title = loc(p.title);
+      const excerpt = loc(p.excerpt);
+      const cover = USTEM.Covers[p.cover] || USTEM.Covers.news;
+      const icon = USTEM.CoverIcons[p.cover] || '📰';
+      const dateStr = USTEM.formatDate(p.date);
+      return `
+        <a href="post.html?id=${p.id}" class="card overflow-hidden group grid md:grid-cols-2 gap-0">
+          <div class="h-60 md:h-auto relative flex items-center justify-center text-7xl" style="background:${p.coverImage ? `url('${USTEM.escapeHtml(p.coverImage)}') center/cover, ${cover}` : cover}">
+            ${!p.coverImage ? `<span class="filter drop-shadow-2xl">${icon}</span>` : ''}
+            <div class="absolute top-4 left-4 tag bg-white/95 backdrop-blur" style="color:#0f172a">${t(p.categoryKey)}</div>
+          </div>
+          <div class="p-8 lg:p-10 flex flex-col justify-center">
+            <div class="text-xs text-slate-500 mb-2">${dateStr} · ${USTEM.escapeHtml(p.author)}</div>
+            <h2 class="font-display font-bold text-2xl lg:text-3xl text-slate-900 mb-3 group-hover:text-purple-700 transition line-clamp-3">${USTEM.escapeHtml(title)}</h2>
+            <p class="text-slate-600 mb-4 line-clamp-3">${USTEM.escapeHtml(excerpt)}</p>
+            <span class="text-purple-700 text-sm font-semibold group-hover:gap-2 transition-all inline-flex items-center gap-1">${t('blog.readMore')}</span>
+          </div>
+        </a>
+      `;
+    }
+
+    window.setCat = setCat;
+    document.addEventListener('lang:change', renderAll);
+    renderAll();
+  </script>
+</body>
+</html>

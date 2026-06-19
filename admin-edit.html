@@ -1,0 +1,1293 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>USTEM Academy — Editor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+  <!-- Quill WYSIWYG editor -->
+  <link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.min.js"></script>
+  <!-- Prism.js for code preview in editor -->
+  <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-python.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-typescript.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-cpp.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-c.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-java.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-bash.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-sql.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-csharp.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-arduino.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-json.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-markup.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-css.min.js"></script>
+  <style>
+    .editor-section { background: white; border: 1px solid #e2e8f0; border-radius: 1rem; padding: 1.5rem; }
+    .lang-tab { padding: .5rem 1rem; border-radius: .5rem; font-weight: 600; font-size: .875rem; transition: all .15s; display: flex; align-items: center; gap: .5rem; cursor: pointer; border: none; }
+    .lang-tab.active { background: linear-gradient(135deg,#6d28d9,#2563eb); color: white; box-shadow: 0 4px 12px -2px rgba(109,40,217,.4); }
+    .lang-tab:not(.active) { background: #f1f5f9; color: #475569; }
+    .lang-tab:not(.active):hover { background: #e2e8f0; }
+    .lang-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .lang-dot.complete { background: #10b981; }
+    .lang-dot.partial { background: #f59e0b; }
+    .lang-dot.empty { background: #ef4444; }
+
+    .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.6); backdrop-filter: blur(4px); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+    .modal-card { background: white; border-radius: 1rem; max-width: 920px; width: 100%; max-height: 92vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.2); }
+
+    .lesson-card { background: white; border: 1px solid #e2e8f0; border-radius: .75rem; padding: 1rem; display: flex; align-items: center; gap: .75rem; transition: all .15s; cursor: grab; }
+    .lesson-card:hover { border-color: #c4b5fd; box-shadow: 0 4px 14px -4px rgba(109,40,217,.15); }
+    .lesson-card.dragging { opacity: .4; cursor: grabbing; }
+    .lesson-card.drag-over { border-color: #6d28d9; border-style: dashed; background: #faf5ff; }
+    .drag-handle { color: #cbd5e1; cursor: grab; padding: 4px; user-select: none; }
+    .drag-handle:hover { color: #64748b; }
+
+    .qedit { background: #faf5ff; border: 1px solid #e9d5ff; border-radius: .75rem; padding: 1rem; }
+    .ghost-btn { padding: .375rem .75rem; border-radius: .5rem; font-size: .75rem; font-weight: 500; background: transparent; transition: background .15s; cursor: pointer; border: none; }
+    .ghost-btn:hover { background: #f1f5f9; }
+    .icon-btn { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: .5rem; cursor: pointer; background: transparent; transition: all .15s; color: #64748b; border: none; }
+    .icon-btn:hover { background: #f1f5f9; color: #0f172a; }
+
+    /* Quill customization */
+    .ql-editor { min-height: 320px; max-height: 600px; font-family: 'Inter', sans-serif; font-size: 0.9375rem; line-height: 1.65; }
+    .ql-editor h2 { font-family: 'Space Grotesk', sans-serif; font-size: 1.4rem; font-weight: 700; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+    .ql-editor h3 { font-family: 'Space Grotesk', sans-serif; font-size: 1.15rem; font-weight: 600; margin-top: 1rem; margin-bottom: 0.5rem; }
+    .ql-editor h4 { font-family: 'Space Grotesk', sans-serif; font-size: 1.05rem; font-weight: 600; margin-top: 0.875rem; margin-bottom: 0.5rem; }
+    .ql-editor pre, .ql-editor pre.ql-syntax { background: #0f172a; color: #e2e8f0; padding: 1rem; border-radius: .5rem; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; line-height: 1.5; overflow-x: auto; }
+    .ql-editor pre code { background: transparent; color: inherit; }
+    .ql-editor blockquote { border-left: 3px solid #c4b5fd; padding-left: 1rem; color: #475569; font-style: italic; background: #faf5ff; padding: 0.5rem 1rem; border-radius: 0 .5rem .5rem 0; }
+    .ql-editor table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+    .ql-editor table th, .ql-editor table td { border: 1px solid #e2e8f0; padding: 8px 12px; text-align: left; }
+    .ql-editor table th { background: #f1f5f9; font-weight: 600; }
+    .ql-editor .callout { display: flex; gap: 0.75rem; padding: 1rem 1.25rem; border-radius: 0.75rem; background: linear-gradient(135deg, #f5f3ff, #eff6ff); border: 1px solid #ddd6fe; margin: 1rem 0; }
+    .ql-editor .callout.warning { background: linear-gradient(135deg, #fef3c7, #fce7f3); border-color: #fcd34d; }
+    .ql-editor iframe { width: 100%; aspect-ratio: 16/9; border: 0; border-radius: .5rem; background: #000; margin: .75rem 0; }
+    .ql-editor img { max-width: 100%; height: auto; border-radius: .5rem; }
+    .ql-editor hr { border: none; border-top: 1px solid #e2e8f0; margin: 1.5rem 0; }
+    .ql-toolbar.ql-snow { border: 1px solid #e2e8f0; border-radius: 0; background: #f8fafc; padding: 8px; }
+    .ql-container.ql-snow { border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 .5rem .5rem; background: white; }
+
+    /* Custom callout button */
+    .ql-callout::before {
+      content: '💡';
+      font-size: 14px;
+      line-height: 1;
+    }
+    .ql-callout-warn::before {
+      content: '⚠️';
+      font-size: 14px;
+      line-height: 1;
+    }
+    .ql-snow .ql-toolbar button.ql-callout,
+    .ql-snow .ql-toolbar button.ql-callout-warn {
+      width: 28px;
+    }
+
+    /* Templates bar */
+    .templates-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 12px; background: linear-gradient(135deg, #faf5ff, #eff6ff); border: 1px solid #e2e8f0; border-bottom: 0; border-radius: .5rem .5rem 0 0; }
+    .templates-bar .label { font-size: 0.75rem; font-weight: 600; color: #6b21a8; margin-right: 4px; }
+    .tpl-btn { padding: 4px 10px; background: white; border: 1px solid #e9d5ff; color: #6d28d9; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; cursor: pointer; transition: all .15s; }
+    .tpl-btn:hover { background: #f3e8ff; border-color: #c4b5fd; transform: translateY(-1px); }
+    .tpl-btn:active { transform: translateY(0); }
+
+    /* Word count footer */
+    .editor-footer { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-top: 0; border-radius: 0 0 .5rem .5rem; font-size: 0.75rem; color: #64748b; }
+    .editor-footer .stats { display: flex; gap: 12px; }
+    .editor-footer .stats strong { color: #334155; font-weight: 600; }
+
+    /* Drag-drop visual feedback for editor */
+    .ql-container.drag-active { background: #faf5ff !important; box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.3) inset; }
+
+    /* Tag chips */
+    .tag-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: #f3e8ff; color: #6d28d9; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; margin-right: 4px; margin-bottom: 4px; }
+    .tag-chip button { background: transparent; border: none; color: #a78bfa; cursor: pointer; padding: 0 2px; font-size: 0.875rem; line-height: 1; }
+    .tag-chip button:hover { color: #6d28d9; }
+
+    /* Save status indicator */
+    .save-status { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; transition: all .2s; }
+    .save-status.saving { background: #fef3c7; color: #92400e; }
+    .save-status.saved { background: #d1fae5; color: #065f46; }
+    .save-status.unsaved { background: #fee2e2; color: #991b1b; }
+
+    /* Status badge in editor */
+    .status-toggle { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 9999px; font-size: 0.875rem; font-weight: 600; cursor: pointer; border: 1.5px solid transparent; }
+    .status-toggle.draft { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
+    .status-toggle.published { background: #d1fae5; color: #065f46; border-color: #6ee7b7; }
+  </style>
+</head>
+<body class="bg-slate-50">
+  <div id="header-root" data-active="admin"></div>
+  <main id="page-root" class="pt-24 pb-16"></main>
+  <div id="footer-root"></div>
+
+  <!-- Lesson modal -->
+  <div id="lesson-modal" class="modal-overlay hidden"></div>
+
+  <script src="assets/js/i18n.js"></script>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script>
+    if (!USTEM.requireAdmin()) { /* redirect */ }
+
+    const courseId = USTEM.getParam('id');
+    const isNew = !courseId;
+    let model = null;
+    let editLang = i18n.lang;
+    let dirty = false;
+    let activeLessonIdx = null;
+    let quill = null;
+    let autosaveTimer = null;
+    let lastSaved = null;
+
+    // ============ MODEL ============
+
+    function blankMl() { return { ru: '', kk: '', en: '' }; }
+
+    function newCourseModel() {
+      return {
+        id: 'c_' + Math.random().toString(36).slice(2, 10),
+        slug: '',
+        categoryKey: 'cat.robotics',
+        levelKey: 'level.beginner',
+        durationWeeks: 6,
+        hours: 20,
+        students: 0,
+        rating: 5.0,
+        featured: false,
+        cover: 'robotics',
+        status: 'draft',
+        tags: [],
+        title: blankMl(),
+        tagline: blankMl(),
+        description: blankMl(),
+        objectives: [],
+        instructor: { name: '', avatar: '?', role: blankMl(), bio: blankMl() },
+        lessons: [],
+      };
+    }
+
+    function asMl(v) {
+      if (typeof v === 'object' && v && ('ru' in v || 'kk' in v || 'en' in v)) {
+        return { ru: v.ru || '', kk: v.kk || '', en: v.en || '' };
+      }
+      if (typeof v === 'string' && v) return { ru: v, kk: '', en: '' };
+      return blankMl();
+    }
+
+    function loadCourse() {
+      if (isNew) {
+        model = newCourseModel();
+      } else {
+        const src = Store.getCourseById(courseId);
+        if (!src) { model = null; return; }
+        model = JSON.parse(JSON.stringify(src));
+        model.title = asMl(model.title);
+        model.tagline = asMl(model.tagline);
+        model.description = asMl(model.description);
+        model.objectives = (model.objectives || []).map(asMl);
+        model.instructor = model.instructor || { name: '', avatar: '?', role: blankMl(), bio: blankMl() };
+        model.instructor.role = asMl(model.instructor.role);
+        model.instructor.bio = asMl(model.instructor.bio);
+        model.tags = model.tags || [];
+        model.status = model.status || 'published';
+        model.lessons = (model.lessons || []).map(l => ({
+          id: l.id,
+          duration: l.duration || 0,
+          type: l.type || 'video',
+          title: asMl(l.title),
+          content: asMl(l.content),
+          quiz: l.quiz ? {
+            questions: l.quiz.questions.map(q => ({
+              q: asMl(q.q),
+              options: (q.options || []).map(asMl),
+              correct: q.correct ?? 0,
+            })),
+          } : null,
+        }));
+      }
+    }
+
+    // ============ COMPLETENESS ============
+
+    function isFilled(v) {
+      if (!v) return false;
+      if (typeof v === 'string') {
+        const stripped = v.replace(/<[^>]+>/g, '').trim();
+        return stripped !== '';
+      }
+      return false;
+    }
+
+    function langStatus(lang) {
+      const fields = [
+        model.title?.[lang], model.tagline?.[lang], model.description?.[lang],
+        model.instructor?.role?.[lang], model.instructor?.bio?.[lang],
+        ...(model.objectives || []).map(o => o?.[lang]),
+        ...(model.lessons || []).flatMap(l => [l.title?.[lang], l.content?.[lang]]),
+      ];
+      const filled = fields.filter(isFilled).length;
+      if (filled === fields.length && fields.length > 0) return 'complete';
+      if (filled === 0) return 'empty';
+      return 'partial';
+    }
+
+    // ============ RENDER ============
+
+    function renderPage() {
+      document.getElementById('header-root').innerHTML = USTEM.renderHeader('admin');
+      document.getElementById('footer-root').innerHTML = USTEM.renderFooter();
+
+      if (!model) {
+        document.getElementById('page-root').innerHTML = `
+          <div class="max-w-2xl mx-auto px-6 text-center py-20">
+            <div class="text-6xl mb-4">🤔</div>
+            <h1 class="font-display font-bold text-3xl mb-3">${t('editor.notFound')}</h1>
+            <a href="admin.html" class="btn-primary inline-flex">${t('editor.back')}</a>
+          </div>`;
+        return;
+      }
+
+      const statusClass = model.status === 'published' ? 'published' : 'draft';
+      const statusLabel = model.status === 'published' ? t('editor.status.published') : t('editor.status.draft');
+
+      document.getElementById('page-root').innerHTML = `
+        <div class="max-w-5xl mx-auto px-4 sm:px-6">
+          ${location.protocol === 'file:' ? `
+          <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 flex items-start gap-3">
+            <span class="text-2xl flex-shrink-0">⚠️</span>
+            <div class="text-sm text-amber-900 flex-1">
+              <div class="font-semibold mb-1">Сайт открыт напрямую через <code class="bg-amber-100 px-1.5 py-0.5 rounded">file://</code></div>
+              <p class="text-amber-800 mb-2">YouTube, Vimeo и другие плееры покажут «Ошибка 153» — для встраивания им нужен реальный домен.</p>
+              <p class="text-amber-800"><strong>Решение:</strong> в терминале в папке проекта выполните:</p>
+              <code class="block bg-amber-100 px-3 py-2 rounded mt-1 font-mono text-xs select-all">python3 -m http.server 8000</code>
+              <p class="text-amber-800 mt-2">Затем откройте <a href="http://localhost:8000/admin-edit.html${courseId ? '?id=' + courseId : ''}" class="font-semibold underline">http://localhost:8000</a> — видео заработают.</p>
+            </div>
+          </div>
+          ` : ''}
+          <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+            <div class="flex-1 min-w-0">
+              <a href="admin.html" onclick="return confirmLeave(event)" class="text-sm text-purple-700 hover:underline">${t('editor.back')}</a>
+              <h1 class="font-display font-bold text-2xl lg:text-3xl mt-2 text-slate-900">${isNew ? t('editor.title.new') : t('editor.title.edit')}</h1>
+            </div>
+            <div class="flex items-center gap-3 flex-wrap">
+              <span id="save-status" class="save-status saved">${t('editor.autosave.saved')}</span>
+              <button onclick="toggleStatus()" class="status-toggle ${statusClass}" title="${t('editor.field.status')}">${statusLabel}</button>
+              ${!isNew ? `<a href="course.html?id=${model.id}" target="_blank" class="btn-secondary text-sm">${t('editor.previewCourse')}</a>` : ''}
+              <button onclick="cancel()" class="btn-secondary">${t('common.cancel')}</button>
+              <button onclick="save()" class="btn-primary">💾 ${t('common.save')}</button>
+            </div>
+          </div>
+
+          <!-- Lang tabs -->
+          <div class="editor-section mb-5">
+            <div class="flex items-center justify-between flex-wrap gap-3">
+              <div class="flex gap-2">
+                ${['ru','kk','en'].map(l => {
+                  const status = langStatus(l);
+                  const label = { ru: 'РУ', kk: 'ҚАЗ', en: 'EN' }[l];
+                  return `<button onclick="switchLang('${l}')" class="lang-tab ${editLang === l ? 'active' : ''}">
+                    <span class="lang-dot ${status}"></span>${label}
+                  </button>`;
+                }).join('')}
+              </div>
+              <div class="text-xs text-slate-500">${t('editor.lang.fillAll')}</div>
+            </div>
+          </div>
+
+          <!-- General -->
+          <section class="editor-section mb-5">
+            <h2 class="font-display font-semibold text-lg mb-4 flex items-center gap-2">📋 ${t('editor.section.general')}</h2>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">${t('editor.field.title')}</label>
+                <input id="f-title" class="input" value="${escapeAttr(model.title[editLang])}" oninput="onFieldInput('title', this.value)" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">${t('editor.field.tagline')}</label>
+                <input id="f-tagline" class="input" value="${escapeAttr(model.tagline[editLang])}" oninput="onFieldInput('tagline', this.value)" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">${t('editor.field.description')}</label>
+                <textarea id="f-description" class="input" rows="4" oninput="onFieldInput('description', this.value)">${USTEM.escapeHtml(model.description[editLang])}</textarea>
+              </div>
+              <div class="grid sm:grid-cols-3 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-1.5">${t('courses.filter.category')}</label>
+                  <select id="f-category" class="input" onchange="model.categoryKey=this.value; markDirty()">
+                    ${['cat.programming','cat.ai','cat.engineering','cat.math','cat.design','cat.robotics','cat.competitions','cat.electronics','cat.initiatives'].map(k =>
+                      `<option value="${k}" ${model.categoryKey===k?'selected':''}>${t(k)}</option>`
+                    ).join('')}
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-1.5">${t('courses.filter.level')}</label>
+                  <select id="f-level" class="input" onchange="model.levelKey=this.value; markDirty()">
+                    ${['level.beginner','level.intermediate','level.advanced','level.expert'].map(k =>
+                      `<option value="${k}" ${model.levelKey===k?'selected':''}>${t(k)}</option>`
+                    ).join('')}
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-1.5">${t('admin.modal.cover')}</label>
+                  <select id="f-cover" class="input" onchange="model.cover=this.value; markDirty()">
+                    ${Object.keys(USTEM.Covers).map(c => `<option value="${c}" ${model.cover===c?'selected':''}>${USTEM.CoverIcons[c]} ${c}</option>`).join('')}
+                  </select>
+                </div>
+              </div>
+              <div class="grid sm:grid-cols-3 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-1.5">${t('editor.field.durationWeeks')}</label>
+                  <input type="number" class="input" value="${model.durationWeeks || 0}" oninput="model.durationWeeks=+this.value; markDirty()" />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-1.5">${t('admin.modal.hours')}</label>
+                  <input type="number" class="input" value="${model.hours || 0}" oninput="model.hours=+this.value; markDirty()" />
+                </div>
+                <div class="flex items-end">
+                  <label class="flex items-center gap-2 text-sm cursor-pointer pb-3">
+                    <input type="checkbox" ${model.featured?'checked':''} onchange="model.featured=this.checked; markDirty()" class="w-4 h-4" />
+                    <span>${t('admin.modal.featured')}</span>
+                  </label>
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">${t('editor.field.tags')}</label>
+                <div id="tags-chips" class="mb-2">${renderTagChips()}</div>
+                <div class="flex gap-2">
+                  <input id="tag-input" class="input flex-1" placeholder="${t('editor.field.tagsPlaceholder')}" onkeydown="if(event.key==='Enter'){event.preventDefault(); addTag(this);} else if(event.key===',' && this.value.trim()){event.preventDefault(); addTag(this);}" />
+                  <button onclick="addTag(document.getElementById('tag-input'))" class="btn-secondary">+</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Stats & URL -->
+          <section class="editor-section mb-5">
+            <h2 class="font-display font-semibold text-lg mb-4 flex items-center gap-2">📊 ${t('editor.section.stats')}</h2>
+            <div class="grid sm:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">${t('editor.field.slug')}</label>
+                <input id="f-slug" class="input font-mono text-sm" value="${escapeAttr(model.slug)}" oninput="model.slug=this.value; markDirty()" placeholder="my-course" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">${t('editor.field.students')}</label>
+                <input type="number" min="0" class="input" value="${model.students || 0}" oninput="model.students=+this.value; markDirty()" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">${t('editor.field.rating')}</label>
+                <input type="number" min="0" max="5" step="0.1" class="input" value="${model.rating || 5.0}" oninput="model.rating=+this.value; markDirty()" />
+              </div>
+            </div>
+          </section>
+
+          <!-- Instructor -->
+          <section class="editor-section mb-5">
+            <h2 class="font-display font-semibold text-lg mb-4 flex items-center gap-2">👨‍🏫 ${t('editor.section.instructor')}</h2>
+            <div class="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">${t('editor.field.instructorName')}</label>
+                <input class="input" value="${escapeAttr(model.instructor.name)}" oninput="model.instructor.name=this.value; model.instructor.avatar=this.value.charAt(0).toUpperCase()||'?'; markDirty()" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">${t('editor.field.instructorRole')}</label>
+                <input class="input" value="${escapeAttr(model.instructor.role[editLang])}" oninput="onFieldInput('instructor.role', this.value)" />
+              </div>
+              <div class="sm:col-span-2">
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">${t('editor.field.instructorBio')}</label>
+                <textarea class="input" rows="3" oninput="onFieldInput('instructor.bio', this.value)">${USTEM.escapeHtml(model.instructor.bio[editLang])}</textarea>
+              </div>
+            </div>
+          </section>
+
+          <!-- Objectives -->
+          <section class="editor-section mb-5">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="font-display font-semibold text-lg flex items-center gap-2">🎯 ${t('editor.section.objectives')}</h2>
+              <button onclick="addObjective()" class="text-sm font-medium text-purple-700 hover:underline">${t('editor.objective.add')}</button>
+            </div>
+            <div id="objectives-list" class="space-y-2"></div>
+          </section>
+
+          <!-- Lessons -->
+          <section class="editor-section mb-5">
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="font-display font-semibold text-lg flex items-center gap-2">📚 ${t('editor.section.lessons')} <span class="text-sm font-normal text-slate-400">${model.lessons.length}</span></h2>
+              <button onclick="addLesson()" class="text-sm font-medium text-purple-700 hover:underline">${t('editor.lesson.add')}</button>
+            </div>
+            <div class="text-xs text-slate-400 mb-3 italic">↕ ${t('editor.dragHint')}</div>
+            <div id="lessons-list" class="space-y-2"></div>
+          </section>
+
+          <div class="flex justify-end gap-2 sticky bottom-4">
+            <button onclick="cancel()" class="btn-secondary shadow">${t('common.cancel')}</button>
+            <button onclick="save()" class="btn-primary shadow">💾 ${t('common.save')}</button>
+          </div>
+        </div>
+      `;
+
+      renderObjectives();
+      renderLessons();
+      i18n.apply();
+    }
+
+    function renderTagChips() {
+      if (!model.tags || model.tags.length === 0) return '<span class="text-xs text-slate-400 italic">Нет тегов</span>';
+      return model.tags.map((tag, i) =>
+        `<span class="tag-chip">${USTEM.escapeHtml(tag)}<button onclick="removeTag(${i})" title="Удалить">×</button></span>`
+      ).join('');
+    }
+
+    function addTag(input) {
+      const value = input.value.trim().toLowerCase();
+      if (!value) return;
+      const parts = value.split(',').map(s => s.trim()).filter(Boolean);
+      parts.forEach(t => {
+        if (!model.tags.includes(t)) model.tags.push(t);
+      });
+      input.value = '';
+      document.getElementById('tags-chips').innerHTML = renderTagChips();
+      markDirty();
+    }
+
+    function removeTag(i) {
+      model.tags.splice(i, 1);
+      document.getElementById('tags-chips').innerHTML = renderTagChips();
+      markDirty();
+    }
+
+    function toggleStatus() {
+      model.status = model.status === 'published' ? 'draft' : 'published';
+      markDirty();
+      renderPage();
+    }
+
+    function renderObjectives() {
+      const list = document.getElementById('objectives-list');
+      if (!list) return;
+      if (model.objectives.length === 0) {
+        list.innerHTML = `<div class="text-sm text-slate-400 italic">${t('editor.objective.empty')}</div>`;
+        return;
+      }
+      list.innerHTML = model.objectives.map((o, i) => `
+        <div class="flex items-center gap-2">
+          <div class="w-6 h-6 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-xs font-semibold flex-shrink-0">${i+1}</div>
+          <input class="input flex-1" value="${escapeAttr(o[editLang])}" placeholder="${t('editor.objective.placeholder')}" oninput="onObjectiveInput(${i}, this.value)" />
+          <button onclick="removeObjective(${i})" class="icon-btn" title="${t('common.delete')}">✕</button>
+        </div>
+      `).join('');
+    }
+
+    function renderLessons() {
+      const list = document.getElementById('lessons-list');
+      if (!list) return;
+      if (model.lessons.length === 0) {
+        list.innerHTML = `<div class="text-sm text-slate-400 italic">${t('editor.lesson.empty')}</div>`;
+        return;
+      }
+      const typeIcon = { video: '🎥', project: '🎯', reading: '📖' };
+      list.innerHTML = model.lessons.map((l, i) => `
+        <div class="lesson-card"
+             draggable="true"
+             data-idx="${i}"
+             ondragstart="handleDragStart(event, ${i})"
+             ondragover="handleDragOver(event)"
+             ondragleave="handleDragLeave(event)"
+             ondrop="handleDrop(event, ${i})"
+             ondragend="handleDragEnd(event)">
+          <div class="drag-handle">⋮⋮</div>
+          <div class="w-8 h-8 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-sm font-semibold flex-shrink-0">${i+1}</div>
+          <div class="flex-1 min-w-0">
+            <div class="font-medium text-slate-900 truncate">${USTEM.escapeHtml(l.title[editLang] || t('editor.lesson.untitled'))}</div>
+            <div class="text-xs text-slate-500 mt-0.5">${typeIcon[l.type] || '📖'} ${l.duration} ${t('common.minutes_short')} ${l.quiz ? ` · 📝 ${l.quiz.questions.length}` : ''}</div>
+          </div>
+          <div class="flex gap-1 flex-shrink-0">
+            <button onclick="editLesson(${i})" class="ghost-btn text-purple-700">✏️ ${t('common.edit')}</button>
+            <button onclick="removeLesson(${i})" class="ghost-btn text-red-600">🗑</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // ============ DRAG AND DROP ============
+
+    let draggedIdx = null;
+
+    function handleDragStart(e, i) {
+      draggedIdx = i;
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', String(i));
+      e.currentTarget.classList.add('dragging');
+    }
+
+    function handleDragOver(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const card = e.currentTarget;
+      if (!card.classList.contains('dragging')) card.classList.add('drag-over');
+      return false;
+    }
+
+    function handleDragLeave(e) {
+      e.currentTarget.classList.remove('drag-over');
+    }
+
+    function handleDrop(e, targetIdx) {
+      e.preventDefault();
+      if (draggedIdx === null || draggedIdx === targetIdx) return false;
+      const lesson = model.lessons[draggedIdx];
+      model.lessons.splice(draggedIdx, 1);
+      model.lessons.splice(targetIdx, 0, lesson);
+      draggedIdx = null;
+      renderLessons();
+      markDirty();
+      return false;
+    }
+
+    function handleDragEnd(e) {
+      document.querySelectorAll('.lesson-card').forEach(c => {
+        c.classList.remove('dragging', 'drag-over');
+      });
+      draggedIdx = null;
+    }
+
+    // ============ HANDLERS ============
+
+    function escapeAttr(s) { return USTEM.escapeHtml(s || ''); }
+
+    function markDirty() {
+      dirty = true;
+      updateSaveStatus('unsaved');
+    }
+
+    function updateSaveStatus(status) {
+      const el = document.getElementById('save-status');
+      if (!el) return;
+      el.classList.remove('saving','saved','unsaved');
+      el.classList.add(status);
+      if (status === 'saving') el.textContent = t('editor.autosave.saving');
+      else if (status === 'saved') el.textContent = lastSaved ? `${t('editor.autosave.saved')} · ${lastSaved.toLocaleTimeString().slice(0,5)}` : t('editor.autosave.saved');
+      else el.textContent = t('editor.autosave.unsaved');
+    }
+
+    function syncCurrentLangFromDom() {
+      const titleEl = document.getElementById('f-title');
+      const taglineEl = document.getElementById('f-tagline');
+      const descEl = document.getElementById('f-description');
+      if (titleEl) model.title[editLang] = titleEl.value;
+      if (taglineEl) model.tagline[editLang] = taglineEl.value;
+      if (descEl) model.description[editLang] = descEl.value;
+      // Quill is synced via text-change handler in real time
+    }
+
+    function switchLang(lang) {
+      syncCurrentLangFromDom();
+      editLang = lang;
+      renderPage();
+    }
+
+    function onFieldInput(path, value) {
+      const parts = path.split('.');
+      let obj = model;
+      for (let i = 0; i < parts.length - 1; i++) obj = obj[parts[i]];
+      obj[parts[parts.length - 1]][editLang] = value;
+      markDirty();
+      updateLangDots();
+    }
+
+    function updateLangDots() {
+      document.querySelectorAll('.lang-tab').forEach((btn, idx) => {
+        const lang = ['ru','kk','en'][idx];
+        const dot = btn.querySelector('.lang-dot');
+        if (dot) {
+          dot.classList.remove('complete','partial','empty');
+          dot.classList.add(langStatus(lang));
+        }
+      });
+    }
+
+    function onObjectiveInput(i, value) {
+      model.objectives[i][editLang] = value;
+      markDirty();
+      updateLangDots();
+    }
+
+    function addObjective() {
+      model.objectives.push(blankMl());
+      renderObjectives();
+      markDirty();
+    }
+
+    function removeObjective(i) {
+      model.objectives.splice(i, 1);
+      renderObjectives();
+      markDirty();
+    }
+
+    function addLesson() {
+      const lesson = {
+        id: 'l_' + Math.random().toString(36).slice(2, 8),
+        duration: 30,
+        type: 'video',
+        title: blankMl(),
+        content: blankMl(),
+        quiz: null,
+      };
+      model.lessons.push(lesson);
+      markDirty();
+      openLessonModal(model.lessons.length - 1);
+    }
+
+    function editLesson(i) { openLessonModal(i); }
+
+    function removeLesson(i) {
+      const title = model.lessons[i].title[editLang] || t('editor.lesson.untitled');
+      if (!confirm(t('editor.lesson.confirmDelete', { title }))) return;
+      model.lessons.splice(i, 1);
+      renderLessons();
+      markDirty();
+    }
+
+    // ============ LESSON MODAL ============
+
+    function openLessonModal(i) {
+      activeLessonIdx = i;
+      renderLessonModal();
+    }
+
+    function closeLessonModal() {
+      if (quill) {
+        // Final sync of Quill content
+        model.lessons[activeLessonIdx].content[editLang] = quill.root.innerHTML;
+        quill = null;
+      }
+      activeLessonIdx = null;
+      document.getElementById('lesson-modal').classList.add('hidden');
+      document.getElementById('lesson-modal').innerHTML = '';
+      renderLessons();
+      updateLangDots();
+    }
+
+    function renderLessonModal() {
+      const l = model.lessons[activeLessonIdx];
+      if (!l) return;
+      const overlay = document.getElementById('lesson-modal');
+      overlay.classList.remove('hidden');
+      overlay.innerHTML = `
+        <div class="modal-card">
+          <div class="sticky top-0 bg-white border-b p-5 flex items-center justify-between z-10">
+            <div>
+              <div class="text-xs text-slate-500 uppercase tracking-wider">${t('editor.section.lessons')}</div>
+              <h3 class="font-display font-bold text-lg">${activeLessonIdx >= model.lessons.length - 1 && !l.title.ru && !l.title.kk && !l.title.en ? t('editor.lesson.new') : t('editor.lesson.edit')}</h3>
+            </div>
+            <button onclick="closeLessonModal()" class="icon-btn text-xl">✕</button>
+          </div>
+          <div class="p-6 space-y-5">
+            <div class="flex gap-2 flex-wrap">
+              ${['ru','kk','en'].map(l => `
+                <button onclick="switchLangInModal('${l}')" class="lang-tab ${editLang===l?'active':''}">
+                  ${ { ru: 'РУ', kk: 'ҚАЗ', en: 'EN' }[l] }
+                </button>
+              `).join('')}
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-slate-700 mb-1.5">${t('editor.lesson.title')}</label>
+              <input id="lm-title" class="input" value="${escapeAttr(l.title[editLang])}" oninput="model.lessons[${activeLessonIdx}].title[editLang]=this.value; markDirty()" />
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">${t('editor.lesson.duration')}</label>
+                <input type="number" class="input" value="${l.duration}" oninput="model.lessons[${activeLessonIdx}].duration=+this.value; markDirty()" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1.5">${t('editor.lesson.type')}</label>
+                <select class="input" onchange="model.lessons[${activeLessonIdx}].type=this.value; markDirty()">
+                  <option value="video" ${l.type==='video'?'selected':''}>${t('editor.lesson.type.video')}</option>
+                  <option value="project" ${l.type==='project'?'selected':''}>${t('editor.lesson.type.project')}</option>
+                  <option value="reading" ${l.type==='reading'?'selected':''}>${t('editor.lesson.type.reading')}</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="text-sm font-medium text-slate-700">${t('editor.lesson.content')}</label>
+                <button type="button" onclick="openPreview()" class="ghost-btn text-purple-700">${t('editor.lesson.preview')}</button>
+              </div>
+              <div class="templates-bar">
+                <span class="label">${t('editor.tools.label')}</span>
+                <button type="button" class="tpl-btn" onclick="insertTemplate('intro')">${t('editor.tools.intro')}</button>
+                <button type="button" class="tpl-btn" onclick="insertTemplate('objectives')">${t('editor.tools.objectives')}</button>
+                <button type="button" class="tpl-btn" onclick="insertTemplate('tip')">${t('editor.tools.tip')}</button>
+                <button type="button" class="tpl-btn" onclick="insertTemplate('warning')">${t('editor.tools.warning')}</button>
+                <button type="button" class="tpl-btn" onclick="insertTemplate('table')">${t('editor.tools.table')}</button>
+                <button type="button" class="tpl-btn" onclick="insertTemplate('code')">${t('editor.tools.code')}</button>
+                <button type="button" class="tpl-btn" onclick="insertTemplate('video')">${t('editor.tools.video')}</button>
+                <button type="button" class="tpl-btn" onclick="insertTemplate('image')">${t('editor.tools.image')}</button>
+                <button type="button" class="tpl-btn" onclick="insertTemplate('attachment')">${t('editor.tools.attachment')}</button>
+                <button type="button" class="tpl-btn" onclick="insertTemplate('divider')">${t('editor.tools.divider')}</button>
+              </div>
+              <div id="lm-quill"></div>
+              <div class="editor-footer">
+                <div class="stats">
+                  <span><strong id="word-count">0</strong> ${t('editor.wordCount')}</span>
+                  <span><strong id="reading-time">1</strong> ${t('editor.readingTime')}</span>
+                </div>
+                <div class="text-slate-400">${t('editor.lesson.contentHint')}</div>
+              </div>
+            </div>
+
+            <div>
+              <label class="flex items-center gap-2 text-sm font-medium text-slate-700 cursor-pointer">
+                <input type="checkbox" ${l.quiz?'checked':''} onchange="toggleQuiz(${activeLessonIdx}, this.checked)" class="w-4 h-4" />
+                <span>${t('editor.lesson.hasQuiz')}</span>
+              </label>
+              <div id="quiz-editor" class="mt-3"></div>
+            </div>
+          </div>
+          <div class="sticky bottom-0 bg-white border-t p-5 flex justify-end gap-2">
+            <button onclick="closeLessonModal()" class="btn-primary">${t('common.close')}</button>
+          </div>
+        </div>
+      `;
+      renderQuizEditor();
+      initQuill();
+    }
+
+    function initQuill() {
+      const content = model.lessons[activeLessonIdx].content[editLang] || '';
+      quill = new Quill('#lm-quill', {
+        theme: 'snow',
+        placeholder: 'Содержимое урока. Используйте панель шаблонов сверху или просто пишите текст…',
+        modules: {
+          toolbar: {
+            container: [
+              [{ header: [2, 3, 4, false] }],
+              ['bold', 'italic', 'underline', 'strike'],
+              [{ color: [] }, { background: [] }],
+              [{ list: 'ordered' }, { list: 'bullet' }],
+              [{ align: [] }],
+              ['blockquote', 'code-block'],
+              ['link', 'image', 'video'],
+              ['callout', 'callout-warn'],
+              ['clean'],
+            ],
+            handlers: {
+              callout: function() { insertCallout(false); },
+              'callout-warn': function() { insertCallout(true); },
+              image: function() { insertImageSmart(); },
+              video: function() { insertVideoSmart(); },
+            },
+          },
+        },
+      });
+      if (content) quill.root.innerHTML = content;
+
+      quill.on('text-change', () => {
+        model.lessons[activeLessonIdx].content[editLang] = quill.root.innerHTML;
+        markDirty();
+        updateWordCount();
+      });
+
+      // Drag-drop images directly into the editor
+      const container = quill.container;
+      container.addEventListener('dragover', e => {
+        if (e.dataTransfer?.types?.includes('Files')) {
+          e.preventDefault();
+          container.classList.add('drag-active');
+        }
+      });
+      container.addEventListener('dragleave', () => container.classList.remove('drag-active'));
+      container.addEventListener('drop', e => {
+        container.classList.remove('drag-active');
+        if (!e.dataTransfer?.files?.length) return;
+        e.preventDefault();
+        Array.from(e.dataTransfer.files).forEach(file => {
+          if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = ev => {
+              const range = quill.getSelection(true) || { index: quill.getLength() };
+              quill.insertEmbed(range.index, 'image', ev.target.result);
+              quill.setSelection(range.index + 1);
+            };
+            reader.readAsDataURL(file);
+          }
+        });
+      });
+
+      // Paste images from clipboard already works in Quill 2 natively
+      // Auto-detect video URLs on paste
+      quill.root.addEventListener('paste', e => {
+        const text = (e.clipboardData || window.clipboardData)?.getData('text/plain');
+        if (!text) return;
+        const trimmed = text.trim();
+        // Only auto-embed if the paste is just a single URL on its own
+        if (!/^https?:\/\/\S+$/.test(trimmed) || /\s/.test(trimmed)) return;
+        const info = parseVideoUrl(trimmed);
+        if (!info) return;
+        e.preventDefault();
+        insertVideoFromInfo(info);
+        USTEM.showToast('🎬 Видео распознано и вставлено', 'success');
+      });
+      updateWordCount();
+      // Tooltip labels
+      setTooltip('callout', '💡 Информационный блок');
+      setTooltip('callout-warn', '⚠️ Блок предупреждения');
+      setTooltip('image', '🖼 Картинка (файл или URL)');
+      setTooltip('video', '🎬 Видео (YouTube/Vimeo/Rutube)');
+    }
+
+    function setTooltip(name, title) {
+      document.querySelectorAll(`.ql-toolbar .ql-${name}`).forEach(b => b.setAttribute('title', title));
+    }
+
+    function updateWordCount() {
+      const el = document.getElementById('word-count');
+      const rt = document.getElementById('reading-time');
+      if (!el || !quill) return;
+      const text = quill.getText().trim();
+      const words = text ? text.split(/\s+/).filter(Boolean).length : 0;
+      const minutes = Math.max(1, Math.ceil(words / 180));
+      el.textContent = words;
+      if (rt) rt.textContent = minutes;
+    }
+
+    // ============ INSERTERS ============
+
+    function getInsertIndex() {
+      const range = quill.getSelection(true);
+      return range ? range.index : quill.getLength();
+    }
+
+    function insertHTML(html, opts = {}) {
+      const idx = getInsertIndex();
+      quill.clipboard.dangerouslyPasteHTML(idx, html, 'user');
+      if (!opts.keepCursor) {
+        setTimeout(() => quill.setSelection(idx + 1), 10);
+      }
+    }
+
+    function insertCallout(warn) {
+      const cls = warn ? 'callout warning' : 'callout';
+      const emoji = warn ? '⚠️' : '💡';
+      const html = `<div class="${cls}"><span>${emoji}</span><div><strong>${warn ? 'Важно:' : 'Совет:'}</strong> ${t('editor.callout.placeholder')}</div></div><p><br></p>`;
+      insertHTML(html);
+    }
+
+    function insertImageSmart() {
+      const url = prompt(t('editor.prompt.imageUrl'));
+      if (!url) return;
+      try { new URL(url); } catch { USTEM.showToast('Неверный URL', 'error'); return; }
+      const alt = prompt(t('editor.prompt.imageAlt')) || '';
+      const idx = getInsertIndex();
+      quill.insertEmbed(idx, 'image', url);
+      // Set alt attribute manually after insert
+      setTimeout(() => {
+        const img = quill.root.querySelectorAll('img');
+        const last = img[img.length - 1];
+        if (last && alt) last.setAttribute('alt', alt);
+      }, 50);
+    }
+
+    // Returns { type: 'iframe'|'video', src: string } or null
+    function parseVideoUrl(url) {
+      url = (url || '').trim();
+      if (!url) return null;
+
+      // YouTube — все варианты включая Shorts, music, mobile
+      let m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/|v\/)|youtu\.be\/|youtube-nocookie\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+      if (m) return { type: 'iframe', src: `https://www.youtube.com/embed/${m[1]}` };
+
+      // Vimeo — стандарт и канальные ссылки
+      m = url.match(/vimeo\.com\/(?:video\/|channels\/[^/]+\/|groups\/[^/]+\/videos\/|showcase\/\d+\/video\/)?(\d+)/);
+      if (m) return { type: 'iframe', src: `https://player.vimeo.com/video/${m[1]}` };
+
+      // Rutube
+      m = url.match(/rutube\.ru\/(?:video\/private\/|video\/|play\/embed\/|shorts\/)([a-zA-Z0-9]+)/i);
+      if (m) return { type: 'iframe', src: `https://rutube.ru/play/embed/${m[1]}` };
+
+      // Kinescope (популярная в КЗ/РУ платформа)
+      m = url.match(/kinescope\.io\/(?:embed\/)?([a-zA-Z0-9]+)/i);
+      if (m) return { type: 'iframe', src: `https://kinescope.io/embed/${m[1]}` };
+
+      // VK Video — формат vk.com/video-OID_VID
+      m = url.match(/vk\.com\/video(-?\d+)_(\d+)/);
+      if (m) return { type: 'iframe', src: `https://vk.com/video_ext.php?oid=${m[1]}&id=${m[2]}&hd=2` };
+      m = url.match(/vk\.com\/video_ext\.php\?oid=(-?\d+)&id=(\d+)/);
+      if (m) return { type: 'iframe', src: `https://vk.com/video_ext.php?oid=${m[1]}&id=${m[2]}&hd=2` };
+
+      // OK.ru
+      m = url.match(/ok\.ru\/(?:video\/|videoembed\/)(\d+)/);
+      if (m) return { type: 'iframe', src: `https://ok.ru/videoembed/${m[1]}` };
+
+      // Dzen (Yandex)
+      m = url.match(/dzen\.ru\/(?:video\/watch\/|embed\/)([a-zA-Z0-9]+)/);
+      if (m) return { type: 'iframe', src: `https://dzen.ru/embed/${m[1]}` };
+
+      // Прямые видео-файлы → <video controls>
+      if (/\.(mp4|webm|ogg|ogv|mov|m4v)(\?|#|$)/i.test(url)) {
+        return { type: 'video', src: url };
+      }
+
+      // Общий случай: уже embed-iframe URL — пропускаем
+      if (/\/embed[/?]/i.test(url) || /\/player[/?]/i.test(url)) {
+        return { type: 'iframe', src: url };
+      }
+
+      return null;
+    }
+
+    function insertVideoFromInfo(info) {
+      if (!info) return false;
+      if (info.type === 'iframe') {
+        insertHTML(`<iframe src="${escapeAttr(info.src)}" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe><p><br></p>`);
+      } else {
+        insertHTML(`<video controls src="${escapeAttr(info.src)}" style="width:100%;border-radius:.5rem;margin:.75rem 0"></video><p><br></p>`);
+      }
+      return true;
+    }
+
+    function insertVideoSmart() {
+      const hint = `URL видео. Поддерживаются:
+• YouTube  (youtube.com / youtu.be / shorts)
+• Vimeo  (vimeo.com)
+• Rutube  (rutube.ru)
+• Kinescope  (kinescope.io)
+• VK Video  (vk.com/video...)
+• OK.ru  (ok.ru/video...)
+• Dzen  (dzen.ru/video...)
+• Прямой MP4 / WebM / MOV`;
+      const url = prompt(hint);
+      if (!url) return;
+      const info = parseVideoUrl(url);
+      if (!info) {
+        USTEM.showToast(t('editor.prompt.videoInvalid'), 'error');
+        return;
+      }
+      // Warn if running from file:// — YouTube refuses to play with "Ошибка 153"
+      if (location.protocol === 'file:' && /youtube|vimeo/i.test(info.src)) {
+        USTEM.showToast('⚠️ Видео может не играть на file://. Запустите: python3 -m http.server 8000', 'error');
+      }
+      insertVideoFromInfo(info);
+    }
+
+    // ============ TEMPLATES ============
+
+    const TEMPLATES = {
+      intro: () => `<h2>Введение</h2><p>Напишите вводную часть урока: что студент узнает, почему это важно, как это применить.</p>`,
+      objectives: () => `<h3>Что вы узнаете в этом уроке</h3><ul><li>Первая цель</li><li>Вторая цель</li><li>Третья цель</li></ul>`,
+      tip: () => `<div class="callout"><span>💡</span><div><strong>Совет:</strong> Полезная информация для студента.</div></div><p><br></p>`,
+      warning: () => `<div class="callout warning"><span>⚠️</span><div><strong>Важно:</strong> На что обратить особое внимание.</div></div><p><br></p>`,
+      table: () => `<table>
+<thead><tr><th>Параметр</th><th>Значение A</th><th>Значение B</th></tr></thead>
+<tbody>
+<tr><td>Строка 1</td><td>—</td><td>—</td></tr>
+<tr><td>Строка 2</td><td>—</td><td>—</td></tr>
+</tbody></table><p><br></p>`,
+      divider: () => `<hr><p><br></p>`,
+    };
+
+    function insertTemplate(name) {
+      if (!quill) return;
+      if (name === 'image') return insertImageSmart();
+      if (name === 'video') return insertVideoSmart();
+      if (name === 'attachment') {
+        const url = prompt(t('editor.prompt.fileUrl'));
+        if (!url) return;
+        const fileName = prompt(t('editor.prompt.fileName'), 'Скачать материалы') || 'Скачать';
+        return insertHTML(`<p>📎 <a href="${escapeAttr(url)}" target="_blank" rel="noopener">${escapeAttr(fileName)}</a></p>`);
+      }
+      if (name === 'code') {
+        const langs = ['python', 'javascript', 'typescript', 'cpp', 'c', 'java', 'csharp', 'arduino', 'bash', 'sql', 'json', 'html', 'css'];
+        const lang = (prompt(t('editor.prompt.codeLang') + '\n(' + langs.join(', ') + ')', 'python') || '').trim().toLowerCase();
+        if (!lang) return;
+        const safeLang = langs.includes(lang) ? lang : 'plaintext';
+        const sample = sampleCodeFor(safeLang);
+        return insertHTML(`<pre><code class="language-${safeLang}">${USTEM.escapeHtml(sample)}</code></pre><p><br></p>`);
+      }
+      const tpl = TEMPLATES[name];
+      if (tpl) insertHTML(tpl());
+    }
+
+    function sampleCodeFor(lang) {
+      const samples = {
+        python: 'def hello():\n    print("Привет, USTEM!")\n\nhello()',
+        javascript: 'function hello() {\n    console.log("Привет, USTEM!");\n}\nhello();',
+        typescript: 'function hello(): void {\n    console.log("Привет, USTEM!");\n}\nhello();',
+        cpp: '#include <iostream>\nint main() {\n    std::cout << "Привет, USTEM!" << std::endl;\n    return 0;\n}',
+        c: '#include <stdio.h>\nint main() {\n    printf("Привет, USTEM!\\n");\n    return 0;\n}',
+        java: 'public class Main {\n    public static void main(String[] args) {\n        System.out.println("Привет, USTEM!");\n    }\n}',
+        csharp: 'using System;\nclass Program {\n    static void Main() {\n        Console.WriteLine("Привет, USTEM!");\n    }\n}',
+        arduino: 'void setup() {\n    Serial.begin(9600);\n    Serial.println("Привет, USTEM!");\n}\nvoid loop() {}',
+        bash: '#!/bin/bash\necho "Привет, USTEM!"',
+        sql: 'SELECT name, email FROM students WHERE active = TRUE;',
+        json: '{\n    "course": "USTEM",\n    "year": 2026\n}',
+        html: '<!doctype html>\n<html>\n<body>\n    <h1>Привет, USTEM!</h1>\n</body>\n</html>',
+        css: '.hello {\n    color: #6d28d9;\n    font-weight: 600;\n}',
+        plaintext: 'Ваш код здесь',
+      };
+      return samples[lang] || samples.plaintext;
+    }
+
+    window.insertTemplate = insertTemplate;
+
+    function switchLangInModal(lang) {
+      // Save current Quill content
+      if (quill) {
+        model.lessons[activeLessonIdx].content[editLang] = quill.root.innerHTML;
+        quill = null;
+      }
+      editLang = lang;
+      renderLessonModal();
+    }
+
+    function toggleQuiz(idx, enabled) {
+      if (enabled) {
+        model.lessons[idx].quiz = { questions: [{ q: blankMl(), options: [blankMl(), blankMl(), blankMl(), blankMl()], correct: 0 }] };
+      } else {
+        model.lessons[idx].quiz = null;
+      }
+      markDirty();
+      renderQuizEditor();
+    }
+
+    function renderQuizEditor() {
+      const container = document.getElementById('quiz-editor');
+      if (!container) return;
+      const l = model.lessons[activeLessonIdx];
+      if (!l.quiz) { container.innerHTML = ''; return; }
+      container.innerHTML = `
+        <div class="space-y-4">
+          ${l.quiz.questions.map((q, qi) => `
+            <div class="qedit">
+              <div class="flex items-center justify-between mb-3">
+                <div class="font-semibold text-purple-900">${t('editor.quiz.question')} ${qi+1}</div>
+                <button onclick="removeQuestion(${qi})" class="ghost-btn text-red-600">🗑 ${t('common.delete')}</button>
+              </div>
+              <input class="input mb-3" placeholder="${t('editor.quiz.question')}…" value="${escapeAttr(q.q[editLang])}" oninput="model.lessons[${activeLessonIdx}].quiz.questions[${qi}].q[editLang]=this.value; markDirty()" />
+              <div class="space-y-2">
+                ${q.options.map((opt, oi) => `
+                  <div class="flex items-center gap-2">
+                    <input type="radio" name="correct-${qi}" ${q.correct===oi?'checked':''} onchange="model.lessons[${activeLessonIdx}].quiz.questions[${qi}].correct=${oi}; markDirty(); renderQuizEditor()" class="w-4 h-4 accent-purple-600" title="${t('editor.quiz.markCorrect')}" />
+                    <input class="input flex-1 ${q.correct===oi?'border-green-400 bg-green-50':''}" placeholder="${t('editor.quiz.optionLabel')} ${oi+1}" value="${escapeAttr(opt[editLang])}" oninput="model.lessons[${activeLessonIdx}].quiz.questions[${qi}].options[${oi}][editLang]=this.value; markDirty()" />
+                  </div>
+                `).join('')}
+              </div>
+              ${q.correct >= 0 ? `<div class="text-xs text-green-700 mt-2">✓ ${t('editor.quiz.correct')}: ${q.correct+1}</div>` : ''}
+            </div>
+          `).join('')}
+          <button onclick="addQuestion()" class="btn-secondary w-full justify-center">${t('editor.quiz.add')}</button>
+        </div>
+      `;
+    }
+
+    function addQuestion() {
+      model.lessons[activeLessonIdx].quiz.questions.push({
+        q: blankMl(),
+        options: [blankMl(), blankMl(), blankMl(), blankMl()],
+        correct: 0,
+      });
+      markDirty();
+      renderQuizEditor();
+    }
+
+    function removeQuestion(qi) {
+      model.lessons[activeLessonIdx].quiz.questions.splice(qi, 1);
+      if (model.lessons[activeLessonIdx].quiz.questions.length === 0) {
+        model.lessons[activeLessonIdx].quiz = null;
+        renderLessonModal();
+      } else {
+        renderQuizEditor();
+      }
+      markDirty();
+    }
+
+    function openPreview() {
+      const l = model.lessons[activeLessonIdx];
+      if (!l) return;
+      // Sync from Quill first
+      if (quill) model.lessons[activeLessonIdx].content[editLang] = quill.root.innerHTML;
+      const html = l.content[editLang] || '<em>(пусто)</em>';
+      const base = location.origin + location.pathname.replace(/[^/]+$/, '');
+      const w = window.open('', '_blank', 'width=900,height=700');
+      w.document.write(`<!doctype html><html><head><meta charset="utf-8">
+        <title>${t('editor.lesson.previewTitle')}</title>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+        <link rel="stylesheet" href="${base}assets/css/styles.css" />
+        <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.css" rel="stylesheet" />
+        <style>body{padding:40px;max-width:760px;margin:0 auto;background:#f8fafc;font-family:Inter,sans-serif}
+        .preview-header{display:flex;align-items:center;justify-content:space-between;padding-bottom:20px;border-bottom:1px solid #e2e8f0;margin-bottom:30px}
+        .preview-title{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:1.5rem;color:#0f172a}
+        .lang-badge{padding:4px 12px;background:#f3e8ff;color:#6d28d9;border-radius:9999px;font-size:0.75rem;font-weight:600}
+        .prose-content table{width:100%;border-collapse:collapse;margin:1rem 0}
+        .prose-content table th,.prose-content table td{border:1px solid #e2e8f0;padding:8px 12px;text-align:left}
+        .prose-content table th{background:#f1f5f9;font-weight:600}
+        .prose-content iframe{width:100%;aspect-ratio:16/9;border:0;border-radius:.5rem;background:#000;margin:.75rem 0}
+        .prose-content img{max-width:100%;height:auto;border-radius:.5rem}
+        .prose-content hr{border:none;border-top:1px solid #e2e8f0;margin:1.5rem 0}
+        </style>
+        </head><body>
+        <div class="preview-header">
+          <div class="preview-title">${USTEM.escapeHtml(l.title[editLang] || t('editor.lesson.untitled'))}</div>
+          <div class="lang-badge">${ { ru: 'РУ', kk: 'ҚАЗ', en: 'EN' }[editLang]} · ${l.duration} мин</div>
+        </div>
+        <div class="prose-content">${html}</div>
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></scr` + `ipt>
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-python.min.js"></scr` + `ipt>
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></scr` + `ipt>
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-cpp.min.js"></scr` + `ipt>
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-java.min.js"></scr` + `ipt>
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-bash.min.js"></scr` + `ipt>
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-arduino.min.js"></scr` + `ipt>
+        <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-sql.min.js"></scr` + `ipt>
+        </body></html>`);
+      w.document.close();
+    }
+
+    // ============ SAVE / CANCEL ============
+
+    function persist() {
+      // Sync any in-flight inputs
+      syncCurrentLangFromDom();
+      if (quill && activeLessonIdx !== null) {
+        model.lessons[activeLessonIdx].content[editLang] = quill.root.innerHTML;
+      }
+      // Auto-fill slug if empty
+      if (!model.slug) {
+        const base = model.title.en || model.title.ru || 'course';
+        model.slug = base.toLowerCase()
+          .replace(/[^\w\s-]/g, '')
+          .replace(/\s+/g, '-')
+          .slice(0, 60) || 'course-' + Math.random().toString(36).slice(2, 6);
+      }
+      Store.saveCourse(model);
+      dirty = false;
+      lastSaved = new Date();
+      updateSaveStatus('saved');
+    }
+
+    function save() {
+      // Validation
+      if (!model.title.ru && !model.title.kk && !model.title.en) {
+        USTEM.showToast(t('editor.validation.titleRequired'), 'error');
+        return;
+      }
+      if (model.slug && !/^[a-z0-9-]+$/.test(model.slug)) {
+        USTEM.showToast(t('editor.validation.slugInvalid'), 'error');
+        return;
+      }
+      persist();
+      USTEM.showToast(isNew ? t('admin.modal.created') : t('admin.modal.updated'), 'success');
+      setTimeout(() => (location.href = 'admin.html'), 600);
+    }
+
+    function cancel() {
+      if (dirty && !confirm(t('editor.unsaved'))) return;
+      location.href = 'admin.html';
+    }
+
+    function confirmLeave(e) {
+      if (dirty && !confirm(t('editor.unsaved'))) {
+        e.preventDefault();
+        return false;
+      }
+      return true;
+    }
+
+    // Auto-save every 30 seconds (only if there's a title)
+    function startAutoSave() {
+      autosaveTimer = setInterval(() => {
+        if (!dirty) return;
+        if (!model.title.ru && !model.title.kk && !model.title.en) return;
+        if (model.slug && !/^[a-z0-9-]+$/.test(model.slug)) return;
+        updateSaveStatus('saving');
+        setTimeout(() => persist(), 200);
+      }, 30000);
+    }
+
+    window.addEventListener('beforeunload', e => {
+      if (dirty) { e.preventDefault(); e.returnValue = ''; }
+    });
+
+    // Keyboard shortcuts: Esc closes modal, Ctrl/Cmd+S saves
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && activeLessonIdx !== null) {
+        e.preventDefault();
+        closeLessonModal();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        if (model) {
+          // Sync from Quill / DOM before save
+          syncCurrentLangFromDom();
+          if (quill && activeLessonIdx !== null) {
+            model.lessons[activeLessonIdx].content[editLang] = quill.root.innerHTML;
+          }
+          if (!model.title.ru && !model.title.kk && !model.title.en) {
+            USTEM.showToast(t('editor.validation.titleRequired'), 'error');
+            return;
+          }
+          persist();
+          USTEM.showToast(t('editor.autosave.saved'), 'success');
+        }
+      }
+    });
+
+    // Click overlay (outside modal-card) to close lesson modal
+    document.getElementById('lesson-modal').addEventListener('click', e => {
+      if (e.target.id === 'lesson-modal') {
+        closeLessonModal();
+      }
+    });
+
+    // expose
+    window.switchLang = switchLang;
+    window.switchLangInModal = switchLangInModal;
+    window.onFieldInput = onFieldInput;
+    window.onObjectiveInput = onObjectiveInput;
+    window.addObjective = addObjective;
+    window.removeObjective = removeObjective;
+    window.addLesson = addLesson;
+    window.editLesson = editLesson;
+    window.removeLesson = removeLesson;
+    window.openLessonModal = openLessonModal;
+    window.closeLessonModal = closeLessonModal;
+    window.toggleQuiz = toggleQuiz;
+    window.addQuestion = addQuestion;
+    window.removeQuestion = removeQuestion;
+    window.renderQuizEditor = renderQuizEditor;
+    window.openPreview = openPreview;
+    window.addTag = addTag;
+    window.removeTag = removeTag;
+    window.toggleStatus = toggleStatus;
+    window.handleDragStart = handleDragStart;
+    window.handleDragOver = handleDragOver;
+    window.handleDragLeave = handleDragLeave;
+    window.handleDrop = handleDrop;
+    window.handleDragEnd = handleDragEnd;
+    window.markDirty = markDirty;
+    window.save = save;
+    window.cancel = cancel;
+    window.confirmLeave = confirmLeave;
+    Object.defineProperty(window, 'editLang', { get: () => editLang });
+    Object.defineProperty(window, 'model', { get: () => model });
+
+    document.addEventListener('lang:change', () => { renderPage(); });
+
+    loadCourse();
+    if (Store.getSession()?.role === 'admin') {
+      renderPage();
+      startAutoSave();
+      updateSaveStatus('saved');
+    }
+  </script>
+</body>
+</html>

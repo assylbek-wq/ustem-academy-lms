@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-i18n="courses.title">Каталог курсов — USTEM Academy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body data-title-key="courses.title">
+  <div id="header-root" data-active="courses"></div>
+
+  <section class="gradient-hero pt-32 pb-20 relative overflow-hidden">
+    <div class="absolute inset-0 opacity-30">
+      <div class="absolute top-10 right-20 w-72 h-72 rounded-full bg-blue-500 blur-[120px]"></div>
+      <div class="absolute bottom-0 left-10 w-80 h-80 rounded-full bg-purple-500 blur-[150px]"></div>
+    </div>
+    <div class="relative max-w-7xl mx-auto px-6 lg:px-8 text-white">
+      <div class="text-purple-200 text-sm font-medium mb-3 uppercase tracking-wider" data-i18n="courses.hero.label">Каталог курсов</div>
+      <h1 class="font-display font-bold text-4xl lg:text-6xl mb-4">
+        <span data-i18n="courses.hero.title.part1">Найдите свой путь в</span>
+        <span class="gradient-text">STEM</span>
+      </h1>
+      <p class="text-purple-100 text-lg max-w-2xl" data-i18n="courses.hero.desc">Все курсы бесплатные.</p>
+    </div>
+  </section>
+
+  <section class="py-12">
+    <div class="max-w-7xl mx-auto px-6 lg:px-8">
+      <div class="card p-5 mb-8 -mt-16 relative z-10 shadow-xl">
+        <div class="grid md:grid-cols-4 gap-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide" data-i18n="courses.filter.search">Поиск</label>
+            <input id="search" type="text" class="input" data-i18n-placeholder="courses.filter.search.placeholder" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide" data-i18n="courses.filter.category">Категория</label>
+            <select id="filter-category" class="input">
+              <option value="" data-i18n="courses.filter.allCats">Все категории</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide" data-i18n="courses.filter.level">Уровень</label>
+            <select id="filter-level" class="input">
+              <option value="" data-i18n="courses.filter.anyLevel">Любой</option>
+              <option value="level.beginner" data-i18n="level.beginner">Начальный</option>
+              <option value="level.intermediate" data-i18n="level.intermediate">Средний</option>
+              <option value="level.advanced" data-i18n="level.advanced">Продвинутый</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-600 mb-1.5 uppercase tracking-wide" data-i18n="courses.filter.sort">Сортировка</label>
+            <select id="sort" class="input">
+              <option value="popular" data-i18n="courses.sort.popular">По популярности</option>
+              <option value="rating" data-i18n="courses.sort.rating">По рейтингу</option>
+              <option value="newest" data-i18n="courses.sort.newest">Новые</option>
+              <option value="duration" data-i18n="courses.sort.duration">По длительности</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between mb-6">
+        <div id="result-count" class="text-slate-600 text-sm"></div>
+        <button onclick="resetFilters()" class="text-purple-700 text-sm font-medium hover:underline" data-i18n="courses.reset">Сбросить</button>
+      </div>
+
+      <div id="courses-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+
+      <div id="empty-state" class="hidden text-center py-20">
+        <div class="text-6xl mb-4">🔍</div>
+        <h3 class="font-display font-semibold text-xl mb-2" data-i18n="courses.empty.title">Ничего не найдено</h3>
+        <p class="text-slate-500" data-i18n="courses.empty.desc">Попробуйте изменить параметры поиска</p>
+      </div>
+    </div>
+  </section>
+
+  <div id="footer-root"></div>
+
+  <script src="assets/js/i18n.js"></script>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script>
+    let user = Store.getSession();
+    const isAdmin = user?.role === 'admin';
+    // Students don't see drafts; admin sees everything
+    let allCourses = Store.getCourses().filter(c => isAdmin || c.status !== 'draft');
+
+    function populateCategories() {
+      const catSelect = document.getElementById('filter-category');
+      const cur = catSelect.value;
+      catSelect.innerHTML = `<option value="">${t('courses.filter.allCats')}</option>`;
+      const cats = [...new Set(allCourses.map(c => c.categoryKey))];
+      cats.forEach(k => {
+        const opt = document.createElement('option');
+        opt.value = k;
+        opt.textContent = t(k);
+        catSelect.appendChild(opt);
+      });
+      catSelect.value = cur;
+    }
+
+    function applyFilters() {
+      const search = document.getElementById('search').value.toLowerCase();
+      const cat = document.getElementById('filter-category').value;
+      const level = document.getElementById('filter-level').value;
+      const sort = document.getElementById('sort').value;
+
+      let list = allCourses.filter(c => {
+        const title = loc(c.title).toLowerCase();
+        const tagline = loc(c.tagline).toLowerCase();
+        if (search && !title.includes(search) && !tagline.includes(search)) return false;
+        if (cat && c.categoryKey !== cat) return false;
+        if (level && c.levelKey !== level) return false;
+        return true;
+      });
+
+      if (sort === 'popular') list.sort((a,b) => b.students - a.students);
+      else if (sort === 'rating') list.sort((a,b) => b.rating - a.rating);
+      else if (sort === 'newest') list.reverse();
+      else if (sort === 'duration') list.sort((a,b) => (a.durationWeeks||0) - (b.durationWeeks||0));
+
+      const grid = document.getElementById('courses-grid');
+      const empty = document.getElementById('empty-state');
+      if (list.length === 0) {
+        grid.innerHTML = '';
+        empty.classList.remove('hidden');
+      } else {
+        empty.classList.add('hidden');
+        grid.innerHTML = list.map(c => USTEM.renderCourseCard(c, user)).join('');
+      }
+      document.getElementById('result-count').textContent = `${t('courses.found')} ${list.length}`;
+    }
+
+    function setup() {
+      document.getElementById('header-root').innerHTML = USTEM.renderHeader('courses');
+      document.getElementById('footer-root').innerHTML = USTEM.renderFooter();
+      populateCategories();
+      i18n.apply();
+      applyFilters();
+    }
+
+    document.getElementById('search').addEventListener('input', applyFilters);
+    document.getElementById('filter-category').addEventListener('change', applyFilters);
+    document.getElementById('filter-level').addEventListener('change', applyFilters);
+    document.getElementById('sort').addEventListener('change', applyFilters);
+
+    function resetFilters() {
+      document.getElementById('search').value = '';
+      document.getElementById('filter-category').value = '';
+      document.getElementById('filter-level').value = '';
+      document.getElementById('sort').value = 'popular';
+      applyFilters();
+    }
+    window.resetFilters = resetFilters;
+
+    // initial category from URL
+    const initCat = USTEM.getParam('cat');
+    const catMap = {
+      competitions: 'cat.competitions',
+      robotics: 'cat.robotics',
+      electronics: 'cat.electronics',
+      initiatives: 'cat.initiatives',
+      programming: 'cat.programming',
+      ai: 'cat.ai',
+      math: 'cat.math',
+    };
+
+    document.addEventListener('lang:change', setup);
+    setup();
+    if (initCat && catMap[initCat]) {
+      document.getElementById('filter-category').value = catMap[initCat];
+      applyFilters();
+    }
+  </script>
+</body>
+</html>

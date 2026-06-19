@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-i18n="admin.title">USTEM Academy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body class="bg-slate-50" data-title-key="admin.title">
+  <div id="header-root" data-active="admin"></div>
+  <main id="page-root"></main>
+  <div id="footer-root"></div>
+  <input type="file" id="import-file" accept=".json,application/json" class="hidden" />
+
+  <script src="assets/js/i18n.js"></script>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script>
+    if (!USTEM.requireAdmin()) { /* redirect */ }
+
+    function renderAdmin() {
+      document.getElementById('header-root').innerHTML = USTEM.renderHeader('admin');
+      document.getElementById('footer-root').innerHTML = USTEM.renderFooter();
+
+      const courses = Store.getCourses();
+      const users = Store.getUsers();
+      const students = users.filter(u => u.role === 'student');
+      const totalEnrollments = students.reduce((acc, s) => acc + (s.enrolled?.length || 0), 0);
+      const totalLessonsCompleted = students.reduce((acc, s) => acc + Object.values(s.progress || {}).reduce((a, b) => a + b.length, 0), 0);
+      const draftsCount = courses.filter(c => c.status === 'draft').length;
+
+      document.getElementById('page-root').innerHTML = `
+        <section class="gradient-hero pt-28 pb-16 relative overflow-hidden">
+          <div class="absolute inset-0 opacity-30">
+            <div class="absolute top-10 right-20 w-72 h-72 rounded-full bg-purple-500 blur-[120px]"></div>
+          </div>
+          <div class="relative max-w-7xl mx-auto px-6 lg:px-8 text-white">
+            <div class="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <div class="text-purple-200 text-sm uppercase tracking-wider mb-1">${t('admin.label')}</div>
+                <h1 class="font-display font-bold text-3xl lg:text-5xl">${t('admin.heading')}</h1>
+              </div>
+              <div class="flex gap-2 flex-wrap">
+                <button onclick="exportAll()" class="btn-ghost border border-white/30">${t('admin.action.export')}</button>
+                <button onclick="triggerImport()" class="btn-ghost border border-white/30">${t('admin.action.import')}</button>
+                <a href="admin-edit.html" class="btn-primary">${t('admin.newCourse')}</a>
+              </div>
+            </div>
+            <!-- Tabs -->
+            <div class="flex gap-2 mt-8">
+              <a href="admin.html" class="px-5 py-2 rounded-lg bg-white text-purple-700 font-semibold text-sm shadow">${t('admin.tabs.courses')}</a>
+              <a href="admin-blog.html" class="px-5 py-2 rounded-lg bg-white/10 text-white/80 hover:bg-white/20 font-medium text-sm">${t('admin.tabs.blog')}</a>
+            </div>
+          </div>
+        </section>
+
+        <section class="py-10 -mt-8 relative z-10">
+          <div class="max-w-7xl mx-auto px-6 lg:px-8">
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+              <div class="card p-5">
+                <div class="text-xs text-slate-500 uppercase mb-1">${t('admin.stats.courses')}</div>
+                <div class="font-display font-bold text-3xl text-slate-900">${courses.length}</div>
+                <div class="text-xs text-amber-600 mt-1">${draftsCount} ${t('editor.status.draft')}</div>
+              </div>
+              <div class="card p-5">
+                <div class="text-xs text-slate-500 uppercase mb-1">${t('admin.stats.students')}</div>
+                <div class="font-display font-bold text-3xl text-slate-900">${students.length}</div>
+                <div class="text-xs text-slate-500 mt-1">${users.filter(u => u.role === 'admin').length} ${t('admin.stats.admin')}</div>
+              </div>
+              <div class="card p-5">
+                <div class="text-xs text-slate-500 uppercase mb-1">${t('admin.stats.enrollments')}</div>
+                <div class="font-display font-bold text-3xl text-slate-900">${totalEnrollments}</div>
+              </div>
+              <div class="card p-5">
+                <div class="text-xs text-slate-500 uppercase mb-1">${t('admin.stats.lessonsDone')}</div>
+                <div class="font-display font-bold text-3xl text-slate-900">${totalLessonsCompleted}</div>
+              </div>
+            </div>
+
+            <div class="grid xl:grid-cols-3 gap-8">
+              <div class="xl:col-span-2">
+                <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
+                  <h2 class="font-display font-bold text-2xl">${t('admin.courses.title')}</h2>
+                  <div class="flex items-center gap-3 flex-1 justify-end max-w-md">
+                    <div class="relative flex-1">
+                      <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+                      <input id="admin-search" type="text" placeholder="${t('common.search')}..." class="input pl-9" oninput="filterCourses(this.value)" />
+                    </div>
+                    <a href="admin-edit.html" class="text-sm font-medium text-purple-700 hover:underline whitespace-nowrap">${t('admin.courses.add')}</a>
+                  </div>
+                </div>
+                <div id="courses-list" class="card overflow-hidden divide-y divide-slate-100">
+                  ${courses.map(c => {
+                    const status = c.status || 'published';
+                    const statusBadge = status === 'draft'
+                      ? `<span class="badge-status badge-draft">${t('editor.status.draft')}</span>`
+                      : `<span class="badge-status badge-published">${t('editor.status.published')}</span>`;
+                    const searchHaystack = [
+                      loc(c.title), loc(c.tagline), t(c.categoryKey), t(c.levelKey),
+                      ...(c.tags || []),
+                    ].join(' ').toLowerCase();
+                    return `
+                    <div class="course-row" data-search="${USTEM.escapeHtml(searchHaystack)}">
+                      <div class="course-row-cover" style="background:${USTEM.Covers[c.cover] || USTEM.Covers.robotics}">${USTEM.CoverIcons[c.cover] || '📚'}</div>
+                      <div class="course-row-main">
+                        <a href="admin-edit.html?id=${c.id}" class="course-row-title">${USTEM.escapeHtml(loc(c.title))}</a>
+                        <div class="course-row-meta">
+                          <span class="badge-cat">${t(c.categoryKey)}</span>
+                          ${statusBadge}
+                          <span class="text-slate-400">·</span>
+                          <span>${c.lessons.length} ${t('common.lessons')}</span>
+                          <span class="text-slate-400">·</span>
+                          <span>${c.hours} ${t('common.hours_short')}</span>
+                          <span class="text-slate-400">·</span>
+                          <span>${USTEM.formatNumber(c.students)} ${t('common.students')}</span>
+                        </div>
+                      </div>
+                      <div class="course-row-actions">
+                        <a href="course.html?id=${c.id}" target="_blank" class="action-btn" title="${t('editor.previewCourse')}" aria-label="Preview">👁</a>
+                        <a href="admin-edit.html?id=${c.id}" class="action-btn action-edit" title="${t('common.edit')}" aria-label="Edit">✏️</a>
+                        <button onclick="duplicateCourse('${c.id}')" class="action-btn action-dup" title="${t('admin.action.duplicate')}" aria-label="Duplicate">📋</button>
+                        <button onclick="deleteCourse('${c.id}')" class="action-btn action-del" title="${t('common.delete')}" aria-label="Delete">🗑️</button>
+                      </div>
+                    </div>`;
+                  }).join('')}
+                  ${courses.length === 0 ? `<div class="p-10 text-center text-slate-500"><div class="text-4xl mb-2">📚</div>Пока нет курсов. <a href="admin-edit.html" class="text-purple-700 hover:underline">Создать первый →</a></div>` : ''}
+                  <div id="no-results" class="hidden p-10 text-center text-slate-500"><div class="text-4xl mb-2">🔍</div>Ничего не найдено по запросу</div>
+                </div>
+              </div>
+
+              <aside>
+                <h2 class="font-display font-bold text-2xl mb-5">${t('admin.students.title')}</h2>
+                <div class="card overflow-hidden">
+                  ${students.length === 0 ? `<div class="p-6 text-center text-slate-500">${t('admin.students.empty')}</div>` : ''}
+                  ${students.slice(0, 8).map(s => `
+                    <div class="flex items-center gap-3 p-4 border-b border-slate-100 last:border-b-0">
+                      <div class="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-blue-400 flex items-center justify-center text-white font-semibold">${s.avatar}</div>
+                      <div class="flex-1 min-w-0">
+                        <div class="font-medium text-slate-900 truncate">${USTEM.escapeHtml(s.name)}</div>
+                        <div class="text-xs text-slate-500 truncate">${USTEM.escapeHtml(s.email)}</div>
+                      </div>
+                      <div class="text-xs text-slate-500 text-right">
+                        <div class="font-medium text-slate-700">${s.enrolled?.length || 0}</div>
+                        <div>${t('admin.students.courses')}</div>
+                      </div>
+                    </div>`).join('')}
+                </div>
+
+                <div class="card p-6 mt-6 bg-gradient-to-br from-amber-50 to-pink-50 border-amber-200">
+                  <div class="text-xl mb-2">⚠️</div>
+                  <div class="font-semibold mb-2 text-slate-900">${t('admin.reset.title')}</div>
+                  <p class="text-sm text-slate-600 mb-4">${t('admin.reset.desc')}</p>
+                  <button onclick="resetData()" class="w-full px-4 py-2 rounded-lg bg-white border border-amber-300 text-amber-700 hover:bg-amber-50 text-sm font-semibold">${t('admin.reset.button')}</button>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </section>
+      `;
+      i18n.apply();
+    }
+
+    function deleteCourse(id) {
+      const course = Store.getCourseById(id);
+      if (!confirm(t('admin.delete.confirm', { title: loc(course.title) }))) return;
+      Store.deleteCourse(id);
+      USTEM.showToast(t('admin.delete.done'), 'success');
+      renderAdmin();
+    }
+
+    function duplicateCourse(id) {
+      const src = Store.getCourseById(id);
+      if (!src) return;
+      const copy = JSON.parse(JSON.stringify(src));
+      copy.id = 'c_' + Math.random().toString(36).slice(2, 10);
+      copy.slug = (copy.slug || 'course') + '-copy-' + Math.random().toString(36).slice(2, 5);
+      const cpSuffix = { ru: ' (копия)', kk: ' (көшірме)', en: ' (copy)' };
+      ['ru','kk','en'].forEach(lang => {
+        if (copy.title && typeof copy.title === 'object' && copy.title[lang]) {
+          copy.title[lang] = copy.title[lang] + cpSuffix[lang];
+        }
+      });
+      copy.status = 'draft';
+      copy.students = 0;
+      // Re-generate lesson IDs to avoid progress collision
+      copy.lessons = (copy.lessons || []).map(l => ({
+        ...l,
+        id: 'l_' + Math.random().toString(36).slice(2, 8),
+      }));
+      Store.saveCourse(copy);
+      USTEM.showToast(t('admin.duplicate.done'), 'success');
+      setTimeout(() => location.href = 'admin-edit.html?id=' + copy.id, 400);
+    }
+
+    function exportAll() {
+      const data = {
+        version: 'ustem_lms_v5',
+        exportedAt: new Date().toISOString(),
+        courses: Store.getCourses(),
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ustem-courses-${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      USTEM.showToast(`${t('admin.export.done')} ${data.courses.length}`, 'success');
+    }
+
+    function triggerImport() {
+      document.getElementById('import-file').click();
+    }
+
+    function handleImportFile(file) {
+      const reader = new FileReader();
+      reader.onload = e => {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          const courses = Array.isArray(parsed) ? parsed : parsed.courses;
+          if (!Array.isArray(courses) || courses.length === 0) {
+            throw new Error('No courses');
+          }
+          if (!confirm(t('admin.import.confirm', { n: courses.length }))) return;
+          courses.forEach(c => {
+            if (c && c.id && c.lessons) Store.saveCourse(c);
+          });
+          USTEM.showToast(`${t('admin.import.done')} ${courses.length}`, 'success');
+          renderAdmin();
+        } catch (err) {
+          console.error(err);
+          USTEM.showToast(t('admin.import.invalid'), 'error');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    document.getElementById('import-file').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (file) handleImportFile(file);
+      e.target.value = '';
+    });
+
+    function resetData() {
+      if (!confirm(t('admin.reset.confirm'))) return;
+      Store.reset();
+      USTEM.showToast(t('admin.reset.done'), 'success');
+      setTimeout(() => location.reload(), 600);
+    }
+
+    function filterCourses(query) {
+      const q = query.trim().toLowerCase();
+      let visible = 0;
+      document.querySelectorAll('.course-row').forEach(row => {
+        const hay = row.dataset.search || '';
+        const match = !q || hay.includes(q);
+        row.style.display = match ? '' : 'none';
+        if (match) visible++;
+      });
+      const empty = document.getElementById('no-results');
+      if (empty) empty.classList.toggle('hidden', visible > 0 || !q);
+    }
+
+    window.deleteCourse = deleteCourse;
+    window.duplicateCourse = duplicateCourse;
+    window.exportAll = exportAll;
+    window.triggerImport = triggerImport;
+    window.resetData = resetData;
+    window.filterCourses = filterCourses;
+
+    document.addEventListener('lang:change', renderAdmin);
+    if (Store.getSession()?.role === 'admin') renderAdmin();
+  </script>
+</body>
+</html>

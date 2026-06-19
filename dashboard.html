@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-i18n="dashboard.title">USTEM Academy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body data-title-key="dashboard.title">
+  <div id="header-root" data-active="dashboard"></div>
+  <main id="page-root"></main>
+  <div id="footer-root"></div>
+
+  <script src="assets/js/i18n.js"></script>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script>
+    if (!USTEM.requireAuth()) { /* redirect */ }
+
+    function renderDashboard() {
+      document.getElementById('header-root').innerHTML = USTEM.renderHeader('dashboard');
+      document.getElementById('footer-root').innerHTML = USTEM.renderFooter();
+
+      const user = Store.getSession();
+      if (!user) return;
+      const allCourses = Store.getCourses();
+      const enrolledCourses = allCourses.filter(c => user.enrolled?.includes(c.id));
+      const completed = enrolledCourses.filter(c => USTEM.courseProgress(c, user) === 100);
+      const inProgress = enrolledCourses.filter(c => {
+        const p = USTEM.courseProgress(c, user);
+        return p > 0 && p < 100;
+      });
+      const notStarted = enrolledCourses.filter(c => USTEM.courseProgress(c, user) === 0);
+
+      const totalLessons = Object.values(user.progress || {}).reduce((acc, arr) => acc + arr.length, 0);
+      const totalHours = enrolledCourses.reduce((acc, c) => acc + Math.round(c.hours * USTEM.courseProgress(c, user) / 100), 0);
+      const passedQuizzes = Object.values(user.quizScores || {}).filter(q => q.completed).length;
+
+      document.getElementById('page-root').innerHTML = `
+        <section class="gradient-hero pt-28 pb-20 relative overflow-hidden">
+          <div class="absolute inset-0 opacity-30">
+            <div class="absolute top-10 right-20 w-72 h-72 rounded-full bg-blue-500 blur-[120px]"></div>
+            <div class="absolute bottom-0 left-10 w-80 h-80 rounded-full bg-purple-500 blur-[150px]"></div>
+          </div>
+          <div class="relative max-w-7xl mx-auto px-6 lg:px-8 text-white">
+            <div class="flex items-center gap-4 mb-6">
+              <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-400 to-blue-400 flex items-center justify-center text-white font-bold text-2xl shadow-xl">${user.avatar}</div>
+              <div>
+                <div class="text-purple-200 text-sm">${t('dashboard.welcome')}</div>
+                <h1 class="font-display font-bold text-3xl lg:text-4xl">${USTEM.escapeHtml(user.name)}</h1>
+              </div>
+            </div>
+            <p class="text-purple-100 text-lg max-w-2xl">${t('dashboard.subtitle')}</p>
+          </div>
+        </section>
+
+        <section class="py-10 -mt-12 relative z-10">
+          <div class="max-w-7xl mx-auto px-6 lg:px-8">
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+              <div class="card p-5">
+                <div class="text-3xl mb-2">📚</div>
+                <div class="font-display font-bold text-3xl text-slate-900">${enrolledCourses.length}</div>
+                <div class="text-sm text-slate-500 mt-1">${t('dashboard.stats.active')}</div>
+              </div>
+              <div class="card p-5">
+                <div class="text-3xl mb-2">✅</div>
+                <div class="font-display font-bold text-3xl text-slate-900">${totalLessons}</div>
+                <div class="text-sm text-slate-500 mt-1">${t('dashboard.stats.completed')}</div>
+              </div>
+              <div class="card p-5">
+                <div class="text-3xl mb-2">⏱</div>
+                <div class="font-display font-bold text-3xl text-slate-900">${totalHours}<span class="text-base text-slate-400 font-normal"> ${t('common.hours_short')}</span></div>
+                <div class="text-sm text-slate-500 mt-1">${t('dashboard.stats.time')}</div>
+              </div>
+              <div class="card p-5">
+                <div class="text-3xl mb-2">🏆</div>
+                <div class="font-display font-bold text-3xl text-slate-900">${completed.length}</div>
+                <div class="text-sm text-slate-500 mt-1">${t('dashboard.stats.certs')}</div>
+              </div>
+            </div>
+
+            <div class="grid lg:grid-cols-3 gap-8">
+              <div class="lg:col-span-2 space-y-10">
+                ${inProgress.length > 0 ? `
+                  <div>
+                    <h2 class="font-display font-bold text-2xl mb-5 flex items-center gap-2">
+                      <span>${t('dashboard.sections.continue')}</span>
+                      <span class="text-sm font-normal text-slate-500">${inProgress.length}</span>
+                    </h2>
+                    <div class="space-y-3">${inProgress.map(c => courseProgressCard(c, user)).join('')}</div>
+                  </div>` : ''}
+
+                ${notStarted.length > 0 ? `
+                  <div>
+                    <h2 class="font-display font-bold text-2xl mb-5">${t('dashboard.sections.start')}</h2>
+                    <div class="space-y-3">${notStarted.map(c => courseProgressCard(c, user)).join('')}</div>
+                  </div>` : ''}
+
+                ${completed.length > 0 ? `
+                  <div>
+                    <h2 class="font-display font-bold text-2xl mb-5">${t('dashboard.sections.completed')}</h2>
+                    <div class="space-y-3">${completed.map(c => certificateCard(c, user)).join('')}</div>
+                  </div>` : ''}
+
+                ${enrolledCourses.length === 0 ? `
+                  <div class="card p-10 text-center">
+                    <div class="text-6xl mb-4">🚀</div>
+                    <h3 class="font-display font-bold text-xl mb-2">${t('dashboard.empty.title')}</h3>
+                    <p class="text-slate-500 mb-6">${t('dashboard.empty.desc')}</p>
+                    <a href="courses.html" class="btn-primary inline-flex">${t('dashboard.empty.cta')}</a>
+                  </div>` : ''}
+              </div>
+
+              <aside class="space-y-6">
+                <div class="card p-6">
+                  <div class="text-xs font-semibold text-slate-500 uppercase mb-3">${t('dashboard.profile')}</div>
+                  <div class="space-y-2 text-sm">
+                    <div class="flex justify-between"><span class="text-slate-500">${t('dashboard.profile.email')}</span><span class="font-medium text-slate-900 truncate ml-2">${USTEM.escapeHtml(user.email)}</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500">${t('dashboard.profile.role')}</span><span class="font-medium text-slate-900">${user.role === 'admin' ? t('dashboard.role.admin') : t('dashboard.role.student')}</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500">${t('dashboard.profile.since')}</span><span class="font-medium text-slate-900">${USTEM.formatDate(user.createdAt)}</span></div>
+                  </div>
+                </div>
+
+                <div class="card p-6">
+                  <div class="text-xs font-semibold text-slate-500 uppercase mb-3">${t('dashboard.quizzes')}</div>
+                  <div class="font-display font-bold text-3xl text-slate-900">${passedQuizzes}</div>
+                  <div class="text-sm text-slate-500 mb-4">${t('dashboard.quizzes.passed')}</div>
+                  ${Object.entries(user.quizScores || {}).slice(0, 3).map(([id, q]) => `
+                    <div class="flex items-center justify-between py-2 border-t border-slate-100 text-sm">
+                      <span class="text-slate-600">${t('dashboard.quizzes.test')}</span>
+                      <span class="font-semibold ${q.completed ? 'text-green-700' : 'text-red-600'}">${q.score}/${q.total}</span>
+                    </div>`).join('')}
+                </div>
+
+                <div class="card p-6 bg-gradient-to-br from-purple-50 to-blue-50 border-purple-200">
+                  <div class="text-2xl mb-2">💡</div>
+                  <div class="font-semibold mb-2 text-slate-900">${t('dashboard.recommend.title')}</div>
+                  <p class="text-sm text-slate-600 mb-4">${t('dashboard.recommend.desc')}</p>
+                  <a href="courses.html" class="btn-primary w-full justify-center text-sm">${t('dashboard.recommend.cta')}</a>
+                </div>
+              </aside>
+            </div>
+          </div>
+        </section>
+      `;
+      i18n.apply();
+    }
+
+    function courseProgressCard(course, user) {
+      const progress = USTEM.courseProgress(course, user);
+      const completed = user.progress?.[course.id]?.length || 0;
+      const total = course.lessons.length;
+      const done = user.progress?.[course.id] || [];
+      const nextLesson = course.lessons.find(l => !done.includes(l.id)) || course.lessons[0];
+      const dur = USTEM.formatDuration(course);
+
+      return `
+        <div class="card p-5 flex gap-4 items-center">
+          <div class="w-16 h-16 lg:w-20 lg:h-20 rounded-xl flex items-center justify-center text-3xl flex-shrink-0" style="background:${USTEM.Covers[course.cover]}">${USTEM.CoverIcons[course.cover]}</div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-start justify-between gap-2 mb-1">
+              <a href="course.html?id=${course.id}" class="font-semibold text-slate-900 hover:text-purple-700 line-clamp-1">${USTEM.escapeHtml(loc(course.title))}</a>
+              <span class="text-sm font-semibold text-purple-700 flex-shrink-0">${progress}%</span>
+            </div>
+            <div class="text-xs text-slate-500 mb-2">${completed} ${t('common.of')} ${total} ${t('common.lessons')} · ${USTEM.escapeHtml(dur)}</div>
+            <div class="progress mb-3"><div class="progress-bar" style="width:${progress}%"></div></div>
+            <a href="course.html?id=${course.id}&lesson=${nextLesson.id}" class="text-sm font-medium text-purple-700 hover:underline">${t('common.continue')} →</a>
+          </div>
+        </div>`;
+    }
+
+    function certificateCard(course, user) {
+      return `
+        <div class="cert-bg p-6 rounded-2xl">
+          <div class="flex items-start gap-5">
+            <div class="w-16 h-16 rounded-xl gradient-brand flex items-center justify-center text-white text-2xl flex-shrink-0">🏆</div>
+            <div class="flex-1">
+              <div class="text-xs text-purple-700 font-semibold uppercase tracking-wider mb-1">${t('dashboard.cert.label')}</div>
+              <h3 class="font-display font-bold text-lg text-slate-900 mb-1">${USTEM.escapeHtml(loc(course.title))}</h3>
+              <div class="text-sm text-slate-600 mb-3">${t('dashboard.cert.passed')} · ${course.hours} ${t('common.hours_short')} · ${course.lessons.length} ${t('common.lessons')}</div>
+              <div class="flex gap-2">
+                <button onclick="downloadCert('${course.id}')" class="btn-secondary text-sm py-2 px-4">${t('dashboard.cert.download')}</button>
+                <a href="course.html?id=${course.id}" class="btn-secondary text-sm py-2 px-4">${t('dashboard.cert.open')}</a>
+              </div>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function downloadCert(courseId) {
+      const user = Store.getSession();
+      const course = Store.getCourseById(courseId);
+      const lang = i18n.lang;
+      const labels = {
+        ru: { cert: 'Сертификат', sub: 'Об успешном окончании курса', this_: 'Настоящий сертификат удостоверяет, что', done: 'успешно завершил(а) курс', dur: 'продолжительностью', acHours: 'академических часов', date: 'Дата' },
+        kk: { cert: 'Сертификат', sub: 'Курсты сәтті аяқтағаны туралы', this_: 'Бұл сертификат куәландырады:', done: 'келесі курсты сәтті аяқтады:', dur: 'ұзақтығы', acHours: 'академиялық сағат', date: 'Күні' },
+        en: { cert: 'Certificate', sub: 'Of successful course completion', this_: 'This certificate verifies that', done: 'has successfully completed the course', dur: 'duration', acHours: 'academic hours', date: 'Date' },
+      }[lang] || {};
+      const html = `<!doctype html><html><head><meta charset="utf-8"><title>${labels.cert} — ${loc(course.title)}</title>
+        <style>
+          body{margin:0;font-family:Georgia,serif;background:#fafafa;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:40px}
+          .cert{background:white;border:16px double #6d28d9;padding:60px 80px;max-width:840px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.15)}
+          .brand{font-size:14px;letter-spacing:8px;color:#6d28d9;text-transform:uppercase;font-weight:bold;margin-bottom:30px}
+          h1{font-size:42px;color:#0f172a;margin:0 0 8px;font-family:'Times New Roman',serif}
+          .sub{color:#64748b;font-size:14px;letter-spacing:3px;text-transform:uppercase;margin-bottom:40px}
+          .name{font-family:'Brush Script MT',cursive;font-size:56px;color:#6d28d9;margin:20px 0;border-bottom:2px solid #ddd;padding-bottom:20px;display:inline-block;padding-left:60px;padding-right:60px}
+          .course{font-size:22px;color:#0f172a;margin:30px 0;font-style:italic}
+          .footer{display:flex;justify-content:space-between;margin-top:60px;padding-top:30px;border-top:1px solid #e2e8f0;color:#64748b;font-size:13px}
+        </style></head><body><div class="cert">
+        <div class="brand">USTEM Academy</div>
+        <h1>${labels.cert}</h1>
+        <div class="sub">${labels.sub}</div>
+        <div>${labels.this_}</div>
+        <div class="name">${user.name}</div>
+        <div>${labels.done}</div>
+        <div class="course">«${loc(course.title)}»</div>
+        <div>${labels.dur} ${course.hours} ${labels.acHours}</div>
+        <div class="footer">
+          <div>${labels.date}: ${new Date().toLocaleDateString(lang === 'kk' ? 'kk-KZ' : lang === 'en' ? 'en-US' : 'ru-RU')}</div>
+          <div>USTEM Academy · Almaty, Kazakhstan</div>
+        </div></div></body></html>`;
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `certificate-${course.slug}.html`;
+      a.click();
+      URL.revokeObjectURL(url);
+      USTEM.showToast(t('dashboard.cert.saved'), 'success');
+    }
+
+    window.downloadCert = downloadCert;
+    document.addEventListener('lang:change', renderDashboard);
+    if (Store.getSession()) renderDashboard();
+  </script>
+</body>
+</html>

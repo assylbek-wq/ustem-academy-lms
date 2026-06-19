@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>USTEM Academy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+  <!-- Prism.js for syntax highlighting in lesson content -->
+  <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-python.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-typescript.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-cpp.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-c.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-java.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-csharp.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-arduino.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-bash.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-sql.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-json.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-markup.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-css.min.js"></script>
+</head>
+<body>
+  <div id="header-root" data-active="courses"></div>
+  <main id="page-root"></main>
+  <div id="footer-root"></div>
+
+  <script src="assets/js/i18n.js"></script>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/app.js"></script>
+  <script>
+    const courseId = USTEM.getParam('id');
+    const lessonId = USTEM.getParam('lesson');
+
+    function renderAll() {
+      document.getElementById('header-root').innerHTML = USTEM.renderHeader('courses');
+      document.getElementById('footer-root').innerHTML = USTEM.renderFooter();
+
+      const course = Store.getCourseById(courseId);
+      if (!course) {
+        document.getElementById('page-root').innerHTML = `
+          <div class="pt-32 max-w-2xl mx-auto px-6 text-center">
+            <div class="text-6xl mb-4">🤔</div>
+            <h1 class="font-display font-bold text-3xl mb-3">${t('course.notFound.title')}</h1>
+            <p class="text-slate-600 mb-6">${t('course.notFound.desc')}</p>
+            <a href="courses.html" class="btn-primary">${t('course.notFound.back')}</a>
+          </div>`;
+        i18n.apply();
+        return;
+      }
+      const user = Store.getSession();
+      const enrolled = user?.enrolled?.includes(course.id);
+      const lesson = lessonId ? course.lessons.find(l => l.id === lessonId) : null;
+      document.title = loc(course.title) + ' — USTEM Academy';
+
+      if (lesson && enrolled) {
+        renderLessonView(course, lesson, user);
+      } else {
+        renderOverview(course, user, enrolled);
+      }
+      i18n.apply();
+      // Highlight any code blocks in lesson content
+      if (window.Prism) window.Prism.highlightAllUnder(document.body);
+      // Warn about file:// protocol if lesson contains iframes
+      maybeShowProtocolWarning();
+    }
+
+    function maybeShowProtocolWarning() {
+      if (location.protocol !== 'file:') return;
+      const hasVideo = document.querySelector('.prose-content iframe, .aspect-video iframe');
+      if (!hasVideo) return;
+      if (document.getElementById('file-warning')) return;
+      const warn = document.createElement('div');
+      warn.id = 'file-warning';
+      warn.className = 'fixed bottom-4 right-4 max-w-sm bg-amber-50 border-2 border-amber-300 rounded-xl p-4 shadow-xl z-50';
+      warn.innerHTML = `
+        <div class="flex items-start gap-3">
+          <span class="text-2xl flex-shrink-0">⚠️</span>
+          <div class="flex-1">
+            <div class="font-semibold text-amber-900 text-sm mb-1">Видео не воспроизводится?</div>
+            <p class="text-xs text-amber-800 mb-2">Сайт открыт через <code class="bg-amber-200 px-1 rounded">file://</code>. YouTube не разрешает встраивать видео без реального домена.</p>
+            <p class="text-xs text-amber-800">Запустите локальный сервер:</p>
+            <code class="block bg-amber-100 px-2 py-1 rounded mt-1 font-mono text-xs select-all">python3 -m http.server 8000</code>
+          </div>
+          <button onclick="this.parentElement.parentElement.remove()" class="text-amber-700 hover:text-amber-900 font-bold flex-shrink-0">✕</button>
+        </div>`;
+      document.body.appendChild(warn);
+    }
+
+    function renderOverview(course, user, enrolled) {
+      const progress = USTEM.courseProgress(course, user);
+      const completed = user?.progress?.[course.id]?.length || 0;
+      const total = course.lessons.length;
+      const title = loc(course.title);
+      const tagline = loc(course.tagline);
+      const desc = loc(course.description);
+      const dur = USTEM.formatDuration(course);
+
+      document.getElementById('page-root').innerHTML = `
+        <section class="gradient-hero pt-28 pb-16 relative overflow-hidden">
+          <div class="absolute inset-0 opacity-30">
+            <div class="absolute top-10 right-20 w-72 h-72 rounded-full bg-blue-500 blur-[120px]"></div>
+            <div class="absolute bottom-0 left-10 w-80 h-80 rounded-full bg-purple-500 blur-[150px]"></div>
+          </div>
+          <div class="relative max-w-7xl mx-auto px-6 lg:px-8 text-white">
+            <a href="courses.html" class="text-purple-200 text-sm hover:text-white inline-flex items-center gap-1 mb-6">${t('course.backToCatalog')}</a>
+            <div class="grid lg:grid-cols-12 gap-8">
+              <div class="lg:col-span-8">
+                <div class="flex flex-wrap gap-2 mb-4">
+                  <span class="tag bg-white/15 text-white border border-white/20">${t(course.categoryKey)}</span>
+                  <span class="tag bg-white/15 text-white border border-white/20">${t(course.levelKey)}</span>
+                  ${course.featured ? `<span class="tag tag-amber">${t('course.topCourse')}</span>` : ''}
+                </div>
+                <h1 class="font-display font-bold text-3xl lg:text-5xl mb-4">${USTEM.escapeHtml(title)}</h1>
+                <p class="text-purple-100 text-lg mb-6 max-w-2xl">${USTEM.escapeHtml(tagline)}</p>
+                <div class="flex flex-wrap gap-6 text-sm text-purple-100">
+                  <div class="flex items-center gap-2">⏱ <span>${USTEM.escapeHtml(dur)} · ${course.hours} ${t('common.hours_short')}</span></div>
+                  <div class="flex items-center gap-2">👥 <span>${USTEM.formatNumber(course.students)} ${t('common.students')}</span></div>
+                  <div class="flex items-center gap-2 text-amber-300">⭐ <span>${course.rating}</span></div>
+                  <div class="flex items-center gap-2">📚 <span>${course.lessons.length} ${t('common.lessons')}</span></div>
+                </div>
+              </div>
+              <div class="lg:col-span-4">
+                <div class="card p-6 text-slate-900">
+                  <div class="h-32 rounded-xl mb-5 flex items-center justify-center text-6xl" style="background:${USTEM.Covers[course.cover]}">${USTEM.CoverIcons[course.cover]}</div>
+                  ${
+                    enrolled
+                      ? `<div class="mb-4">
+                          <div class="flex items-center justify-between text-sm mb-2">
+                            <span class="text-slate-600">${t('course.yourProgress')}</span>
+                            <span class="font-semibold text-purple-700">${progress}%</span>
+                          </div>
+                          <div class="progress"><div class="progress-bar" style="width:${progress}%"></div></div>
+                          <div class="text-xs text-slate-500 mt-2">${completed} ${t('common.of')} ${total} ${t('common.lessons')}</div>
+                        </div>
+                        <button onclick="continueLearning()" class="btn-primary w-full justify-center">
+                          ${progress === 100 ? t('course.getCertificate') : t('course.continue')}
+                        </button>`
+                      : `<div class="mb-4">
+                          <div class="text-2xl font-bold text-green-700 mb-1">${t('common.free')}</div>
+                          <div class="text-xs text-slate-500">${t('course.fullAccess')}</div>
+                        </div>
+                        <button onclick="enroll()" class="btn-primary w-full justify-center">${t('course.enroll')}</button>`
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="py-16">
+          <div class="max-w-7xl mx-auto px-6 lg:px-8 grid lg:grid-cols-12 gap-10">
+            <div class="lg:col-span-8 space-y-10">
+              <div>
+                <h2 class="font-display font-bold text-2xl mb-4">${t('course.about')}</h2>
+                <p class="text-slate-700 leading-relaxed">${USTEM.escapeHtml(desc)}</p>
+              </div>
+              <div>
+                <h2 class="font-display font-bold text-2xl mb-4">${t('course.objectives')}</h2>
+                <div class="grid sm:grid-cols-2 gap-3">
+                  ${course.objectives.map(o => `
+                    <div class="flex items-start gap-3 p-4 rounded-xl bg-purple-50">
+                      <div class="w-6 h-6 rounded-full bg-purple-600 text-white flex items-center justify-center flex-shrink-0 mt-0.5">✓</div>
+                      <div class="text-sm text-slate-700">${USTEM.escapeHtml(loc(o))}</div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+              <div>
+                <h2 class="font-display font-bold text-2xl mb-4">${t('course.program')}</h2>
+                <div class="space-y-2">
+                  ${course.lessons.map((l, i) => {
+                    const isDone = user?.progress?.[course.id]?.includes(l.id);
+                    const canAccess = enrolled;
+                    const typeLabel = l.type === 'video' ? t('course.lesson.video') : l.type === 'project' ? t('course.lesson.project') : t('course.lesson.reading');
+                    return `
+                      <div class="card p-4 flex items-center gap-4 ${canAccess ? 'hover:border-purple-300 cursor-pointer' : ''}" ${canAccess ? `onclick="openLesson('${l.id}')"` : ''}>
+                        <div class="lesson-icon ${isDone ? 'completed' : ''}" style="${isDone ? 'background:#10b981;color:white' : ''}">${isDone ? '✓' : i+1}</div>
+                        <div class="flex-1 min-w-0">
+                          <div class="font-medium text-slate-900">${USTEM.escapeHtml(loc(l.title))}</div>
+                          <div class="text-xs text-slate-500 flex items-center gap-3 mt-0.5">
+                            <span>${l.duration} ${t('common.minutes_short')} · ${typeLabel}</span>
+                            ${l.quiz ? `<span class="text-purple-600">${t('course.lesson.quiz')}</span>` : ''}
+                          </div>
+                        </div>
+                        ${canAccess ? `<span class="text-purple-700 text-sm font-medium">→</span>` : `<span class="text-slate-400 text-xs">${t('course.locked')}</span>`}
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+            </div>
+            <aside class="lg:col-span-4">
+              <div class="card p-6 sticky top-6">
+                <div class="text-xs font-semibold text-slate-500 uppercase mb-4">${t('course.instructor')}</div>
+                <div class="flex items-center gap-3 mb-4">
+                  <div class="w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white font-bold text-xl">${course.instructor.avatar}</div>
+                  <div>
+                    <div class="font-semibold text-slate-900">${USTEM.escapeHtml(course.instructor.name)}</div>
+                    <div class="text-xs text-slate-500">${USTEM.escapeHtml(loc(course.instructor.role))}</div>
+                  </div>
+                </div>
+                <p class="text-sm text-slate-600 leading-relaxed">${USTEM.escapeHtml(loc(course.instructor.bio))}</p>
+              </div>
+            </aside>
+          </div>
+        </section>
+      `;
+    }
+
+    function renderLessonView(course, lesson, user) {
+      const idx = course.lessons.findIndex(l => l.id === lesson.id);
+      const isDone = user.progress?.[course.id]?.includes(lesson.id);
+      const prev = course.lessons[idx - 1];
+      const next = course.lessons[idx + 1];
+      const completed = user.progress?.[course.id]?.length || 0;
+      const total = course.lessons.length;
+      const progress = Math.round((completed / total) * 100);
+
+      document.getElementById('page-root').innerHTML = `
+        <div class="bg-slate-900 pt-20 pb-6">
+          <div class="max-w-7xl mx-auto px-6 lg:px-8 text-white">
+            <a href="course.html?id=${course.id}" class="text-purple-200 hover:text-white text-sm inline-flex items-center gap-1 mb-3">${t('lesson.backToProgram')}</a>
+            <div class="flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <div class="text-xs text-purple-300 uppercase tracking-wider mb-1">${USTEM.escapeHtml(loc(course.title))}</div>
+                <h1 class="font-display font-bold text-2xl lg:text-3xl">${t('lesson.label')} ${idx+1}. ${USTEM.escapeHtml(loc(lesson.title))}</h1>
+              </div>
+              <div class="text-right">
+                <div class="text-xs text-purple-300 mb-1">${t('lesson.courseProgress')} ${progress}%</div>
+                <div class="w-40 progress bg-white/10"><div class="progress-bar" style="width:${progress}%"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <section class="py-10">
+          <div class="max-w-7xl mx-auto px-6 lg:px-8 grid lg:grid-cols-12 gap-8">
+            <aside class="lg:col-span-3 order-2 lg:order-1">
+              <div class="card p-4 lg:sticky lg:top-6">
+                <div class="font-display font-semibold mb-3 text-sm text-slate-500 uppercase tracking-wider">${t('lesson.programLabel')}</div>
+                <div class="space-y-1">
+                  ${course.lessons.map((l, i) => {
+                    const done = user.progress?.[course.id]?.includes(l.id);
+                    return `
+                      <a href="course.html?id=${course.id}&lesson=${l.id}" class="lesson-item ${l.id === lesson.id ? 'active' : ''} ${done ? 'completed' : ''}">
+                        <div class="lesson-icon">${done ? '✓' : i+1}</div>
+                        <div class="text-sm font-medium text-slate-700 truncate flex-1">${USTEM.escapeHtml(loc(l.title))}</div>
+                      </a>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+            </aside>
+
+            <div class="lg:col-span-9 order-1 lg:order-2">
+              <div class="card p-8 lg:p-10 fade-in">
+                <div class="aspect-video rounded-xl mb-8 flex items-center justify-center relative overflow-hidden" style="background:${USTEM.Covers[course.cover]}">
+                  <div class="absolute inset-0 bg-black/30"></div>
+                  <div class="relative text-center text-white">
+                    <button class="w-20 h-20 rounded-full bg-white/20 backdrop-blur border-2 border-white/50 hover:bg-white/30 transition flex items-center justify-center mb-3 mx-auto" onclick="USTEM.showToast(t('lesson.video.inDev'), 'info')">
+                      <svg viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 ml-1"><polygon points="6 4 20 12 6 20"/></svg>
+                    </button>
+                    <div class="font-medium">${lesson.duration} ${t('common.minutes_short')} · ${USTEM.escapeHtml(loc(lesson.title))}</div>
+                  </div>
+                </div>
+
+                <div class="prose-content">${lesson.content}</div>
+
+                ${lesson.quiz ? renderQuiz(course, lesson, user) : ''}
+
+                <div class="mt-10 pt-6 border-t flex items-center justify-between flex-wrap gap-3">
+                  <div>
+                    ${prev ? `<a href="course.html?id=${course.id}&lesson=${prev.id}" class="btn-secondary">${t('lesson.prevLesson')}</a>` : ''}
+                  </div>
+                  <div class="flex gap-2">
+                    ${!isDone && !lesson.quiz ? `<button onclick="completeLesson('${course.id}','${lesson.id}')" class="btn-primary">${t('lesson.markDone')}</button>` : ''}
+                    ${next ? `<a href="course.html?id=${course.id}&lesson=${next.id}" class="btn-primary">${t('lesson.nextLesson')}</a>` : ''}
+                    ${!next && progress === 100 ? `<a href="dashboard.html" class="btn-primary">${t('course.getCertificate')} 🏆</a>` : ''}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      `;
+
+      if (lesson.quiz) attachQuizHandlers(lesson);
+    }
+
+    function renderQuiz(course, lesson, user) {
+      const score = user.quizScores?.[lesson.id];
+      const completed = score?.completed;
+      return `
+        <div id="quiz-${lesson.id}" class="mt-10 pt-8 border-t" data-course="${course.id}">
+          <div class="flex items-center justify-between mb-6">
+            <h2 class="font-display font-bold text-2xl">${t('quiz.title')}</h2>
+            ${completed ? `<span class="tag tag-green">${t('quiz.passed')} ${score.score}/${score.total}</span>` : `<span class="tag tag-amber">${t('quiz.notPassed')}</span>`}
+          </div>
+          <div class="space-y-6">
+            ${lesson.quiz.questions.map((q, qi) => `
+              <div class="card p-5 border-purple-100 bg-purple-50/50">
+                <div class="font-semibold mb-4 text-slate-900">${qi+1}. ${USTEM.escapeHtml(loc(q.q))}</div>
+                <div class="space-y-2" data-question="${qi}">
+                  ${q.options.map((opt, oi) => `
+                    <label class="quiz-option" data-option="${oi}">
+                      <input type="radio" name="q_${lesson.id}_${qi}" value="${oi}" class="w-4 h-4" />
+                      <span>${USTEM.escapeHtml(loc(opt))}</span>
+                    </label>
+                  `).join('')}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          <div class="mt-6 flex items-center justify-between flex-wrap gap-3">
+            <div id="quiz-result-${lesson.id}" class="text-sm font-medium"></div>
+            <button onclick="submitQuiz('${course.id}','${lesson.id}')" class="btn-primary">${t('quiz.checkAnswers')}</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function attachQuizHandlers(lesson) {
+      document.querySelectorAll(`#quiz-${lesson.id} .quiz-option`).forEach(label => {
+        label.addEventListener('click', () => {
+          const parent = label.parentElement;
+          parent.querySelectorAll('.quiz-option').forEach(o => o.classList.remove('selected'));
+          label.classList.add('selected');
+        });
+      });
+    }
+
+    function submitQuiz(cId, lessonId) {
+      const user = Store.getSession();
+      if (!user) return;
+      const course = Store.getCourseById(cId);
+      const lesson = course.lessons.find(l => l.id === lessonId);
+      let correct = 0;
+      lesson.quiz.questions.forEach((q, qi) => {
+        const selected = document.querySelector(`input[name="q_${lessonId}_${qi}"]:checked`);
+        const parent = document.querySelector(`[data-question="${qi}"]`);
+        if (!selected) return;
+        const ans = parseInt(selected.value);
+        parent.querySelectorAll('.quiz-option').forEach((opt, oi) => {
+          opt.classList.remove('selected');
+          if (oi === q.correct) opt.classList.add('correct');
+          else if (oi === ans && oi !== q.correct) opt.classList.add('incorrect');
+        });
+        if (ans === q.correct) correct++;
+      });
+      const total = lesson.quiz.questions.length;
+      const passed = correct / total >= 0.6;
+      user.quizScores = user.quizScores || {};
+      user.quizScores[lessonId] = { score: correct, total, completed: passed };
+      if (passed) {
+        user.progress = user.progress || {};
+        user.progress[course.id] = user.progress[course.id] || [];
+        if (!user.progress[course.id].includes(lessonId)) user.progress[course.id].push(lessonId);
+      }
+      Store.saveUser(user);
+      const result = document.getElementById(`quiz-result-${lessonId}`);
+      result.innerHTML = passed
+        ? `<span class="text-green-700">✅ ${correct}/${total} · ${t('quiz.resultOk')}</span>`
+        : `<span class="text-red-600">❌ ${correct}/${total} · ${t('quiz.resultFail')}</span>`;
+      USTEM.showToast(passed ? t('quiz.passedToast') : t('quiz.tryAgain'), passed ? 'success' : 'error');
+    }
+
+    function completeLesson(cId, lessonId) {
+      const user = Store.getSession();
+      if (!user) return;
+      const course = Store.getCourseById(cId);
+      user.progress = user.progress || {};
+      user.progress[course.id] = user.progress[course.id] || [];
+      if (!user.progress[course.id].includes(lessonId)) {
+        user.progress[course.id].push(lessonId);
+        Store.saveUser(user);
+        USTEM.showToast(t('lesson.markedDone'), 'success');
+        setTimeout(() => location.reload(), 600);
+      }
+    }
+
+    function enroll() {
+      let user = Store.getSession();
+      if (!user) {
+        location.href = `auth.html?next=${encodeURIComponent(location.pathname + location.search)}`;
+        return;
+      }
+      user.enrolled = user.enrolled || [];
+      if (!user.enrolled.includes(courseId)) {
+        user.enrolled.push(courseId);
+        Store.saveUser(user);
+        location.reload();
+      }
+    }
+
+    function continueLearning() {
+      const user = Store.getSession();
+      const course = Store.getCourseById(courseId);
+      const done = user.progress?.[course.id] || [];
+      const next = course.lessons.find(l => !done.includes(l.id)) || course.lessons[0];
+      location.href = `course.html?id=${course.id}&lesson=${next.id}`;
+    }
+
+    function openLesson(lessonId) {
+      location.href = `course.html?id=${courseId}&lesson=${lessonId}`;
+    }
+
+    window.submitQuiz = submitQuiz;
+    window.completeLesson = completeLesson;
+    window.enroll = enroll;
+    window.continueLearning = continueLearning;
+    window.openLesson = openLesson;
+
+    document.addEventListener('lang:change', renderAll);
+    renderAll();
+  </script>
+</body>
+</html>
