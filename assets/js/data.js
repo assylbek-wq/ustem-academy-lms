@@ -1,7 +1,7 @@
 // USTEM Academy LMS — seed data and storage layer
 // Все данные сохраняются в localStorage. Первый запуск инициализирует базу.
 
-const STORAGE_KEY = 'ustem_lms_v8';
+const STORAGE_KEY = 'ustem_lms_v9';
 
 // Multi-lang helper alias — `{ru, kk, en}` объекты для текстовых полей
 const ml = (ru, kk, en) => ({ ru, kk, en });
@@ -2659,64 +2659,6 @@ export ROS_DOMAIN_ID=5
       ),
     },
     {
-      id: 'p_1',
-      slug: 'admissions-2026',
-      categoryKey: 'post.cat.announcement',
-      date: '2026-05-15T09:00:00Z',
-      author: 'Команда USTEM Academy',
-      cover: 'announcement',
-      coverImage: '',
-      featured: true,
-      status: 'published',
-      tags: ['admissions', 'scholarship'],
-      title: ml(
-        'Открыт набор студентов на 2026 учебный год',
-        '2026 оқу жылына студенттер қабылдау басталды',
-        'Admissions for the 2026 academic year are open'
-      ),
-      excerpt: ml(
-        'Подавайте заявки на все курсы USTEM Academy до 1 июля. Лучших ждёт грантовая программа на $50 000.',
-        'USTEM Academy-дегі барлық курстарға өтінімдеріңізді 1 шілдеге дейін жіберіңіз. Ең үздіктерді $50 000 грант бағдарламасы күтеді.',
-        'Apply for all USTEM Academy courses by July 1. The best students qualify for a $50,000 grant program.'
-      ),
-      body: ml(
-        `<h2>Что в этом году</h2>
-<p>USTEM Academy открывает набор на новый учебный год. В 2026 у нас 9 направлений — от подготовки к FIRST LEGO League для школьников до программирования промышленных роботов на ROS 2 и работы с гуманоидами Unitree G1.</p>
-<h3>Новые направления</h3>
-<ul>
-  <li><strong>Unitree G1 / Go2</strong> — программирование гуманоидов и квадропедов</li>
-  <li><strong>ROS 2 Jazzy</strong> — индустриальная робототехника</li>
-  <li><strong>STEM Hanym</strong> — программа для девочек 12–18 лет</li>
-</ul>
-<h3>Грантовая программа</h3>
-<p>В этом году фонд академии выделяет <strong>$50 000</strong> на стипендии. Полное покрытие обучения получат:</p>
-<ul>
-  <li>50 победителей региональных олимпиад</li>
-  <li>30 школьниц по программе STEM Hanym</li>
-  <li>20 студентов из малых городов Казахстана</li>
-</ul>
-<div class="callout"><span>📅</span><div><strong>Дедлайн:</strong> 1 июля 2026. Подайте заявку через личный кабинет.</div></div>
-<h3>Как подать заявку</h3>
-<ol>
-  <li>Зарегистрируйтесь на платформе</li>
-  <li>Выберите курс</li>
-  <li>Заполните мотивационное письмо (200 слов)</li>
-  <li>Прикрепите сертификаты, если есть</li>
-</ol>
-<p>Решения по заявкам мы сообщим до 15 июля. Учебный год начинается <strong>1 сентября 2026</strong>.</p>`,
-        `<h2>Биылғы жыл</h2>
-<p>USTEM Academy жаңа оқу жылына студенттер қабылдауды бастайды. 2026 жылы бізде 9 бағыт бар — мектеп оқушыларына арналған FIRST LEGO League дайындығынан бастап, ROS 2-де өндірістік роботтарды бағдарламалау және Unitree G1 гуманоидтарымен жұмыс істеуге дейін.</p>
-<h3>Жаңа бағыттар</h3>
-<ul><li><strong>Unitree G1 / Go2</strong></li><li><strong>ROS 2 Jazzy</strong></li><li><strong>STEM Hanym</strong></li></ul>
-<p>Өтінімдерді 2026 жылғы 1 шілдеге дейін жеке кабинет арқылы жіберіңіз.</p>`,
-        `<h2>What's new this year</h2>
-<p>USTEM Academy opens admissions for the new academic year. In 2026 we have 9 tracks — from FIRST LEGO League prep for school students to industrial robotics with ROS 2 and humanoid programming with Unitree G1.</p>
-<h3>New tracks</h3>
-<ul><li><strong>Unitree G1 / Go2</strong></li><li><strong>ROS 2 Jazzy</strong></li><li><strong>STEM Hanym</strong></li></ul>
-<p>Apply by July 1, 2026 via your personal dashboard.</p>`
-      ),
-    },
-    {
       id: 'p_2',
       slug: 'platform-v6-update',
       categoryKey: 'post.cat.update',
@@ -2900,7 +2842,7 @@ export ROS_DOMAIN_ID=5
 
 const Store = {
   init() {
-    ['ustem_lms_v1', 'ustem_lms_v2', 'ustem_lms_v3', 'ustem_lms_v4', 'ustem_lms_v5', 'ustem_lms_v6', 'ustem_lms_v7'].forEach(k => {
+    ['ustem_lms_v1', 'ustem_lms_v2', 'ustem_lms_v3', 'ustem_lms_v4', 'ustem_lms_v5', 'ustem_lms_v6', 'ustem_lms_v7', 'ustem_lms_v8'].forEach(k => {
       if (localStorage.getItem(k)) {
         localStorage.removeItem(k);
         localStorage.removeItem('ustem_session');

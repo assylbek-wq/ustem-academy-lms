@@ -61,7 +61,7 @@ const translations = {
 
     // Home
     'home.title': 'USTEM Academy — Бесплатное STEM-образование в Казахстане',
-    'home.hero.badge': 'Открыт набор на 2026 год · 6 курсов',
+    'home.hero.badge': '6 бесплатных курсов',
     'home.hero.title.part1': 'STEM-образование,',
     'home.hero.title.part2': 'доступное каждому',
     'home.hero.desc': 'USTEM Academy — образовательная платформа, дающая бесплатные курсы по программированию, искусственному интеллекту и инженерии для талантливой молодёжи Казахстана.',
@@ -485,7 +485,7 @@ const translations = {
     'level.expert': 'Сарапшы',
 
     'home.title': 'USTEM Academy — Қазақстандағы тегін STEM білімі',
-    'home.hero.badge': '2026 жылға қабылдау ашық · 6 курс',
+    'home.hero.badge': '6 тегін курс',
     'home.hero.title.part1': 'STEM білімі —',
     'home.hero.title.part2': 'әркімге қолжетімді',
     'home.hero.desc': 'USTEM Academy — Қазақстанның дарынды жастарына бағдарламалау, жасанды интеллект және инженерия бойынша тегін курстар ұсынатын білім беру платформасы.',
@@ -899,7 +899,7 @@ const translations = {
     'level.expert': 'Expert',
 
     'home.title': 'USTEM Academy — Free STEM Education in Kazakhstan',
-    'home.hero.badge': '2026 admissions open · 6 courses',
+    'home.hero.badge': '6 free courses',
     'home.hero.title.part1': 'STEM education,',
     'home.hero.title.part2': 'accessible to everyone',
     'home.hero.desc': 'USTEM Academy is an educational platform offering free courses in programming, AI, and engineering for talented youth across Kazakhstan.',
