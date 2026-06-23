@@ -1,7 +1,7 @@
 // USTEM Academy LMS — seed data and storage layer
 // Все данные сохраняются в localStorage. Первый запуск инициализирует базу.
 
-const STORAGE_KEY = 'ustem_lms_v9';
+const STORAGE_KEY = 'ustem_lms_v10';
 
 // Multi-lang helper alias — `{ru, kk, en}` объекты для текстовых полей
 const ml = (ru, kk, en) => ({ ru, kk, en });
@@ -2480,7 +2480,7 @@ export ROS_DOMAIN_ID=5
       id: 'p_robotics_lab_discussion',
       slug: 'robotics-lab-public-discussion-2026',
       categoryKey: 'post.cat.announcement',
-      date: '2026-06-19T09:00:00Z',
+      date: '2025-06-17T09:00:00Z',
       author: 'USTEM Academy',
       cover: 'announcement',
       coverImage: '',
@@ -2519,6 +2519,10 @@ export ROS_DOMAIN_ID=5
 </ul>
 
 <div class="callout"><span>📄</span><div><strong>Ознакомиться с программой:</strong> <a href="https://forms.gle/Tg96KPdvf8Mjo2vB6" target="_blank" rel="noopener">RU ОП «Robotics Lab: робототехника в образовании»</a></div></div>
+
+<p style="text-align:center;margin:1.5rem 0">
+<a href="assets/docs/robotics-lab-ru.pdf" download style="display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,#6d28d9,#2563eb);color:white;padding:14px 32px;border-radius:12px;font-weight:600;text-decoration:none;font-size:1.05rem;box-shadow:0 8px 20px -8px rgba(109,40,217,0.5)">📥 Скачать образовательную программу (RU, PDF)</a>
+</p>
 
 <h2>Как принять участие в обсуждении</h2>
 <p>Уважаемые педагоги! Просим Вас ответить на вопросы и оставить свои комментарии. Опрос направлен на сбор мнений и предложений педагогов для обсуждения проекта программы.</p>
@@ -2587,6 +2591,10 @@ export ROS_DOMAIN_ID=5
 </ul>
 
 <div class="callout"><span>📄</span><div><strong>Бағдарламамен танысу:</strong> <a href="https://forms.gle/PSZ91XMrbVcm78rQA" target="_blank" rel="noopener">KZ ОП «Robotics Lab: білім берудегі робототехника»</a></div></div>
+
+<p style="text-align:center;margin:1.5rem 0">
+<a href="assets/docs/robotics-lab-kz.pdf" download style="display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,#6d28d9,#2563eb);color:white;padding:14px 32px;border-radius:12px;font-weight:600;text-decoration:none;font-size:1.05rem;box-shadow:0 8px 20px -8px rgba(109,40,217,0.5)">📥 Білім беру бағдарламасын жүктеу (KZ, PDF)</a>
+</p>
 
 <h2>Талқылауға қалай қатысу керек</h2>
 <p>Құрметті педагогтер! Сұрақтарға жауап беріп, өз пікірлеріңіз бен ұсыныстарыңызды қалдыруыңызды сұраймыз. Сауалнама бағдарлама жобасын талқылау үшін педагогтердің пікірлерін жинауға бағытталған.</p>
@@ -2842,7 +2850,7 @@ export ROS_DOMAIN_ID=5
 
 const Store = {
   init() {
-    ['ustem_lms_v1', 'ustem_lms_v2', 'ustem_lms_v3', 'ustem_lms_v4', 'ustem_lms_v5', 'ustem_lms_v6', 'ustem_lms_v7', 'ustem_lms_v8'].forEach(k => {
+    ['ustem_lms_v1', 'ustem_lms_v2', 'ustem_lms_v3', 'ustem_lms_v4', 'ustem_lms_v5', 'ustem_lms_v6', 'ustem_lms_v7', 'ustem_lms_v8', 'ustem_lms_v9'].forEach(k => {
       if (localStorage.getItem(k)) {
         localStorage.removeItem(k);
         localStorage.removeItem('ustem_session');
