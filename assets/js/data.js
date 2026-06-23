@@ -2520,10 +2520,6 @@ export ROS_DOMAIN_ID=5
 
 <div class="callout"><span>📄</span><div><strong>Ознакомиться с программой:</strong> <a href="assets/docs/robotics-lab-ru.pdf" target="_blank" rel="noopener">RU ОП «Robotics Lab: робототехника в образовании» (PDF)</a></div></div>
 
-<p style="text-align:center;margin:1.5rem 0">
-<a href="assets/docs/robotics-lab-ru.pdf" download style="display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,#6d28d9,#2563eb);color:white;padding:14px 32px;border-radius:12px;font-weight:600;text-decoration:none;font-size:1.05rem;box-shadow:0 8px 20px -8px rgba(109,40,217,0.5)">📥 Скачать образовательную программу (RU, PDF)</a>
-</p>
-
 <h2>Как принять участие в обсуждении</h2>
 <p>Уважаемые педагоги! Просим Вас ответить на вопросы и оставить свои комментарии. Опрос направлен на сбор мнений и предложений педагогов для обсуждения проекта программы.</p>
 
@@ -2553,10 +2549,6 @@ export ROS_DOMAIN_ID=5
 </ul>
 
 <div class="callout"><span>📄</span><div><strong>Бағдарламамен танысу:</strong> <a href="assets/docs/robotics-lab-kz.pdf" target="_blank" rel="noopener">KZ ОП «Robotics Lab: білім берудегі робототехника» (PDF)</a></div></div>
-
-<p style="text-align:center;margin:1.5rem 0">
-<a href="assets/docs/robotics-lab-kz.pdf" download style="display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,#6d28d9,#2563eb);color:white;padding:14px 32px;border-radius:12px;font-weight:600;text-decoration:none;font-size:1.05rem;box-shadow:0 8px 20px -8px rgba(109,40,217,0.5)">📥 Білім беру бағдарламасын жүктеу (KZ, PDF)</a>
-</p>
 
 <h2>Талқылауға қалай қатысу керек</h2>
 <p>Құрметті педагогтер! Сұрақтарға жауап беріп, өз пікірлеріңіз бен ұсыныстарыңызды қалдыруыңызды сұраймыз. Сауалнама бағдарлама жобасын талқылау үшін педагогтердің пікірлерін жинауға бағытталған.</p>
