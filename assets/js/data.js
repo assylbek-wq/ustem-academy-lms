@@ -2518,7 +2518,7 @@ export ROS_DOMAIN_ID=5
   <li><strong>Проектная и соревновательная робототехника</strong> в образовательной практике</li>
 </ul>
 
-<div class="callout"><span>📄</span><div><strong>Ознакомиться с программой:</strong> <a href="https://forms.gle/Tg96KPdvf8Mjo2vB6" target="_blank" rel="noopener">RU ОП «Robotics Lab: робототехника в образовании»</a></div></div>
+<div class="callout"><span>📄</span><div><strong>Ознакомиться с программой:</strong> <a href="assets/docs/robotics-lab-ru.pdf" target="_blank" rel="noopener">RU ОП «Robotics Lab: робототехника в образовании» (PDF)</a></div></div>
 
 <p style="text-align:center;margin:1.5rem 0">
 <a href="assets/docs/robotics-lab-ru.pdf" download style="display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,#6d28d9,#2563eb);color:white;padding:14px 32px;border-radius:12px;font-weight:600;text-decoration:none;font-size:1.05rem;box-shadow:0 8px 20px -8px rgba(109,40,217,0.5)">📥 Скачать образовательную программу (RU, PDF)</a>
@@ -2531,45 +2531,7 @@ export ROS_DOMAIN_ID=5
 <a href="https://forms.gle/Tg96KPdvf8Mjo2vB6" target="_blank" rel="noopener" style="display:inline-block;background:linear-gradient(135deg,#6d28d9,#2563eb);color:white;padding:14px 32px;border-radius:12px;font-weight:600;text-decoration:none;font-size:1.05rem;box-shadow:0 8px 20px -8px rgba(109,40,217,0.5)">📝 Перейти к опросу (RU)</a>
 </p>
 
-<div class="callout warning"><span>⏰</span><div><strong>Дедлайн:</strong> предложения принимаются до <strong>26 июня 2026 года</strong>.</div></div>
-
-<h3>Вопросы опроса</h3>
-<p>Чтобы Вы знали, чего ожидать, вот список вопросов:</p>
-
-<h4>1. Какой раздел / направление представленной образовательной программы Вы считаете наиболее интересным и полезным для своей профессиональной деятельности?</h4>
-<ul>
-  <li>Нормативные основы, STEM-подход и безопасность в образовательной робототехнике</li>
-  <li>Основы робототехники: платформы LEGO Mindstorms EV3 и LEGO SPIKE Prime, механика и организация практической работы обучающихся</li>
-  <li>Программирование роботов и разработка учебных заданий по алгоритмическому мышлению</li>
-  <li>Методика преподавания робототехники и оценивание результатов обучающихся</li>
-  <li>Проектная и соревновательная робототехника в образовательной практике</li>
-  <li>Другое</li>
-</ul>
-
-<h4>2. Интересно ли вам обучение по данному курсу?</h4>
-<ul>
-  <li>определённо да</li>
-  <li>скорее да, чем нет</li>
-  <li>нейтрально</li>
-  <li>скорее нет, чем да</li>
-  <li>определённо нет</li>
-</ul>
-
-<h4>3. Что бы вы хотели видеть в дополнение к этому курсу или какие темы считаете необходимыми для обсуждения?</h4>
-
-<h4>4. Какая ваша оценка предоставленного курса?</h4>
-<ul>
-  <li>отлично</li>
-  <li>хорошо</li>
-  <li>удовлетворительно</li>
-  <li>плохо</li>
-</ul>
-
-<h4>5. Есть ли у вас какие-либо дополнительные комментарии или предложения по улучшению образовательной программы?</h4>
-
-<div class="callout"><span>💡</span><div>Ваши предложения помогут сделать образовательную программу более <strong>практико-ориентированной</strong>, полезной для педагогов и адаптированной к современным задачам развития робототехники, STEM-подходов, программирования и проектного обучения в образовательном процессе.</div></div>
-
-<p style="text-align:center;color:#64748b;margin-top:2rem"><em>Благодарим Вас за участие!</em></p>`,
+<div class="callout warning"><span>⏰</span><div><strong>Дедлайн:</strong> предложения принимаются до <strong>26 июня 2026 года</strong>.</div></div>`,
         `<h2>Бағдарлама туралы</h2>
 <p><strong>«USTEM Academy»</strong> ЖШС орта, техникалық және кәсіптік, орта білімнен кейінгі және қосымша білім беру ұйымдарының педагогтеріне арналған <strong>«Robotics Lab: білім берудегі робототехника»</strong> біліктілікті арттыру курсының білім беру бағдарламасын ұсынады.</p>
 
@@ -2590,7 +2552,7 @@ export ROS_DOMAIN_ID=5
   <li><strong>Білім беру практикасындағы жобалық және жарыстық робототехника</strong></li>
 </ul>
 
-<div class="callout"><span>📄</span><div><strong>Бағдарламамен танысу:</strong> <a href="https://forms.gle/PSZ91XMrbVcm78rQA" target="_blank" rel="noopener">KZ ОП «Robotics Lab: білім берудегі робототехника»</a></div></div>
+<div class="callout"><span>📄</span><div><strong>Бағдарламамен танысу:</strong> <a href="assets/docs/robotics-lab-kz.pdf" target="_blank" rel="noopener">KZ ОП «Robotics Lab: білім берудегі робототехника» (PDF)</a></div></div>
 
 <p style="text-align:center;margin:1.5rem 0">
 <a href="assets/docs/robotics-lab-kz.pdf" download style="display:inline-flex;align-items:center;gap:10px;background:linear-gradient(135deg,#6d28d9,#2563eb);color:white;padding:14px 32px;border-radius:12px;font-weight:600;text-decoration:none;font-size:1.05rem;box-shadow:0 8px 20px -8px rgba(109,40,217,0.5)">📥 Білім беру бағдарламасын жүктеу (KZ, PDF)</a>
@@ -2603,44 +2565,7 @@ export ROS_DOMAIN_ID=5
 <a href="https://forms.gle/PSZ91XMrbVcm78rQA" target="_blank" rel="noopener" style="display:inline-block;background:linear-gradient(135deg,#6d28d9,#2563eb);color:white;padding:14px 32px;border-radius:12px;font-weight:600;text-decoration:none;font-size:1.05rem;box-shadow:0 8px 20px -8px rgba(109,40,217,0.5)">📝 Сауалнамаға өту (KZ)</a>
 </p>
 
-<div class="callout warning"><span>⏰</span><div><strong>Мерзім:</strong> ұсыныстар <strong>2026 жылғы 26 маусымына дейін</strong> қабылданады.</div></div>
-
-<h3>Сауалнама сұрақтары</h3>
-
-<h4>1. Ұсынылған білім беру бағдарламасының қай бөлімі / бағыты Сіздің кәсіби қызметіңіз үшін ең қызықты және пайдалы деп санайсыз?</h4>
-<ul>
-  <li>Білім беру робототехникасындағы нормативтік негіздер, STEM-тәсіл және қауіпсіздік</li>
-  <li>Робототехника негіздері: LEGO Mindstorms EV3 және LEGO SPIKE Prime платформалары, механика және білім алушылардың практикалық жұмысын ұйымдастыру</li>
-  <li>Роботтарды бағдарламалау және алгоритмдік ойлауға арналған оқу тапсырмаларын әзірлеу</li>
-  <li>Робототехниканы оқыту әдістемесі және білім алушылардың нәтижелерін бағалау</li>
-  <li>Білім беру практикасындағы жобалық және жарыстық робототехника</li>
-  <li>Басқа</li>
-</ul>
-
-<h4>2. Сізге осы курс бойынша оқу қызықты ма?</h4>
-<ul>
-  <li>әрине иә</li>
-  <li>жоқ емес, иә</li>
-  <li>бейтарап</li>
-  <li>иә емес, жоқ</li>
-  <li>әрине жоқ</li>
-</ul>
-
-<h4>3. Осы курста қосымша не көргіңіз келеді немесе талқылау үшін қандай тақырыптар қажет деп ойлайсыз?</h4>
-
-<h4>4. Курсты қалай бағалар едіңіз?</h4>
-<ul>
-  <li>тамаша</li>
-  <li>жақсы</li>
-  <li>қанағаттанарлық</li>
-  <li>жаман</li>
-</ul>
-
-<h4>5. Курс бағдарламасын жақсарту бойынша қосымша пікіріңіз немесе ұсыныстарыңыз бар ма?</h4>
-
-<div class="callout"><span>💡</span><div>Сіздің ұсыныстарыңыз білім беру бағдарламасын <strong>практикаға барынша бағдарланған</strong>, педагогтер үшін пайдалы және білім беру процесінде робототехниканы, STEM-тәсілдерді, бағдарламалауды және жобалық оқытуды дамытудың қазіргі міндеттеріне бейімделген етуге көмектеседі.</div></div>
-
-<p style="text-align:center;color:#64748b;margin-top:2rem"><em>Қатысқандарыңыз үшін алғыс білдіреміз!</em></p>`,
+<div class="callout warning"><span>⏰</span><div><strong>Мерзім:</strong> ұсыныстар <strong>2026 жылғы 26 маусымына дейін</strong> қабылданады.</div></div>`,
         `<h2>About the program</h2>
 <p><strong>USTEM Academy LLP</strong> presents the professional development course program <strong>«Robotics Lab: Robotics in Education»</strong> for teachers in secondary, technical and vocational, post-secondary, and supplementary education organizations.</p>
 
@@ -2661,9 +2586,7 @@ export ROS_DOMAIN_ID=5
   <li><strong>Project-based and competitive robotics</strong> in educational practice</li>
 </ul>
 
-<div class="callout warning"><span>⏰</span><div><strong>Deadline:</strong> proposals are accepted until <strong>June 26, 2026</strong>. Survey is available in Russian and Kazakh — switch language above to see the correct form link.</div></div>
-
-<p style="text-align:center;color:#64748b;margin-top:2rem"><em>Thank you for participating!</em></p>`
+<div class="callout warning"><span>⏰</span><div><strong>Deadline:</strong> proposals are accepted until <strong>June 26, 2026</strong>. Survey is available in Russian and Kazakh — switch language above to see the correct form link.</div></div>`
       ),
     },
     {
