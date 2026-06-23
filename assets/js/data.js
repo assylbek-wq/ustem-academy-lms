@@ -1,7 +1,7 @@
 // USTEM Academy LMS — seed data and storage layer
 // Все данные сохраняются в localStorage. Первый запуск инициализирует базу.
 
-const STORAGE_KEY = 'ustem_lms_v10';
+const STORAGE_KEY = 'ustem_lms_v11';
 
 // Multi-lang helper alias — `{ru, kk, en}` объекты для текстовых полей
 const ml = (ru, kk, en) => ({ ru, kk, en });
@@ -2765,7 +2765,7 @@ export ROS_DOMAIN_ID=5
 
 const Store = {
   init() {
-    ['ustem_lms_v1', 'ustem_lms_v2', 'ustem_lms_v3', 'ustem_lms_v4', 'ustem_lms_v5', 'ustem_lms_v6', 'ustem_lms_v7', 'ustem_lms_v8', 'ustem_lms_v9'].forEach(k => {
+    ['ustem_lms_v1', 'ustem_lms_v2', 'ustem_lms_v3', 'ustem_lms_v4', 'ustem_lms_v5', 'ustem_lms_v6', 'ustem_lms_v7', 'ustem_lms_v8', 'ustem_lms_v9', 'ustem_lms_v10'].forEach(k => {
       if (localStorage.getItem(k)) {
         localStorage.removeItem(k);
         localStorage.removeItem('ustem_session');
