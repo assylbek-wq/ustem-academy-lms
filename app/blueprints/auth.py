@@ -38,15 +38,36 @@ def login_user(user: User) -> None:
     db.session.commit()
 
 
+def join_cohort(cohort: Cohort, user: User) -> str:
+    """Самозапись по ссылке. Возвращает 'ok' | 'already' | 'closed' | 'full'."""
+    if not cohort.is_open or cohort.status == "finished":
+        return "closed"
+    enr = Enrollment.query.filter_by(cohort_id=cohort.id, user_id=user.id).first()
+    if enr and enr.status != "dropped":
+        return "already"
+    if enr:
+        return "closed"  # отчисленного возвращает только администратор
+    active = Enrollment.query.filter_by(cohort_id=cohort.id).filter(Enrollment.status != "dropped").count()
+    if cohort.capacity and active >= cohort.capacity:
+        return "full"
+    db.session.add(Enrollment(cohort_id=cohort.id, user_id=user.id))
+    db.session.commit()
+    return "ok"
+
+
 def _join_pending_cohort(user: User) -> Cohort | None:
     code = session.pop("join_code", None)
     if not code:
         return None
     cohort = Cohort.query.filter_by(invite_code=code).first()
-    if cohort and cohort.is_open and not Enrollment.query.filter_by(cohort_id=cohort.id, user_id=user.id).first():
-        db.session.add(Enrollment(cohort_id=cohort.id, user_id=user.id))
-        db.session.commit()
+    if not cohort:
+        return None
+    result = join_cohort(cohort, user)
+    if result == "ok":
         flash(t("join.done", name=cohort.name), "success")
+    elif result in ("closed", "full"):
+        flash(t("join.full") if result == "full" else t("join.closed"), "error")
+        return None
     return cohort
 
 
@@ -91,13 +112,20 @@ def register():
         if not form.get("consent"):
             errors.append(t("auth.err_consent"))
         existing = User.query.filter_by(email=email).first()
-        if existing and existing.password_hash:
+        if existing:
+            # Никогда не "присваиваем" существующую запись: отправляем владельцу ссылку на вход.
+            if existing.is_active and not errors:
+                token = existing.issue_invite(days=2)
+                db.session.commit()
+                link = absolute(url_for("auth.invite", token=token))
+                send_mail(existing.email, t("auth.reset_subject", locale=existing.locale),
+                          t("auth.reset_body", locale=existing.locale, link=link))
             errors.append(t("auth.err_exists"))
         if errors:
             for e in errors:
                 flash(e, "error")
             return render_template("auth/register.html", form=form), 400
-        user = existing or User(email=email)
+        user = User(email=email)
         user.full_name = name
         user.phone = (form.get("phone") or "").strip() or None
         user.organization = (form.get("organization") or "").strip() or None

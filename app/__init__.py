@@ -11,7 +11,7 @@ from markupsafe import Markup
 from .config import Config
 from .core import check_csrf, csrf_token, fmt_seconds, human_size, loc, render_markdown, video_embed
 from .i18n import LOCALES, LOCALE_NAMES, t
-from .models import Notification, User, db
+from .models import Notification, User, db, local_today
 
 
 def create_app(config: type = Config, **overrides) -> Flask:
@@ -22,6 +22,9 @@ def create_app(config: type = Config, **overrides) -> Flask:
     logging.getLogger("fontTools").setLevel(logging.WARNING)
 
     db.init_app(app)
+    if (not app.config.get("TESTING") and app.config.get("SESSION_COOKIE_SECURE")
+            and app.config["SECRET_KEY"] == "dev-secret-change-me"):
+        raise RuntimeError("Задайте SECRET_KEY в окружении для продакшена")
 
     from .blueprints import admin, api, auth, cohorts, learn, public, reports, review, studio
     for bp in (public.bp, auth.bp, learn.bp, review.bp, cohorts.bp, studio.bp, admin.bp, reports.bp, api.bp):
@@ -66,7 +69,7 @@ def create_app(config: type = Config, **overrides) -> Flask:
             "t": t, "loc": loc, "user": g.get("user"), "locale": g.get("locale", "ru"),
             "locales": LOCALES, "locale_names": LOCALE_NAMES, "csrf_token": csrf_token,
             "unread_count": unread, "static_v": _static_v(app), "video_embed": video_embed,
-            "today": date.today(),
+            "today": local_today(),
         }
 
     app.jinja_env.filters["md"] = render_markdown
@@ -80,6 +83,7 @@ def create_app(config: type = Config, **overrides) -> Flask:
     register_errors(app)
 
     with app.app_context():
+        _sqlite_tweaks()
         db.create_all()
         from .seed import seed_content, seed_demo
         if app.config.get("SEED_DEMO"):
@@ -90,6 +94,20 @@ def create_app(config: type = Config, **overrides) -> Flask:
     from .cli import register_cli
     register_cli(app)
     return app
+
+
+def _sqlite_tweaks():
+    """SQLite: внешние ключи как в PostgreSQL и lower() с поддержкой кириллицы для поиска."""
+    from sqlalchemy import event
+    engine = db.engine
+    if engine.dialect.name != "sqlite":
+        return
+
+    @event.listens_for(engine, "connect")
+    def _on_connect(dbapi_conn, _record):
+        dbapi_conn.execute("PRAGMA foreign_keys=ON")
+        dbapi_conn.create_function("lower", 1, lambda s: s.lower() if isinstance(s, str) else s,
+                                   deterministic=True)
 
 
 def _static_v(app):

@@ -7,7 +7,7 @@ from flask import Blueprint, Response, abort, flash, g, redirect, render_templat
 
 from ..core import loc
 from ..i18n import t
-from ..models import Certificate, Cohort, Enrollment, Evidence, Lead, Program, User, db
+from ..models import Certificate, Cohort, Enrollment, Evidence, Lead, Program, User, db, local_today
 from ..services.certificates import render_pdf
 from ..services.mail import absolute
 
@@ -24,7 +24,7 @@ def home():
         return redirect(url_for("learn.home"))
     programs = _published()
     upcoming = (Cohort.query.filter(Cohort.is_open.is_(True), Cohort.status != "finished",
-                                    Cohort.start_date >= date.today())
+                                    Cohort.start_date >= local_today())
                 .order_by(Cohort.start_date).limit(6).all())
     return render_template("public/home.html", programs=programs, upcoming=upcoming)
 
@@ -68,13 +68,11 @@ def join(code):
     if not g.user:
         session["join_code"] = code
         return render_template("public/join.html", cohort=cohort)
-    enr = Enrollment.query.filter_by(cohort_id=cohort.id, user_id=g.user.id).first()
-    if not enr:
-        active = Enrollment.query.filter_by(cohort_id=cohort.id).filter(Enrollment.status != "dropped").count()
-        if cohort.capacity and active >= cohort.capacity:
-            return render_template("public/join_closed.html", cohort=cohort, full=True), 409
-        db.session.add(Enrollment(cohort_id=cohort.id, user_id=g.user.id))
-        db.session.commit()
+    from .auth import join_cohort
+    result = join_cohort(cohort, g.user)
+    if result in ("full", "closed"):
+        return render_template("public/join_closed.html", cohort=cohort, full=result == "full"), 409
+    if result == "ok":
         flash(t("join.done", name=cohort.name), "success")
     return redirect(url_for("learn.cohort", cohort_id=cohort.id))
 

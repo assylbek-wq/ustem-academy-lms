@@ -241,3 +241,73 @@ class FullFlowTest(AppTestCase):
         c = self.new_client("teacher1@academy.demo")
         self.assertEqual(c.post("/api/uploads", json={"name": "virus.exe", "size": 10}).status_code, 400)
         self.assertEqual(c.post("/api/uploads", json={"name": "v.mp4", "size": 10 ** 12}).status_code, 400)
+
+
+class SecurityRegressionTest(AppTestCase):
+    """Проверки по итогам ревью кода."""
+
+    def test_register_cannot_take_over_invited_account(self):
+        admin = self.new_client("admin@academy.demo")
+        admin.post("/admin/users/new", data={"email": "boss@x.kz", "full_name": "Новый Админ", "roles": "admin"})
+        anon = self.new_client()
+        r = anon.post("/register", data={"full_name": "Злоумышленник", "email": "boss@x.kz",
+                                         "password": "hacked123", "consent": "1"})
+        self.assertEqual(r.status_code, 400)
+        self.assertEqual(anon.get("/admin").status_code, 302)
+        self.assertFalse(User.query.filter_by(email="boss@x.kz").first().check_password("hacked123"))
+
+    def test_uploaded_html_is_never_served_inline(self):
+        c = self.new_client("teacher1@academy.demo")
+        r = c.post("/api/uploads", json={"name": "notes.txt", "size": 20, "type": "text/html"})
+        up = r.get_json()
+        fid = c.put(f"/api/uploads/{up['id']}?offset=0", data=b"<script>alert(1)</script>"[:20]).get_json()["file_id"]
+        r = c.get(f"/files/{fid}")
+        self.assertNotIn("text/html", r.headers["Content-Type"])
+        self.assertIn("attachment", r.headers["Content-Disposition"])
+        self.assertIn("sandbox", r.headers["Content-Security-Policy"])
+
+    def test_capacity_respected_when_joining_after_login(self):
+        cohort = Cohort.query.first()
+        cohort.capacity = Enrollment.query.filter_by(cohort_id=cohort.id).count()
+        db.session.commit()
+        c = self.new_client()
+        c.get(f"/join/{cohort.invite_code}")
+        self.login("mentor@academy.demo", client=c)
+        mentor = User.query.filter_by(email="mentor@academy.demo").first()
+        self.assertIsNone(Enrollment.query.filter_by(cohort_id=cohort.id, user_id=mentor.id).first())
+
+    def test_no_completion_without_intensive(self):
+        from app.services import progress
+        cohort = Cohort.query.first()
+        for s in list(cohort.sessions):
+            db.session.delete(s)
+        db.session.commit()
+        enr = cohort.enrollments[0]
+        self.assertEqual(progress.state(enr).sessions_required, 1)
+
+    def test_assignment_with_submissions_cannot_be_deleted(self):
+        level = Level.query.join(Program).filter(Program.slug == "fll-future-edition").first()
+        a = level.assignments[0]
+        enr = Enrollment.query.first()
+        db.session.add(Evidence(enrollment_id=enr.id, assignment_id=a.id))
+        db.session.commit()
+        m = self.new_client("methodist@academy.demo")
+        m.post(f"/studio/assignments/{a.id}", data={"action": "delete"})
+        self.assertIsNotNone(db.session.get(type(a), a.id))
+
+    def test_excel_formula_is_neutralized(self):
+        from io import BytesIO
+        from openpyxl import load_workbook
+        u = User.query.filter_by(email="teacher1@academy.demo").first()
+        u.full_name = "=HYPERLINK(\"http://x\")"
+        db.session.commit()
+        cohort = Cohort.query.first()
+        r = self.new_client("customer@academy.demo").get(f"/reports/cohort/{cohort.id}.xlsx")
+        ws = load_workbook(BytesIO(r.data)).active
+        types = {c.data_type for row in ws.iter_rows() for c in row if c.value and str(c.value).startswith(("'=", "="))}
+        self.assertNotIn("f", types)
+
+    def test_cyrillic_search_and_bad_comment_seconds(self):
+        admin = self.new_client("admin@academy.demo")
+        self.assertIn("Асель", admin.get("/admin/users?q=асель").get_data(as_text=True))
+        self.assertEqual(admin.post("/admin/customers", data={"customer_id": 99999, "name": "x"}).status_code, 404)

@@ -7,8 +7,9 @@ from flask import Blueprint, abort, flash, g, jsonify, redirect, render_template
 
 from ..core import audit, ml_from_form, ml_list_from_form, render_markdown, role_required
 from ..i18n import LOCALES, t
-from ..models import (DIRECTIONS, EVIDENCE_KINDS, LESSON_KINDS, Assignment, Cohort, Lesson, LessonMaterial, Level,
-                      Module, Program, QuizQuestion, RubricCriterion, db, utcnow)
+from ..models import (DIRECTIONS, EVIDENCE_KINDS, LESSON_KINDS, Assignment, Cohort, Evidence, Lesson,
+                      LessonMaterial, LessonProgress, Level, Module, Program, QuizQuestion, RubricCriterion, db,
+                      utcnow)
 from ..services import storage
 
 bp = Blueprint("studio", __name__, url_prefix="/studio")
@@ -136,7 +137,8 @@ def level(level_id):
         if action == "meta":
             for f in ("title", "description", "outcomes", "duration"):
                 setattr(lv, f, ml_from_form(f))
-            lv.min_quiz_score = max(0, min(100, request.form.get("min_quiz_score", type=int) or 70))
+            score = request.form.get("min_quiz_score", type=int)
+            lv.min_quiz_score = max(0, min(100, 70 if score is None else score))
             lv.require_attendance = bool(request.form.get("require_attendance"))
             flash(t("studio.saved"), "success")
         elif action == "add_module":
@@ -150,13 +152,20 @@ def level(level_id):
                 m.title = ml_from_form("module_title")
         elif action == "move_module":
             m = get_or_404(Module, request.form.get("module_id", type=int))
+            if m.level_id != lv.id:
+                abort(404)
             _swap(lv.modules, m, -1 if request.form.get("dir") == "up" else 1)
         elif action == "delete_module":
             m = get_or_404(Module, request.form.get("module_id", type=int))
-            if m.level_id == lv.id:
+            ids = [l.id for l in m.lessons]
+            if ids and LessonProgress.query.filter(LessonProgress.lesson_id.in_(ids)).first():
+                flash(t("studio.err_lesson_in_use"), "error")
+            elif m.level_id == lv.id:
                 db.session.delete(m)
         elif action == "add_lesson":
             m = get_or_404(Module, request.form.get("module_id", type=int))
+            if m.level_id != lv.id:
+                abort(404)
             kind = request.form.get("kind") if request.form.get("kind") in LESSON_KINDS else "text"
             names = {"video": ("Новый видеоурок", "Жаңа бейнесабақ", "New video lesson"),
                      "text": ("Новый урок", "Жаңа сабақ", "New lesson"),
@@ -168,6 +177,8 @@ def level(level_id):
             return redirect(url_for("studio.lesson", lesson_id=lesson.id))
         elif action == "move_lesson":
             lesson = get_or_404(Lesson, request.form.get("lesson_id", type=int))
+            if lesson.module.level_id != lv.id:
+                abort(404)
             _swap(lesson.module.lessons, lesson, -1 if request.form.get("dir") == "up" else 1)
         elif action == "add_assignment":
             a = Assignment(level_id=lv.id, position=_next_pos(lv.assignments),
@@ -253,6 +264,8 @@ def lesson(lesson_id):
             if m.lesson_id == lesson.id:
                 storage.delete_file(storage.material_path(m))
                 db.session.delete(m)
+        elif action == "delete" and LessonProgress.query.filter_by(lesson_id=lesson.id).first():
+            flash(t("studio.err_lesson_in_use"), "error")
         elif action == "delete":
             audit("lesson.deleted", "lesson", lesson.id)
             db.session.delete(lesson)
@@ -305,6 +318,8 @@ def assignment(assignment_id):
             c = get_or_404(RubricCriterion, request.form.get("criterion_id", type=int))
             if c.assignment_id == a.id and len(a.criteria) > 1:
                 db.session.delete(c)
+        elif action == "delete" and Evidence.query.filter_by(assignment_id=a.id).first():
+            flash(t("studio.err_assignment_in_use"), "error")
         elif action == "delete":
             db.session.delete(a)
             db.session.commit()

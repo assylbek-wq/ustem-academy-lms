@@ -11,7 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date
 
-from ..models import Attendance, Enrollment, Evidence, Lesson, LessonProgress, db, utcnow
+from ..models import Attendance, Enrollment, Evidence, Lesson, LessonProgress, db, local_now, local_today, utcnow
 
 
 @dataclass
@@ -76,7 +76,9 @@ def latest_evidence(enr: Enrollment, assignment_id: int) -> Evidence | None:
     return max(rows, key=lambda e: e.attempt) if rows else None
 
 
-def lesson_done(level, lp: LessonProgress | None) -> bool:
+def lesson_done(level, lp: LessonProgress | None, lesson: Lesson | None = None) -> bool:
+    if lesson is not None and lesson.kind == "quiz" and not lesson.questions:
+        return True  # пустой тест не блокирует уровень
     if not lp or not lp.completed_at:
         return False
     if lp.lesson.kind == "quiz":
@@ -94,12 +96,12 @@ def state(enr: Enrollment) -> EnrollmentState:
         lp = by_lesson.get(lesson.id)
         if lp and lp.quiz_score is not None:
             st.scores[lesson.id] = lp.quiz_score
-        if lesson_done(level, lp):
+        if lesson_done(level, lp, lesson):
             st.lessons_done += 1
             st.done_lesson_ids.add(lesson.id)
         elif st.next_lesson is None:
             st.next_lesson = lesson
-    today = date.today()
+    today = local_today()
     for a in level.assignments:
         ev = latest_evidence(enr, a.id)
         status = ev.status if ev else "todo"
@@ -109,7 +111,8 @@ def state(enr: Enrollment) -> EnrollmentState:
             overdue=bool(due and due < today and status in ("todo", "returned"))))
     if level.require_attendance:
         intensive = [s for s in cohort.sessions if s.kind == "intensive"]
-        st.sessions_required = len(intensive)
+        # если интенсив обязателен, но еще не назначен - уровень не завершается раньше времени
+        st.sessions_required = max(1, len(intensive))
         if intensive:
             ids = {s.id for s in intensive}
             st.sessions_attended = Attendance.query.filter(
@@ -151,7 +154,7 @@ def cohort_summary(cohort) -> dict:
     sessions = [s for s in cohort.sessions]
     att_total = att_present = 0
     for s in sessions:
-        if s.starts_at <= utcnow():
+        if s.starts_at <= local_now():
             att_total += n
             att_present += sum(1 for a in s.attendance if a.present and a.enrollment.status != "dropped")
     return {

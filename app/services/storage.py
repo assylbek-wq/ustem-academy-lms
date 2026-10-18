@@ -1,7 +1,7 @@
 """Хранение файлов на диске сервера и загрузка частями с докачкой."""
 from __future__ import annotations
 
-import mimetypes
+import fcntl
 import os
 import secrets
 import shutil
@@ -17,6 +17,18 @@ IMAGE_EXT = {"jpg", "jpeg", "png", "webp", "heic", "gif"}
 DOC_EXT = {"pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "txt", "zip", "csv",
            "sb3", "llsp", "llsp3", "lms", "py", "java", "stl", "f3d", "step", "md"}
 ALLOWED_EXT = VIDEO_EXT | IMAGE_EXT | DOC_EXT
+SAFE_INLINE = {"mp4": "video/mp4", "m4v": "video/mp4", "mov": "video/quicktime", "webm": "video/webm",
+               "3gp": "video/3gpp", "jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png",
+               "webp": "image/webp", "gif": "image/gif"}
+
+
+def safe_mime(name: str) -> str:
+    """Тип файла только по расширению из белого списка; все прочее - octet-stream (скачивание)."""
+    return SAFE_INLINE.get(ext_of(name), "application/octet-stream")
+
+
+def inline_ok(name: str) -> bool:
+    return ext_of(name) in SAFE_INLINE
 
 
 class UploadError(ValueError):
@@ -64,7 +76,7 @@ def start_upload(owner_id: int, name: str, size: int, mime: str | None) -> Uploa
     if size <= 0 or size > current_app.config["MAX_UPLOAD_BYTES"]:
         raise UploadError("size")
     up = Upload(id=secrets.token_hex(16), owner_id=owner_id, original_name=name,
-                mime=mime or mimetypes.guess_type(name)[0], total_size=size)
+                mime=safe_mime(name), total_size=size)
     db.session.add(up)
     db.session.commit()
     return up
@@ -77,18 +89,21 @@ def _tmp(up: Upload) -> Path:
 def append_chunk(up: Upload, offset: int, data: bytes) -> int:
     """Пишет часть, если offset совпадает с уже полученным объемом. Возвращает новый объем."""
     path = _tmp(up)
-    have = path.stat().st_size if path.exists() else 0
-    if offset != have:
-        up.received = have
-        db.session.commit()
-        return have  # клиент продолжит с правильного места
-    if have + len(data) > up.total_size:
-        raise UploadError("size")
     with open(path, "ab") as fh:
-        fh.write(data)
-    up.received = have + len(data)
+        fcntl.flock(fh, fcntl.LOCK_EX)  # параллельные запросы с одним offset не дублируют данные
+        try:
+            have = fh.seek(0, os.SEEK_END)
+            if offset == have:
+                if have + len(data) > up.total_size:
+                    raise UploadError("size")
+                fh.write(data)
+                fh.flush()
+                have += len(data)
+        finally:
+            fcntl.flock(fh, fcntl.LOCK_UN)
+    up.received = have
     db.session.commit()
-    return up.received
+    return have
 
 
 def finish_upload(up: Upload) -> EvidenceFile:
@@ -115,7 +130,7 @@ def save_small_file(file_storage, owner_id: int) -> EvidenceFile:
     dest = root() / "evidence" / stored
     file_storage.save(dest)
     f = EvidenceFile(owner_id=owner_id, kind=kind_of(name), original_name=name, stored_name=stored,
-                     mime=file_storage.mimetype, size=dest.stat().st_size)
+                     mime=safe_mime(name), size=dest.stat().st_size)
     db.session.add(f)
     db.session.flush()
     return f

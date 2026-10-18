@@ -478,6 +478,8 @@ _S.update({
     "studio.err_title": ("Укажите название хотя бы на одном языке.", "Атауын кемінде бір тілде көрсетіңіз.", "Enter a title in at least one language."),
     "studio.err_in_use": ("Нельзя удалить: по этой программе или уровню уже есть когорты.", "Жою мүмкін емес: бұл бағдарлама не деңгей бойынша когорталар бар.", "Cannot delete: cohorts already use this program or level."),
     "studio.err_question": ("Нужно минимум 2 варианта и хотя бы один правильный.", "Кемінде 2 нұсқа және кемінде бір дұрыс жауап керек.", "You need at least 2 options and at least one correct answer."),
+    "studio.err_lesson_in_use": ("Нельзя удалить: слушатели уже проходили этот урок. Перенесите его в другой модуль или измените.", "Жою мүмкін емес: тыңдаушылар бұл сабақты өткен. Басқа модульге ауыстырыңыз не өзгертіңіз.", "Cannot delete: learners have already taken this lesson. Move or edit it instead."),
+    "studio.err_assignment_in_use": ("Нельзя удалить: по заданию уже есть сданные работы.", "Жою мүмкін емес: тапсырма бойынша тапсырылған жұмыстар бар.", "Cannot delete: this assignment already has submissions."),
     "studio.delete_program": ("Удалить программу", "Бағдарламаны жою", "Delete program"),
     "studio.confirm_delete_program": ("Удалить программу со всеми уровнями и уроками?", "Бағдарламаны барлық деңгейлері мен сабақтарымен жою керек пе?", "Delete the program with all its levels and lessons?"),
     "studio.level_settings": ("Настройки уровня", "Деңгей баптаулары", "Level settings"),

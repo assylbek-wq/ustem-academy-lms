@@ -100,7 +100,8 @@ def _fill_cohort(c: Cohort, f) -> list[str]:
     cust = f.get("customer_id", type=int)
     c.customer_id = cust if cust and db.session.get(Customer, cust) else None
     tr = f.get("trainer_id", type=int)
-    c.trainer_id = tr if tr and db.session.get(User, tr) else None
+    trainer = db.session.get(User, tr) if tr else None
+    c.trainer_id = trainer.id if trainer and trainer.has_role("trainer") else None
     c.language = f.get("language") if f.get("language") in LOCALES else "ru"
     c.city = (f.get("city") or "").strip() or None
     c.start_date = _parse_date(f.get("start_date"))
@@ -351,6 +352,8 @@ def customers():
     if request.method == "POST":
         cid = request.form.get("customer_id", type=int)
         c = db.session.get(Customer, cid) if cid else Customer()
+        if c is None:
+            abort(404)
         name = (request.form.get("name") or "").strip()
         if not name:
             flash(t("admin.err_customer"), "error")

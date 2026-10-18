@@ -8,7 +8,7 @@ from flask import Blueprint, Response, abort, flash, g, redirect, render_templat
 from ..core import audit, login_required, notify
 from ..i18n import t
 from ..models import (Certificate, Cohort, Enrollment, Evidence, EvidenceFile, Lesson, LessonMaterial,
-                      LessonProgress, Session, db, utcnow)
+                      LessonProgress, Session, db, local_now, utcnow)
 from ..services import ai, progress, storage
 from ..services.certificates import render_pdf
 from ..services.mail import absolute
@@ -55,7 +55,7 @@ def home():
     cohort_ids = [e.cohort_id for e in enrollments if e.status == "active"]
     sessions = []
     if cohort_ids:
-        sessions = (Session.query.filter(Session.cohort_id.in_(cohort_ids), Session.starts_at >= utcnow() - timedelta(hours=6))
+        sessions = (Session.query.filter(Session.cohort_id.in_(cohort_ids), Session.starts_at >= local_now() - timedelta(hours=6))
                     .order_by(Session.starts_at).limit(5).all())
     deadlines = sorted(
         [(e, a) for e, st in items if e.status == "active" for a in st.assignments
@@ -214,7 +214,8 @@ def can_view_evidence_file(f: EvidenceFile) -> bool:
     if not ev:
         return False
     enr = ev.enrollment
-    return enr.mentor_id == u.id or enr.cohort.trainer_id == u.id
+    return ((enr.mentor_id == u.id and u.has_role("mentor", "trainer"))
+            or (enr.cohort.trainer_id == u.id and u.has_role("trainer")))
 
 
 @bp.route("/files/<int:file_id>")
@@ -226,8 +227,11 @@ def evidence_file(file_id):
     path = storage.evidence_path(f)
     if not path.exists():
         abort(404)
-    return send_file(path, mimetype=f.mime, conditional=True, download_name=f.original_name,
-                     as_attachment=request.args.get("dl") == "1")
+    inline = storage.inline_ok(f.original_name) and request.args.get("dl") != "1"
+    resp = send_file(path, mimetype=storage.safe_mime(f.original_name), conditional=True,
+                     download_name=f.original_name, as_attachment=not inline)
+    resp.headers["Content-Security-Policy"] = "sandbox; default-src 'none'; media-src 'self'; img-src 'self'"
+    return resp
 
 
 @bp.route("/materials/<int:material_id>")
@@ -244,4 +248,7 @@ def material(material_id):
     path = storage.material_path(m)
     if not path.exists():
         abort(404)
-    return send_file(path, conditional=True, download_name=m.original_name, as_attachment=True)
+    resp = send_file(path, mimetype="application/octet-stream", conditional=True,
+                     download_name=m.original_name, as_attachment=True)
+    resp.headers["Content-Security-Policy"] = "sandbox"
+    return resp

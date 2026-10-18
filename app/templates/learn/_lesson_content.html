@@ -8,7 +8,7 @@
       <video src="{{ v.src }}" controls preload="metadata" class="w-full h-full"></video>
     {% endif %}
   </div>
-{% elif lesson.kind == 'video' and lesson.video_url|loc %}
+{% elif lesson.kind == 'video' and (lesson.video_url|loc).startswith(('https://', 'http://')) %}
   <div class="flash flash-info mb-6"><a href="{{ lesson.video_url|loc }}" target="_blank" rel="noopener" class="underline">{{ t('lesson.open_video') }}</a></div>
 {% endif %}
 {% if lesson.body|loc %}

@@ -22,7 +22,9 @@ def reviewable_query():
 
 def can_review(ev: Evidence) -> bool:
     enr = ev.enrollment
-    return g.user.is_admin or enr.mentor_id == g.user.id or enr.cohort.trainer_id == g.user.id
+    u = g.user
+    return (u.is_admin or (enr.mentor_id == u.id and u.has_role("mentor", "trainer"))
+            or (enr.cohort.trainer_id == u.id and u.has_role("trainer")))
 
 
 @bp.route("")

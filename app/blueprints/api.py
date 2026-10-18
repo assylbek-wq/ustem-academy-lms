@@ -84,7 +84,7 @@ def file_delete(file_id):
 def ai_ask(cohort_id, lesson_id):
     enr = Enrollment.query.filter_by(cohort_id=cohort_id, user_id=g.user.id).first()
     lesson = db.session.get(Lesson, lesson_id)
-    if not enr or not lesson or lesson.module.level_id != enr.cohort.level_id:
+    if not enr or enr.status == "dropped" or not lesson or lesson.module.level_id != enr.cohort.level_id:
         abort(404)
     if not ai.enabled():
         return _err("ai.disabled", 503)
@@ -106,7 +106,8 @@ def _reviewable_file(file_id: int) -> EvidenceFile:
     if not f or not f.evidence:
         abort(404)
     enr = f.evidence.enrollment
-    if not (g.user.is_admin or enr.mentor_id == g.user.id or enr.cohort.trainer_id == g.user.id):
+    from .review import can_review
+    if not can_review(f.evidence):
         abort(403)
     return f
 
@@ -119,8 +120,11 @@ def comment_add(file_id):
     text = (data.get("text") or "").strip()[:2000]
     if not text:
         return _err("review.comment_empty")
-    c = TimecodeComment(file_id=f.id, author_id=g.user.id, seconds=max(0.0, float(data.get("seconds") or 0)),
-                        text=text)
+    try:
+        seconds = max(0.0, min(float(data.get("seconds") or 0), 86400.0))
+    except (TypeError, ValueError):
+        seconds = 0.0
+    c = TimecodeComment(file_id=f.id, author_id=g.user.id, seconds=seconds, text=text)
     db.session.add(c)
     db.session.commit()
     return {"ok": True, "id": c.id, "seconds": c.seconds, "text": c.text, "author": g.user.full_name}
@@ -144,7 +148,7 @@ def attendance(session_id):
     s = db.session.get(Session, session_id)
     if not s:
         abort(404)
-    if not (g.user.is_admin or s.cohort.trainer_id == g.user.id):
+    if not (g.user.is_admin or (s.cohort.trainer_id == g.user.id and g.user.has_role("trainer"))):
         abort(403)
     data = request.get_json(silent=True) or {}
     marks = data.get("marks") or [{"enrollment_id": data.get("enrollment_id"), "present": data.get("present")}]

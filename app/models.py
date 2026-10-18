@@ -21,6 +21,21 @@ def utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
+def local_now() -> datetime:
+    """Текущее время в часовом поясе Академии (без tzinfo), для сравнения с временем занятий."""
+    from zoneinfo import ZoneInfo
+    try:
+        from flask import current_app
+        tz = current_app.config.get("TIMEZONE", "Asia/Almaty")
+    except RuntimeError:
+        tz = "Asia/Almaty"
+    return datetime.now(ZoneInfo(tz)).replace(tzinfo=None)
+
+
+def local_today() -> date:
+    return local_now().date()
+
+
 def new_token(n: int = 24) -> str:
     return secrets.token_urlsafe(n)
 

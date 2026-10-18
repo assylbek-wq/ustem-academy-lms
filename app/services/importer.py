@@ -97,11 +97,18 @@ def template_xlsx() -> bytes:
     return buf.getvalue()
 
 
+def _cell(v):
+    """Защита от формул в Excel: текст, начинающийся с = + - @, сохраняется как текст."""
+    if isinstance(v, str) and v[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + v
+    return v
+
+
 def cohort_report_xlsx(cohort, summary: dict, labels: dict) -> bytes:
     wb = Workbook()
     ws = wb.active
     ws.title = labels["sheet"][:31]
-    ws.append([cohort.name])
+    ws.append([_cell(cohort.name)])
     ws["A1"].font = Font(bold=True, size=14)
     ws.append([labels["program"], labels["program_value"]])
     ws.append([labels["dates"], labels["dates_value"]])
@@ -117,13 +124,13 @@ def cohort_report_xlsx(cohort, summary: dict, labels: dict) -> bytes:
         c.fill = fill
         c.alignment = Alignment(wrap_text=True, vertical="top")
     for enr, st in summary["rows"]:
-        ws.append([
+        ws.append([_cell(v) for v in [
             enr.user.full_name, *([enr.user.email] if labels.get("with_email") else []),
             enr.user.organization or "", enr.user.city or "",
             f"{st.lessons_done}/{st.lessons_total}", f"{st.assignments_accepted}/{st.assignments_total}",
             f"{st.sessions_attended}/{st.sessions_required}" if st.sessions_required else "-",
             f"{st.percent}%", labels["status"].get(enr.status, enr.status),
-        ])
+        ]])
     for col, w in zip("ABCDEFGHI", (34, 30, 28, 14, 12, 12, 14, 10, 16)):
         ws.column_dimensions[col].width = w
     buf = io.BytesIO()

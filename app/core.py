@@ -145,6 +145,8 @@ def video_embed(url: str | None) -> dict | None:
         return None
     url = url.strip()
     u = urlparse(url)
+    if u.scheme not in ("http", "https") and not (url.startswith("/") and not url.startswith("//")):
+        return None
     host = (u.netloc or "").lower().removeprefix("www.").removeprefix("m.")
     vid = None
     if host in ("youtube.com", "youtube-nocookie.com"):

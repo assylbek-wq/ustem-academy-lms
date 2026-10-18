@@ -30,6 +30,8 @@ class Config:
     CHUNK_BYTES = 5 * 1024 * 1024
     MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # один HTTP-запрос (чанк, форма, материал)
 
+    # Время занятий вводится и показывается по местному времени Академии.
+    TIMEZONE = os.environ.get("TIMEZONE", "Asia/Almaty")
     PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "http://localhost:5080")
 
     # ИИ-помощник (API Claude). Без ключа помощник просто скрыт.
