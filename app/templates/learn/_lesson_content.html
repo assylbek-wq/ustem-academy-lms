@@ -1,0 +1,27 @@
+{% from "_icons.html" import ic %}
+{% set v = video_embed(lesson.video_url|loc) %}
+{% if v %}
+  <div class="aspect-video rounded-xl overflow-hidden bg-slate-900 mb-6">
+    {% if v.type == 'iframe' %}
+      <iframe src="{{ v.src }}" class="w-full h-full" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen loading="lazy" title="{{ lesson.title|loc }}"></iframe>
+    {% else %}
+      <video src="{{ v.src }}" controls preload="metadata" class="w-full h-full"></video>
+    {% endif %}
+  </div>
+{% elif lesson.kind == 'video' and lesson.video_url|loc %}
+  <div class="flash flash-info mb-6"><a href="{{ lesson.video_url|loc }}" target="_blank" rel="noopener" class="underline">{{ t('lesson.open_video') }}</a></div>
+{% endif %}
+{% if lesson.body|loc %}
+  <div class="prose-content">{{ (lesson.body|loc)|md }}</div>
+  {% if not lesson.body.get(locale) %}<p class="help mt-4">{{ t('lesson.fallback_lang') }}</p>{% endif %}
+{% endif %}
+{% if lesson.materials %}
+  <div class="mt-6 border-t border-slate-100 pt-4">
+    <div class="font-semibold text-sm mb-2">{{ t('lesson.materials') }}</div>
+    <ul class="space-y-1.5">
+      {% for m in lesson.materials %}
+        <li><a href="{{ url_for('learn.material', material_id=m.id) }}" class="inline-flex items-center gap-2 text-sm text-brand-700 hover:underline">{{ ic('download', 'w-4 h-4') }} {{ m.original_name }} <span class="text-slate-400">({{ m.size|size }})</span></a></li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}

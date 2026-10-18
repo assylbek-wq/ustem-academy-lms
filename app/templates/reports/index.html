@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_header, progress_bar, badge, stat, empty with context %}
+{% from "_icons.html" import ic %}
+{% block title %}{{ t('nav.reports') }}{% endblock %}
+{% block content %}
+{{ page_header(t('report.title'), t('report.sub')) }}
+<div class="grid grid-cols-3 gap-3 mb-6">
+  {{ stat(t('report.cohorts'), totals.cohorts, 'calendar') }}
+  {{ stat(t('report.learners'), totals.learners, 'users') }}
+  {{ stat(t('report.completed'), totals.completed, 'award') }}
+</div>
+{% if rows %}
+<div class="card divide-y divide-slate-100">
+  {% for c, s in rows %}
+    <a href="{{ url_for('reports.cohort', cohort_id=c.id) }}" class="flex flex-col sm:flex-row sm:items-center gap-3 p-4 hover:bg-slate-50">
+      <div class="flex-1 min-w-0"><div class="font-semibold">{{ c.name }}</div>
+        <div class="text-sm text-slate-500">{{ c.program.title|loc }} · {{ c.level.title|loc }} · {{ c.start_date|d }}{% if c.customer %} · {{ c.customer.name }}{% endif %}</div></div>
+      <div class="sm:w-40 flex items-center gap-2"><div class="flex-1">{{ progress_bar(s.avg_percent) }}</div><span class="text-xs">{{ s.avg_percent }}%</span></div>
+      <div class="text-sm text-slate-500 sm:w-28">{{ s.completed }}/{{ s.count }} {{ t('report.done_short') }}</div>
+      {{ badge(c.status, 'cstatus') }}
+    </a>
+  {% endfor %}
+</div>
+{% else %}{{ empty(t('report.empty'), 'chart') }}{% endif %}
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, page_header with context %}
+{% from "_icons.html" import ic %}
+{% block title %}{{ t('admin.customers') }}{% endblock %}
+{% block content %}
+{{ page_header(t('admin.customers'), t('admin.customers_sub')) }}
+<div class="grid lg:grid-cols-3 gap-6">
+  <div class="lg:col-span-2 card divide-y divide-slate-100">
+    {% for cu in items %}
+      <div class="p-4 flex items-start gap-3">
+        {{ ic('building', 'w-5 h-5 text-slate-400 mt-0.5') }}
+        <div class="flex-1">
+          <div class="font-semibold">{{ cu.name }} <span class="text-xs font-normal text-slate-400">· {{ t('ckind.' ~ cu.kind) }}</span></div>
+          <div class="text-sm text-slate-500">{{ cu.contact_name or '' }} {{ cu.contact_email or '' }} {{ cu.contact_phone or '' }}</div>
+          <div class="text-xs text-slate-400 mt-1">{{ t('admin.cohorts_n', n=cu.cohorts|length) }}</div>
+        </div>
+        <a href="{{ url_for('admin.customers', edit=cu.id) }}" class="btn-icon">{{ ic('edit', 'w-4 h-4') }}</a>
+      </div>
+    {% else %}<p class="p-8 text-center text-slate-500">{{ t('admin.no_customers') }}</p>{% endfor %}
+  </div>
+  <form method="post" class="card p-5 space-y-3 h-fit">
+    {{ csrf() }}{% if edit %}<input type="hidden" name="customer_id" value="{{ edit.id }}">{% endif %}
+    <div class="font-semibold">{{ t('admin.edit_customer') if edit else t('admin.add_customer') }}</div>
+    <div><label class="label">{{ t('admin.f_customer_name') }} *</label><input name="name" value="{{ edit.name if edit else '' }}" class="input" required></div>
+    <div><label class="label">{{ t('admin.f_kind') }}</label><select name="kind" class="input">{% for k in kinds %}<option value="{{ k }}" {% if edit and edit.kind == k %}selected{% endif %}>{{ t('ckind.' ~ k) }}</option>{% endfor %}</select></div>
+    <div><label class="label">{{ t('lead.contact') }}</label><input name="contact_name" value="{{ (edit.contact_name if edit else '') or '' }}" class="input"></div>
+    <div><label class="label">Email</label><input type="email" name="contact_email" value="{{ (edit.contact_email if edit else '') or '' }}" class="input"></div>
+    <div><label class="label">{{ t('lead.phone') }}</label><input name="contact_phone" value="{{ (edit.contact_phone if edit else '') or '' }}" class="input"></div>
+    <button class="btn-primary w-full">{{ t('common.save') }}</button>
+    {% if edit %}<a href="{{ url_for('admin.customers') }}" class="block text-center text-sm text-slate-500">{{ t('common.cancel') }}</a>{% endif %}
+  </form>
+</div>
+{% endblock %}

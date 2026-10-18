@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, page_header, badge, ml_field with context %}
+{% from "_icons.html" import ic %}
+{% block title %}{{ p.title|loc }} - {{ t('nav.studio') }}{% endblock %}
+{% block content %}
+{% call page_header(p.title|loc, t('dir.' ~ p.direction) ~ (' · v' ~ p.version if p.version else ''), url_for('studio.index'), t('nav.studio')) %}
+  {{ badge(p.status, 'pstatus') }}
+  <a href="{{ url_for('public.program', slug=p.slug) }}" target="_blank" class="btn-ghost btn-sm">{{ ic('eye', 'w-4 h-4') }} {{ t('studio.view_public') }}</a>
+  <form method="post" class="inline">{{ csrf() }}
+    {% if p.status == 'published' %}
+      <button name="action" value="publish" class="btn-secondary btn-sm" title="{{ t('studio.republish_hint') }}">{{ t('studio.republish') }}</button>
+      <button name="action" value="unpublish" class="btn-ghost btn-sm">{{ t('studio.unpublish') }}</button>
+    {% else %}
+      <button name="action" value="publish" class="btn-primary btn-sm">{{ t('studio.publish') }}</button>
+    {% endif %}
+  </form>
+{% endcall %}
+
+<div class="grid lg:grid-cols-5 gap-6">
+  <div class="lg:col-span-2 space-y-4">
+    <div class="font-semibold">{{ t('studio.structure') }}</div>
+    {% for lv in p.levels %}
+      <a href="{{ url_for('studio.level', level_id=lv.id) }}" class="card card-hover p-4 flex items-center gap-3">
+        <span class="w-9 h-9 rounded-lg bg-brand-600 text-white font-bold flex items-center justify-center">{{ lv.number }}</span>
+        <div class="flex-1 min-w-0">
+          <div class="font-semibold truncate">{{ lv.title|loc }}</div>
+          <div class="text-xs text-slate-500">{{ t('studio.modules_n', n=lv.modules|length) }} · {{ t('studio.lessons_n', n=lv.lessons|length) }} · {{ t('studio.assignments_n', n=lv.assignments|length) }}</div>
+        </div>
+        {{ ic('arrow-right', 'w-4 h-4 text-slate-400') }}
+      </a>
+    {% endfor %}
+    <form method="post">{{ csrf() }}<button name="action" value="add_level" class="btn-secondary btn-sm w-full">{{ ic('plus', 'w-4 h-4') }} {{ t('studio.add_level') }}</button></form>
+  </div>
+
+  <form method="post" class="lg:col-span-3 card p-5 space-y-4">
+    {{ csrf() }}<input type="hidden" name="action" value="meta">
+    <div class="font-semibold">{{ t('studio.about') }}</div>
+    {{ ml_field('title', p.title, t('studio.f_title'), required=True) }}
+    {{ ml_field('summary', p.summary, t('studio.f_summary'), 'textarea', rows=2) }}
+    {{ ml_field('description', p.description, t('studio.f_description'), 'markdown', rows=6, help=t('studio.md_hint')) }}
+    {{ ml_field('audience', p.audience, t('pub.audience'), 'markdown', rows=3) }}
+    {{ ml_field('equipment', p.equipment, t('pub.equipment'), 'markdown', rows=3) }}
+    <div class="grid sm:grid-cols-4 gap-3">
+      <div class="sm:col-span-2"><label class="label">{{ t('studio.f_direction') }}</label>
+        <select name="direction" class="input">{% for d in directions %}<option value="{{ d }}" {% if p.direction == d %}selected{% endif %}>{{ t('dir.' ~ d) }}</option>{% endfor %}</select></div>
+      <div><label class="label">{{ t('studio.f_color') }}</label><input type="color" name="color" value="{{ p.color }}" class="input h-10 p-1"></div>
+      <div><label class="label">{{ t('studio.f_position') }}</label><input type="number" name="position" value="{{ p.position }}" class="input"></div>
+    </div>
+    <div><label class="label">{{ t('studio.f_slug') }}</label><input name="slug" value="{{ p.slug }}" class="input font-mono text-sm"><p class="help">academy.ustem.kz/programs/{{ p.slug }}</p></div>
+    <button class="btn-primary">{{ t('common.save') }}</button>
+  </form>
+</div>
+<form method="post" class="mt-6 text-right">{{ csrf() }}
+  <button name="action" value="delete" class="text-sm text-rose-600 hover:underline" data-confirm="{{ t('studio.confirm_delete_program') }}">{{ t('studio.delete_program') }}</button>
+</form>
+{% endblock %}

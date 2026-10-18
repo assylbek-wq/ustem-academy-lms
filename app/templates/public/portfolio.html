@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% from "_icons.html" import ic %}
+{% block title %}{{ owner.full_name }} - {{ t('nav.portfolio') }}{% endblock %}
+{% macro body() %}
+<div class="{% if public and not user %}max-w-4xl mx-auto px-4 py-10{% endif %}">
+  <div class="card p-6 flex flex-col sm:flex-row sm:items-center gap-4">
+    <div class="w-16 h-16 rounded-2xl bg-brand-600 text-white text-xl font-extrabold flex items-center justify-center">{{ owner.initials }}</div>
+    <div class="flex-1">
+      <div class="text-xs uppercase tracking-wider text-slate-400 font-semibold">{{ t('portfolio.title') }}</div>
+      <h1 class="text-2xl font-extrabold">{{ owner.full_name }}</h1>
+      <div class="text-slate-500">{{ owner.organization or '' }}{% if owner.city %} · {{ owner.city }}{% endif %}</div>
+    </div>
+    {% if not public %}
+      <div class="sm:text-right">
+        {% if owner.portfolio_public %}
+          <div class="text-sm text-slate-500 mb-1">{{ t('portfolio.public_link') }}</div>
+          <button type="button" class="btn-secondary btn-sm" data-copy="{{ url_for('public.portfolio', token=owner.portfolio_token, _external=True) }}">{{ ic('link', 'w-4 h-4') }} {{ t('common.copy_link') }}</button>
+        {% else %}
+          <p class="text-sm text-slate-500 max-w-xs">{{ t('portfolio.private') }} <a href="{{ url_for('auth.account') }}" class="text-brand-700 underline">{{ t('portfolio.make_public') }}</a></p>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+
+  <h2 class="text-lg font-bold mt-8 mb-3">{{ t('portfolio.certs') }}</h2>
+  <div class="grid sm:grid-cols-2 gap-4">
+    {% for c in certs %}
+      <div class="card p-5">
+        <div class="flex items-center gap-2 text-brand-700">{{ ic('award', 'w-5 h-5') }}<span class="text-xs font-semibold uppercase">{{ t('verify.level') }} {{ c.level_number }}</span></div>
+        <div class="font-bold mt-2">{{ c.program_title|loc }}</div>
+        <div class="text-sm text-slate-500">{{ c.level_title|loc }} · {{ c.issued_at|d }}</div>
+        <a href="{{ url_for('public.verify', code=c.code) }}" class="text-sm text-brand-700 font-semibold mt-3 inline-flex items-center gap-1">{{ t('portfolio.verify') }} {{ ic('arrow-right', 'w-3.5 h-3.5') }}</a>
+      </div>
+    {% else %}
+      <p class="text-slate-500 text-sm">{{ t('portfolio.no_certs') }}</p>
+    {% endfor %}
+  </div>
+
+  <h2 class="text-lg font-bold mt-8 mb-3">{{ t('portfolio.works') }}</h2>
+  <div class="card divide-y divide-slate-100">
+    {% for ev in accepted %}
+      {% set r = ev.last_review %}
+      <div class="p-4 flex flex-col sm:flex-row sm:items-center gap-2">
+        <div class="flex-1">
+          <div class="font-semibold">{{ ev.assignment.title|loc }}</div>
+          <div class="text-sm text-slate-500">{{ ev.enrollment.cohort.program.title|loc }} · {{ ev.enrollment.cohort.level.title|loc }}</div>
+        </div>
+        <div class="text-sm text-slate-500">{{ t('portfolio.accepted_on') }} {{ (r.created_at if r else ev.submitted_at)|d }}</div>
+        {% if r and r.scores %}
+          {% set vals = r.scores.values()|list %}
+          <span class="badge bg-emerald-100 text-emerald-700">{{ t('portfolio.avg') }} {{ '%.1f'|format(vals|sum / vals|length) }}/4</span>
+        {% endif %}
+      </div>
+    {% else %}
+      <p class="p-5 text-slate-500 text-sm">{{ t('portfolio.no_works') }}</p>
+    {% endfor %}
+  </div>
+  <p class="help mt-3">{{ t('portfolio.privacy_note') }}</p>
+</div>
+{% endmacro %}
+{% block public %}{{ body() }}{% endblock %}
+{% block content %}{{ body() }}{% endblock %}

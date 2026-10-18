@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_header, badge, empty with context %}
+{% from "_icons.html" import ic %}
+{% block title %}{{ t('nav.review') }}{% endblock %}
+{% block content %}
+{{ page_header(t('review.queue_title'), t('review.queue_sub')) }}
+<div class="flex flex-col sm:flex-row gap-3 mb-5">
+  <div class="tabs">
+    {% for s in ['submitted', 'returned', 'accepted'] %}
+      <a href="{{ url_for('review.queue', status=s, cohort=cohort_id) }}" class="tab {% if status == s %}tab-active{% endif %}">{{ t('status.' ~ s) }} <span class="tab-count">{{ counts[s] }}</span></a>
+    {% endfor %}
+  </div>
+  {% if cohorts|length > 1 %}
+  <form class="sm:ml-auto">
+    <input type="hidden" name="status" value="{{ status }}">
+    <select name="cohort" class="input py-1.5" onchange="this.form.submit()">
+      <option value="">{{ t('review.all_cohorts') }}</option>
+      {% for c in cohorts %}<option value="{{ c.id }}" {% if cohort_id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+    </select>
+  </form>
+  {% endif %}
+</div>
+{% if items %}
+<div class="card divide-y divide-slate-100">
+  {% for ev in items %}
+    {% set days = (today - ev.submitted_at.date()).days %}
+    <a href="{{ url_for('review.detail', evidence_id=ev.id) }}" class="flex items-center gap-4 p-4 hover:bg-slate-50">
+      <div class="w-10 h-10 rounded-full bg-slate-100 text-slate-600 text-sm font-bold flex items-center justify-center shrink-0">{{ ev.enrollment.user.initials }}</div>
+      <div class="flex-1 min-w-0">
+        <div class="font-semibold truncate">{{ ev.enrollment.user.full_name }}</div>
+        <div class="text-sm text-slate-500 truncate">{{ ev.assignment.title|loc }} · {{ ev.enrollment.cohort.name }}{% if ev.attempt > 1 %} · {{ t('assignment.attempt', n=ev.attempt) }}{% endif %}</div>
+      </div>
+      <div class="text-right shrink-0">
+        {{ badge(ev.status) }}
+        {% if ev.status == 'submitted' %}<div class="text-xs mt-1 {% if days >= 3 %}text-rose-600 font-semibold{% else %}text-slate-400{% endif %}">{{ t('review.waiting_days', n=days) }}</div>{% endif %}
+      </div>
+    </a>
+  {% endfor %}
+</div>
+{% else %}{{ empty(t('review.empty'), 'check-circle') }}{% endif %}
+{% endblock %}

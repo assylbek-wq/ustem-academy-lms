@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, page_header with context %}
+{% block title %}{{ t('admin.new_cohort') }}{% endblock %}
+{% block content %}
+{{ page_header(t('admin.new_cohort'), None, url_for('admin.cohorts'), t('admin.cohorts')) }}
+<form method="post" class="card p-6 space-y-5 max-w-3xl">
+  {{ csrf() }}
+  {% include "admin/_cohort_fields.html" %}
+  <button class="btn-primary">{{ t('admin.create_cohort') }}</button>
+</form>
+{% endblock %}

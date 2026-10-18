@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_header with context %}
+{% from "_icons.html" import ic %}
+{% block title %}{{ t('cohort.mark_attendance') }}: {{ s.title }}{% endblock %}
+{% block content %}
+{{ page_header(s.title, (s.starts_at|dt) ~ (' · ' ~ s.location if s.location else ''), url_for('cohorts.detail', cohort_id=c.id), c.name) }}
+<div class="max-w-xl" data-attendance data-url="{{ url_for('api.attendance', session_id=s.id) }}" data-session="{{ s.id }}">
+  <div class="flash flash-info mb-4 hidden" data-offline>{{ ic('wifi-off', 'w-4 h-4 inline') }} {{ t('attendance.offline') }}</div>
+  <div class="flex items-center gap-2 mb-3 text-sm">
+    <span class="text-slate-500 flex-1"><span data-present-count>{{ marks.values()|select|list|length }}</span> / {{ learners|length }} {{ t('attendance.present') }}</span>
+    <button type="button" class="btn-ghost btn-sm" data-mark-all>{{ t('attendance.all') }}</button>
+    <span class="text-xs text-slate-400" data-sync-state></span>
+  </div>
+  <ul class="card divide-y divide-slate-100">
+    {% for enr in learners %}
+      <li>
+        <label class="flex items-center gap-3 px-4 py-3.5 cursor-pointer select-none">
+          <input type="checkbox" class="w-6 h-6 accent-emerald-600" data-enrollment="{{ enr.id }}" {% if marks.get(enr.id) %}checked{% endif %}>
+          <span class="flex-1"><span class="font-medium">{{ enr.user.full_name }}</span><span class="block text-xs text-slate-500">{{ enr.user.organization or '' }}</span></span>
+        </label>
+      </li>
+    {% else %}<li class="p-6 text-center text-slate-500">{{ t('cohort.no_learners') }}</li>{% endfor %}
+  </ul>
+</div>
+{% endblock %}
+{% block scripts %}<script>window.I18N_ATT = {{ {'saved': t('attendance.saved'), 'queued': t('attendance.queued')}|tojson }};</script>{% endblock %}

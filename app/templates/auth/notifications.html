@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_header, empty with context %}
+{% from "_icons.html" import ic %}
+{% block title %}{{ t('nav.notifications') }}{% endblock %}
+{% block content %}
+{{ page_header(t('nav.notifications')) }}
+{% if items %}
+<div class="card divide-y divide-slate-100">
+  {% for n in items %}
+    <a href="{{ n.url or '#' }}" class="flex items-start gap-3 p-4 hover:bg-slate-50">
+      <span class="mt-1.5 w-2 h-2 rounded-full {% if n.id in unread_ids %}bg-brand-500{% else %}bg-slate-200{% endif %}"></span>
+      <div class="flex-1"><div>{{ n.text }}</div><div class="text-xs text-slate-400 mt-0.5">{{ n.created_at|dt }}</div></div>
+      {% if n.url %}{{ ic('arrow-right', 'w-4 h-4 text-slate-400 mt-1') }}{% endif %}
+    </a>
+  {% endfor %}
+</div>
+{% else %}{{ empty(t('notifications.empty'), 'bell') }}{% endif %}
+{% endblock %}

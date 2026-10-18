@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, page_header, lesson_icon with context %}
+{% from "_icons.html" import ic %}
+{% block title %}{{ lesson.title|loc }}{% endblock %}
+{% block content %}
+{% set done = lesson.id in st.done_lesson_ids %}
+{{ page_header(lesson.title|loc, lesson.module.title|loc, url_for('learn.cohort', cohort_id=cohort.id), cohort.level.title|loc) }}
+
+<div class="grid lg:grid-cols-3 gap-6">
+  <div class="lg:col-span-2 space-y-6">
+    <article class="card p-5 sm:p-7">
+      {% include "learn/_lesson_content.html" %}
+
+      {% if lesson.kind == 'quiz' %}
+        {% if result %}
+          <div class="flash {% if result.passed %}flash-success{% else %}flash-error{% endif %} mb-5">
+            {{ t('quiz.result', score=result.score, correct=result.correct, total=result.total) }}
+            {% if result.passed %}{{ t('quiz.passed') }}{% else %}{{ t('quiz.failed', min=cohort.level.min_quiz_score) }}{% endif %}
+          </div>
+        {% elif lp and lp.quiz_score is not none %}
+          <div class="flash flash-info mb-5">{{ t('quiz.best', score=lp.quiz_score, n=lp.attempts) }}</div>
+        {% endif %}
+        <form method="post" class="space-y-5 mt-4">
+          {{ csrf() }}
+          {% for q in lesson.questions %}
+            {% set picked = result.answers.get(q.id, []) if result else [] %}
+            <fieldset class="border border-slate-200 rounded-xl p-4">
+              <legend class="px-1 font-semibold">{{ loop.index }}. {{ q.prompt|loc }}</legend>
+              {% if q.multiple %}<p class="help -mt-1 mb-2">{{ t('quiz.multiple') }}</p>{% endif %}
+              <div class="space-y-2 mt-2">
+                {% for o in q.options %}
+                  {% set i = loop.index0 %}
+                  {% set cls = '' %}
+                  {% if result %}{% set cls = 'border-emerald-300 bg-emerald-50' if i in q.correct else ('border-rose-300 bg-rose-50' if i in picked else '') %}{% endif %}
+                  <label class="flex items-start gap-3 p-3 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 {{ cls }}">
+                    <input type="{{ 'checkbox' if q.multiple else 'radio' }}" name="q{{ q.id }}" value="{{ i }}" class="mt-1" {% if i in picked %}checked{% endif %} {% if not q.multiple %}required{% endif %}>
+                    <span>{{ o|loc }}</span>
+                  </label>
+                {% endfor %}
+              </div>
+              {% if result and q.explanation|loc %}<p class="text-sm text-slate-600 mt-3">{{ ic('message', 'w-4 h-4 inline text-brand-600') }} {{ q.explanation|loc }}</p>{% endif %}
+            </fieldset>
+          {% endfor %}
+          {% if lesson.questions %}
+            <button class="btn-primary">{{ t('quiz.retry') if lp and lp.attempts else t('quiz.submit') }}</button>
+          {% else %}<p class="text-slate-500">{{ t('quiz.empty') }}</p>{% endif %}
+        </form>
+      {% endif %}
+    </article>
+
+    <div class="flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
+      {% if prev_l %}<a href="{{ url_for('learn.lesson', cohort_id=cohort.id, lesson_id=prev_l.id) }}" class="btn-ghost">{{ ic('arrow-left', 'w-4 h-4') }} {{ t('lesson.prev') }}</a>{% else %}<span></span>{% endif %}
+      {% if lesson.kind != 'quiz' %}
+        {% if done %}
+          <div class="flex gap-2 items-center">
+            <span class="text-sm text-emerald-700 font-semibold inline-flex items-center gap-1">{{ ic('check-circle', 'w-4 h-4') }} {{ t('lesson.done') }}</span>
+            {% if next_l %}<a href="{{ url_for('learn.lesson', cohort_id=cohort.id, lesson_id=next_l.id) }}" class="btn-primary">{{ t('lesson.next') }} {{ ic('arrow-right', 'w-4 h-4') }}</a>{% endif %}
+          </div>
+        {% else %}
+          <form method="post">{{ csrf() }}<button class="btn-primary">{{ ic('check', 'w-4 h-4') }} {{ t('lesson.mark_done') }}</button></form>
+        {% endif %}
+      {% elif next_l %}
+        <a href="{{ url_for('learn.lesson', cohort_id=cohort.id, lesson_id=next_l.id) }}" class="btn-secondary">{{ t('lesson.next') }} {{ ic('arrow-right', 'w-4 h-4') }}</a>
+      {% endif %}
+    </div>
+  </div>
+
+  <aside class="space-y-4">
+    {% if ai_enabled %}
+    <div class="card flex flex-col max-h-[70vh]" data-ai-chat data-url="{{ url_for('api.ai_ask', cohort_id=cohort.id, lesson_id=lesson.id) }}">
+      <div class="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+        {{ ic('sparkles', 'w-4 h-4 text-brand-600') }}<span class="font-semibold">{{ t('ai.title') }}</span>
+      </div>
+      <div class="flex-1 overflow-y-auto p-4 space-y-3 text-sm min-h-40" data-ai-log>
+        {% if not chat %}<p class="text-slate-500" data-ai-hint>{{ t('ai.hint') }}</p>{% endif %}
+        {% for m in chat %}
+          <div class="ai-msg ai-msg-{{ m.role }}">{% if m.role == 'assistant' %}{{ m.content|md }}{% else %}{{ m.content }}{% endif %}</div>
+        {% endfor %}
+      </div>
+      <form class="p-3 border-t border-slate-100 flex gap-2" data-ai-form>
+        <input name="message" class="input" placeholder="{{ t('ai.placeholder') }}" autocomplete="off" required maxlength="2000">
+        <button class="btn-primary px-3" aria-label="{{ t('ai.send') }}">{{ ic('arrow-right', 'w-4 h-4') }}</button>
+      </form>
+      <p class="px-4 pb-3 text-[11px] text-slate-400">{{ t('ai.disclaimer') }}</p>
+    </div>
+    {% endif %}
+    <div class="card p-4">
+      <div class="text-sm font-semibold mb-2">{{ lesson.module.title|loc }}</div>
+      <ul class="space-y-1">
+        {% for l in lesson.module.lessons %}
+          <li><a href="{{ url_for('learn.lesson', cohort_id=cohort.id, lesson_id=l.id) }}" class="flex items-center gap-2 text-sm px-2 py-1.5 rounded-lg {% if l.id == lesson.id %}bg-brand-50 text-brand-800 font-semibold{% else %}hover:bg-slate-50{% endif %}">
+            {% if l.id in st.done_lesson_ids %}{{ ic('check-circle', 'w-4 h-4 text-accent-500') }}{% else %}{{ lesson_icon(l.kind, 'w-4 h-4 text-slate-400') }}{% endif %}
+            <span class="truncate">{{ l.title|loc }}</span></a></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </aside>
+</div>
+{% endblock %}
+{% block scripts %}<script>window.I18N_AI = {thinking: {{ t("ai.thinking")|tojson }}, failed: {{ t("ai.failed")|tojson }}};</script>{% endblock %}

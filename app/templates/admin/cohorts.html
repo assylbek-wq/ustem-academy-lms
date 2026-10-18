@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_header, progress_bar, badge, empty with context %}
+{% from "_icons.html" import ic %}
+{% block title %}{{ t('admin.cohorts') }}{% endblock %}
+{% block content %}
+{% call page_header(t('admin.cohorts')) %}
+  <a href="{{ url_for('admin.cohort_new') }}" class="btn-primary btn-sm">{{ ic('plus', 'w-4 h-4') }} {{ t('admin.new_cohort') }}</a>
+{% endcall %}
+<div class="tabs mb-5">
+  <a href="{{ url_for('admin.cohorts') }}" class="tab {% if not status %}tab-active{% endif %}">{{ t('common.all') }}</a>
+  {% for s in statuses %}<a href="{{ url_for('admin.cohorts', status=s) }}" class="tab {% if status == s %}tab-active{% endif %}">{{ t('cstatus.' ~ s) }}</a>{% endfor %}
+</div>
+{% if items %}
+<div class="card overflow-x-auto">
+  <table class="table">
+    <thead><tr><th>{{ t('admin.cohort') }}</th><th>{{ t('admin.program_level') }}</th><th>{{ t('admin.start') }}</th><th>{{ t('admin.customer') }}</th><th>{{ t('report.learners') }}</th><th>{{ t('col.progress') }}</th><th></th></tr></thead>
+    <tbody>
+      {% for c, s in items %}
+        <tr>
+          <td><a href="{{ url_for('admin.cohort', cohort_id=c.id) }}" class="font-semibold hover:text-brand-700">{{ c.name }}</a><div class="text-xs text-slate-500">{{ c.trainer.full_name if c.trainer else t('admin.no_trainer') }}</div></td>
+          <td class="text-sm">{{ c.program.title|loc }}<div class="text-xs text-slate-500">{{ c.level.title|loc }}</div></td>
+          <td class="text-sm whitespace-nowrap">{{ c.start_date|d }}</td>
+          <td class="text-sm">{{ c.customer.name if c.customer else '-' }}</td>
+          <td>{{ s.count }}{% if c.capacity %}<span class="text-slate-400">/{{ c.capacity }}</span>{% endif %}</td>
+          <td class="min-w-28"><div class="flex items-center gap-2"><div class="flex-1">{{ progress_bar(s.avg_percent) }}</div><span class="text-xs">{{ s.avg_percent }}%</span></div></td>
+          <td>{{ badge(c.status, 'cstatus') }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}{{ empty(t('admin.no_cohorts'), 'calendar') }}{% endif %}
+{% endblock %}

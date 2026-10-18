@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% from "_icons.html" import ic %}
+{% from "_macros.html" import csrf with context %}
+{% block title %}{{ t('verify.title') }} - USTEM Academy{% endblock %}
+{% macro body() %}
+<div class="max-w-xl mx-auto px-4 py-12">
+  <h1 class="text-2xl font-extrabold text-center">{{ t('verify.title') }}</h1>
+  <form method="post" action="{{ url_for('public.verify_form') }}" class="mt-6 flex gap-2">
+    {{ csrf() }}
+    <input name="code" value="{{ code }}" class="input font-mono uppercase" placeholder="{{ t('pub.verify_placeholder') }}" required>
+    <button class="btn-primary">{{ t('pub.verify_btn') }}</button>
+  </form>
+  {% if code %}
+    {% if cert and cert.status == 'valid' %}
+      <div class="card p-6 mt-6 border-emerald-200">
+        <div class="flex items-center gap-2 text-emerald-700 font-semibold">{{ ic('check-circle', 'w-5 h-5') }} {{ t('verify.valid') }}</div>
+        <dl class="mt-4 grid grid-cols-3 gap-y-3 text-sm">
+          <dt class="text-slate-500">{{ t('verify.name') }}</dt><dd class="col-span-2 font-semibold">{{ cert.recipient_name }}</dd>
+          <dt class="text-slate-500">{{ t('verify.program') }}</dt><dd class="col-span-2">{{ cert.program_title|loc }}</dd>
+          <dt class="text-slate-500">{{ t('verify.level') }}</dt><dd class="col-span-2">{{ cert.level_number }}. {{ cert.level_title|loc }}</dd>
+          <dt class="text-slate-500">{{ t('verify.cohort') }}</dt><dd class="col-span-2">{{ cert.cohort_name }}</dd>
+          <dt class="text-slate-500">{{ t('verify.hours') }}</dt><dd class="col-span-2">{{ cert.hours }}</dd>
+          <dt class="text-slate-500">{{ t('verify.date') }}</dt><dd class="col-span-2">{{ cert.issued_at|d }}</dd>
+          <dt class="text-slate-500">{{ t('verify.number') }}</dt><dd class="col-span-2 font-mono">{{ cert.code }}</dd>
+        </dl>
+        <div class="mt-5 flex gap-2">
+          <a href="{{ url_for('public.verify_pdf', code=cert.code) }}" class="btn-secondary btn-sm">{{ ic('download', 'w-4 h-4') }} PDF</a>
+          <a href="{{ url_for('public.badge', code=cert.code) }}" class="btn-ghost btn-sm">Open Badge (JSON)</a>
+        </div>
+      </div>
+    {% elif cert %}
+      <div class="flash flash-error mt-6">{{ t('verify.revoked') }}</div>
+    {% else %}
+      <div class="flash flash-error mt-6">{{ t('verify.not_found') }}</div>
+    {% endif %}
+  {% endif %}
+</div>
+{% endmacro %}
+{% block public %}{{ body() }}{% endblock %}
+{% block content %}{{ body() }}{% endblock %}

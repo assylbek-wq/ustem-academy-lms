@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_header with context %}
+{% block title %}{{ t('studio.preview') }}: {{ lesson.title|loc }}{% endblock %}
+{% block content %}
+<div class="flash flash-info mb-4">{{ t('studio.preview_note') }}</div>
+{{ page_header(lesson.title|loc, lv.program.title|loc ~ ' · ' ~ lesson.module.title|loc) }}
+<article class="card p-5 sm:p-7 max-w-3xl">
+  {% include "learn/_lesson_content.html" %}
+  {% if lesson.kind == 'quiz' %}
+    <ol class="mt-4 space-y-4">
+      {% for q in lesson.questions %}
+        <li class="border border-slate-200 rounded-xl p-4"><div class="font-semibold">{{ q.prompt|loc }}</div>
+          <ul class="mt-2 space-y-1 text-sm">{% for o in q.options %}<li class="{% if loop.index0 in q.correct %}text-emerald-700 font-semibold{% endif %}">{{ '✓' if loop.index0 in q.correct else '○' }} {{ o|loc }}</li>{% endfor %}</ul></li>
+      {% endfor %}
+    </ol>
+  {% endif %}
+</article>
+{% endblock %}

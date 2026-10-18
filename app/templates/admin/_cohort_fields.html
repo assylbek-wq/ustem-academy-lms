@@ -1,0 +1,22 @@
+<div class="grid sm:grid-cols-2 gap-4">
+  <div class="sm:col-span-2"><label class="label">{{ t('admin.f_name') }} *</label><input name="name" value="{{ c.name or '' }}" class="input" required placeholder="{{ t('admin.f_name_ph') }}"></div>
+  <div class="sm:col-span-2"><label class="label">{{ t('admin.program_level') }} *</label>
+    <select name="level_id" class="input" required>
+      <option value="">-</option>
+      {% for lv in levels %}<option value="{{ lv.id }}" {% if c.level_id == lv.id %}selected{% endif %}>{{ lv.program.title|loc }} · {{ t('studio.level_n', n=lv.number) }}: {{ lv.title|loc }}{% if lv.program.status != 'published' %} ({{ t('pstatus.draft') }}){% endif %}</option>{% endfor %}
+    </select></div>
+  <div><label class="label">{{ t('admin.start') }} *</label><input type="date" name="start_date" value="{{ c.start_date.isoformat() if c.start_date else '' }}" class="input" required></div>
+  <div><label class="label">{{ t('admin.end') }}</label><input type="date" name="end_date" value="{{ c.end_date.isoformat() if c.end_date else '' }}" class="input"></div>
+  <div><label class="label">{{ t('admin.trainer') }}</label>
+    <select name="trainer_id" class="input"><option value="">-</option>{% for u in trainers %}<option value="{{ u.id }}" {% if c.trainer_id == u.id %}selected{% endif %}>{{ u.full_name }}</option>{% endfor %}</select>
+    {% if not trainers %}<p class="help">{{ t('admin.no_trainers_hint') }}</p>{% endif %}</div>
+  <div><label class="label">{{ t('admin.customer') }}</label>
+    <select name="customer_id" class="input"><option value="">-</option>{% for cu in customers %}<option value="{{ cu.id }}" {% if c.customer_id == cu.id %}selected{% endif %}>{{ cu.name }}</option>{% endfor %}</select></div>
+  <div><label class="label">{{ t('admin.language') }}</label>
+    <select name="language" class="input">{% for l in locales %}<option value="{{ l }}" {% if (c.language or 'ru') == l %}selected{% endif %}>{{ locale_names[l] }}</option>{% endfor %}</select></div>
+  <div><label class="label">{{ t('auth.city') }}</label><input name="city" value="{{ c.city or '' }}" class="input"></div>
+  <div><label class="label">{{ t('admin.capacity') }}</label><input type="number" name="capacity" min="1" value="{{ c.capacity or 25 }}" class="input"></div>
+  <div><label class="label">{{ t('admin.status') }}</label>
+    <select name="status" class="input">{% for s in statuses %}<option value="{{ s }}" {% if (c.status or 'planned') == s %}selected{% endif %}>{{ t('cstatus.' ~ s) }}</option>{% endfor %}</select></div>
+  <label class="sm:col-span-2 flex items-start gap-2 text-sm"><input type="checkbox" name="is_open" value="1" class="mt-1" {% if c.is_open %}checked{% endif %}> <span>{{ t('admin.is_open') }}<span class="block text-slate-500">{{ t('admin.is_open_hint') }}</span></span></label>
+</div>

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, page_header with context %}
+{% block title %}{{ t('account.title') }}{% endblock %}
+{% block content %}
+{{ page_header(t('account.title')) }}
+<div class="grid lg:grid-cols-3 gap-6">
+  <form method="post" class="card p-6 space-y-4 lg:col-span-2">
+    {{ csrf() }}<input type="hidden" name="action" value="profile">
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div><label class="label">{{ t('auth.full_name') }}</label><input name="full_name" value="{{ user.full_name }}" class="input" required></div>
+      <div><label class="label">Email</label><input value="{{ user.email }}" class="input bg-slate-50" disabled></div>
+      <div><label class="label">{{ t('auth.phone') }}</label><input name="phone" value="{{ user.phone or '' }}" class="input"></div>
+      <div><label class="label">{{ t('auth.city') }}</label><input name="city" value="{{ user.city or '' }}" class="input"></div>
+      <div class="sm:col-span-2"><label class="label">{{ t('auth.organization') }}</label><input name="organization" value="{{ user.organization or '' }}" class="input"></div>
+      <div><label class="label">{{ t('account.language') }}</label>
+        <select name="locale" class="input">{% for l in locales %}<option value="{{ l }}" {% if user.locale == l %}selected{% endif %}>{{ locale_names[l] }}</option>{% endfor %}</select></div>
+    </div>
+    <label class="flex items-start gap-2 text-sm"><input type="checkbox" name="portfolio_public" value="1" class="mt-1" {% if user.portfolio_public %}checked{% endif %}> <span>{{ t('account.portfolio_public') }}<span class="block text-slate-500">{{ t('account.portfolio_public_hint') }}</span></span></label>
+    <button class="btn-primary">{{ t('common.save') }}</button>
+  </form>
+  <form method="post" class="card p-6 space-y-4 h-fit">
+    {{ csrf() }}<input type="hidden" name="action" value="password">
+    <div class="font-semibold">{{ t('account.change_password') }}</div>
+    <div><label class="label">{{ t('account.current') }}</label><input type="password" name="current" class="input" autocomplete="current-password" required></div>
+    <div><label class="label">{{ t('account.new') }}</label><input type="password" name="new" class="input" minlength="8" autocomplete="new-password" required></div>
+    <button class="btn-secondary w-full">{{ t('account.change_password') }}</button>
+  </form>
+</div>
+{% endblock %}

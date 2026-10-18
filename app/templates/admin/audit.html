@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_header with context %}
+{% block title %}{{ t('admin.audit') }}{% endblock %}
+{% block content %}
+{{ page_header(t('admin.audit'), t('admin.audit_sub')) }}
+<div class="card overflow-x-auto">
+  <table class="table">
+    <thead><tr><th>{{ t('admin.when') }}</th><th>{{ t('admin.who') }}</th><th>{{ t('admin.what') }}</th><th>{{ t('admin.object') }}</th></tr></thead>
+    <tbody>
+      {% for e in items %}
+        <tr><td class="text-sm whitespace-nowrap text-slate-500">{{ e.created_at|dt }}</td><td class="text-sm">{{ e.user.full_name if e.user else '-' }}</td>
+          <td class="text-sm">{{ t('audit.' ~ e.action) }}</td><td class="text-xs text-slate-500 font-mono">{{ e.entity or '' }}{% if e.entity_id %} #{{ e.entity_id }}{% endif %}</td></tr>
+      {% else %}<tr><td colspan="4" class="text-center py-8 text-slate-500">-</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, page_header, ml_field with context %}
+{% from "_icons.html" import ic %}
+{% block title %}{{ a.title|loc }} - {{ t('nav.studio') }}{% endblock %}
+{% block content %}
+{{ page_header(a.title|loc, lv.title|loc, url_for('studio.level', level_id=lv.id), lv.title|loc) }}
+<div class="grid lg:grid-cols-5 gap-6">
+  <form method="post" class="lg:col-span-2 card p-5 space-y-4 h-fit">
+    {{ csrf() }}<input type="hidden" name="action" value="meta">
+    {{ ml_field('title', a.title, t('studio.f_title'), required=True) }}
+    {{ ml_field('description', a.description, t('studio.f_task'), 'markdown', rows=10, help=t('studio.md_hint')) }}
+    <div class="grid grid-cols-3 gap-3">
+      <div><label class="label">{{ t('studio.f_evidence') }}</label>
+        <select name="evidence_kind" class="input">{% for k in evidence_kinds %}<option value="{{ k }}" {% if a.evidence_kind == k %}selected{% endif %}>{{ t('assignment.kind_' ~ k) }}</option>{% endfor %}</select></div>
+      <div><label class="label">{{ t('studio.f_due_days') }}</label><input type="number" name="due_days" min="0" value="{{ a.due_days if a.due_days is not none else '' }}" class="input"></div>
+      <div><label class="label">{{ t('studio.f_pass_min') }}</label><input type="number" name="pass_min_level" min="1" max="4" value="{{ a.pass_min_level }}" class="input"></div>
+    </div>
+    <p class="help">{{ t('studio.due_hint') }}</p>
+    <button class="btn-primary">{{ t('common.save') }}</button>
+  </form>
+
+  <div class="lg:col-span-3 space-y-4">
+    <div class="font-semibold">{{ t('assignment.rubric') }}</div>
+    {% for c in a.criteria %}
+      <div class="card p-4">
+        <form method="post" class="space-y-3">
+          {{ csrf() }}<input type="hidden" name="action" value="save_criterion"><input type="hidden" name="criterion_id" value="{{ c.id }}">
+          {{ ml_field('ctitle', c.title, t('studio.criterion_n', n=loop.index)) }}
+          <div class="space-y-2">
+            {% for i in range(4) %}
+              {% set d = c.descriptors[i] if i < c.descriptors|length else {} %}
+              <div class="grid grid-cols-[2rem_1fr] gap-2 items-start">
+                <span class="w-8 h-8 rounded-lg bg-slate-100 font-bold text-sm flex items-center justify-center">{{ i + 1 }}</span>
+                <div class="grid sm:grid-cols-3 gap-1">{% for l in locales %}<input name="d_{{ i }}_{{ l }}" value="{{ d.get(l, '') }}" class="input py-1.5 text-sm" placeholder="{{ l|upper }}">{% endfor %}</div>
+              </div>
+            {% endfor %}
+          </div>
+          <button class="btn-secondary btn-sm">{{ t('common.save') }}</button>
+        </form>
+        <div class="flex gap-1 justify-end mt-2">
+          {% for act, icon, extra in [('move_criterion', 'chevron-up', 'up'), ('move_criterion', 'chevron-down', 'down')] %}
+            <form method="post">{{ csrf() }}<input type="hidden" name="criterion_id" value="{{ c.id }}"><input type="hidden" name="dir" value="{{ extra }}"><button name="action" value="{{ act }}" class="btn-icon">{{ ic(icon, 'w-4 h-4') }}</button></form>
+          {% endfor %}
+          {% if a.criteria|length > 1 %}<form method="post">{{ csrf() }}<input type="hidden" name="criterion_id" value="{{ c.id }}"><button name="action" value="delete_criterion" class="btn-icon hover:text-rose-600" data-confirm="{{ t('common.confirm') }}">{{ ic('trash', 'w-4 h-4') }}</button></form>{% endif %}
+        </div>
+      </div>
+    {% endfor %}
+    <form method="post">{{ csrf() }}<button name="action" value="add_criterion" class="btn-secondary btn-sm w-full">{{ ic('plus', 'w-4 h-4') }} {{ t('studio.add_criterion') }}</button></form>
+    <form method="post" class="text-right">{{ csrf() }}<button name="action" value="delete" class="text-sm text-rose-600 hover:underline" data-confirm="{{ t('studio.confirm_delete_assignment') }}">{{ t('studio.delete_assignment') }}</button></form>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, page_header with context %}
+{% from "_icons.html" import ic %}
+{% block title %}{{ t('admin.import') }}: {{ c.name }}{% endblock %}
+{% block content %}
+{{ page_header(t('admin.import_title'), c.name, url_for('admin.cohort', cohort_id=c.id), c.name) }}
+<div class="grid lg:grid-cols-2 gap-6">
+  <form method="post" enctype="multipart/form-data" class="card p-6 space-y-4 h-fit">
+    {{ csrf() }}
+    <p class="text-sm text-slate-600">{{ t('import.text') }}</p>
+    <a href="{{ url_for('admin.import_template') }}" class="btn-ghost btn-sm">{{ ic('download', 'w-4 h-4') }} {{ t('import.template') }}</a>
+    <div><label class="label">{{ t('import.file') }}</label><input type="file" name="file" accept=".xlsx,.csv" class="input" required></div>
+    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="send" value="1" checked> {{ t('import.send') }}</label>
+    <button class="btn-primary">{{ t('import.run') }}</button>
+  </form>
+  {% if report %}
+  <div class="card p-6">
+    <div class="font-semibold mb-3">{{ t('import.result') }}</div>
+    <ul class="space-y-1 text-sm">
+      <li>{{ t('import.enrolled', n=report.enrolled) }}</li>
+      <li>{{ t('import.created', n=report.created|length) }}</li>
+      <li>{{ t('import.already', n=report.already) }}</li>
+      {% if report.errors %}<li class="text-rose-700">{{ t('import.errors', n=report.errors|length) }}: {% for row, val in report.errors %}{{ t('import.row', n=row) }} ({{ val }}){% if not loop.last %}, {% endif %}{% endfor %}</li>{% endif %}
+    </ul>
+    {% if report.created %}
+      <div class="mt-5 font-semibold text-sm">{{ t('admin.invite_links') }}</div>
+      <ul class="mt-2 space-y-1.5 text-sm">
+        {% for u in report.created %}<li class="flex items-center gap-2"><span class="flex-1 truncate">{{ u.full_name }} · {{ u.email }}</span><button type="button" class="btn-ghost btn-sm" data-copy="{{ invite_link(u) }}">{{ ic('link', 'w-4 h-4') }}</button></li>{% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

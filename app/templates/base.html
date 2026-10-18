@@ -1,0 +1,143 @@
+<!doctype html>
+{% from "_icons.html" import ic %}
+<html lang="{{ locale }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% block title %}USTEM Academy{% endblock %}</title>
+  <meta name="description" content="{{ t('brand.tagline') }}">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ static_v('css/app.css') }}">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ static_v('img/favicon-32.png') }}">
+  <link rel="apple-touch-icon" sizes="180x180" href="{{ static_v('img/apple-touch-icon.png') }}">
+  {% block head %}{% endblock %}
+</head>
+<body class="bg-slate-100 text-slate-900 antialiased min-h-screen" data-locale="{{ locale }}">
+
+<div class="bg-brand-50 text-slate-500 text-xs border-b border-brand-100 print:hidden">
+  <div class="max-w-7xl mx-auto px-4 h-8 flex items-center justify-between">
+    <span class="inline-flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span>{{ t('brand.powered') }}</span>
+    <div class="flex items-center gap-3">
+      <a href="https://www.ustem.kz" target="_blank" rel="noopener" class="hidden sm:inline hover:text-brand-700">ustem.kz ↗</a>
+      <div class="flex items-center gap-0.5">
+        {% for l in locales %}
+          <a href="?lang={{ l }}" class="px-1.5 py-0.5 rounded {% if locale == l %}bg-brand-600 text-white{% else %}hover:text-brand-700{% endif %}">{{ l|upper }}</a>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+{% set cur_path = request.path %}
+{% macro navlink(endpoint, icon, label, prefix, badge=None) -%}
+  <a href="{{ url_for(endpoint) }}" class="sidebar-link {% if cur_path.startswith(prefix) %}sidebar-link-active{% endif %}">
+    {{ ic(icon) }} <span>{{ label }}</span>
+    {% if badge %}<span class="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-700 font-bold">{{ badge }}</span>{% endif %}
+  </a>
+{%- endmacro %}
+
+{% if user %}
+<div class="flex min-h-[calc(100vh-2rem)]">
+  <aside id="sidebar" class="hidden lg:flex flex-col w-64 bg-white border-r border-slate-200 shrink-0 print:hidden
+                             fixed inset-y-0 left-0 z-40 lg:static lg:z-auto">
+    <a href="{{ url_for('learn.home') }}" class="px-5 h-16 flex items-center gap-2.5 border-b border-slate-100">
+      <img src="{{ url_for('static', filename='img/ustem-mark.png') }}" alt="USTEM" class="w-9 h-9 object-contain">
+      <div class="leading-tight">
+        <div class="font-extrabold">USTEM <span class="text-brand-600">Academy</span></div>
+        <div class="text-[10px] uppercase tracking-wider text-slate-400">{{ t('brand.sub') }}</div>
+      </div>
+    </a>
+    <nav class="flex-1 p-3 space-y-1 overflow-y-auto scroll-area">
+      <div class="nav-section">{{ t('nav.learning') }}</div>
+      <a href="{{ url_for('learn.home') }}" class="sidebar-link {% if cur_path == "/my" or cur_path.startswith('/my/cohort') %}sidebar-link-active{% endif %}">{{ ic('book') }} <span>{{ t('nav.my') }}</span></a>
+      <a href="{{ url_for('learn.certificates') }}" class="sidebar-link {% if cur_path.startswith('/my/certificates') %}sidebar-link-active{% endif %}">{{ ic('award') }} <span>{{ t('nav.certificates') }}</span></a>
+      <a href="{{ url_for('learn.portfolio') }}" class="sidebar-link {% if cur_path.startswith('/my/portfolio') %}sidebar-link-active{% endif %}">{{ ic('folder') }} <span>{{ t('nav.portfolio') }}</span></a>
+
+      {% if user.has_role('mentor', 'trainer') %}
+        <div class="nav-section">{{ t('nav.work') }}</div>
+        {{ navlink('review.queue', 'check-circle', t('nav.review'), '/review') }}
+        {% if user.has_role('trainer') %}{{ navlink('cohorts.index', 'users', t('nav.cohorts'), '/cohorts') }}{% endif %}
+      {% endif %}
+      {% if user.has_role('methodist') %}
+        {% if not user.has_role('mentor', 'trainer') %}<div class="nav-section">{{ t('nav.work') }}</div>{% endif %}
+        {{ navlink('studio.index', 'layers', t('nav.studio'), '/studio') }}
+      {% endif %}
+      {% if user.customer_ids or user.is_admin %}
+        {{ navlink('reports.index', 'chart', t('nav.reports'), '/reports') }}
+      {% endif %}
+      {% if user.is_admin %}
+        <div class="nav-section">{{ t('nav.admin') }}</div>
+        <a href="{{ url_for('admin.index') }}" class="sidebar-link {% if cur_path == "/admin" %}sidebar-link-active{% endif %}">{{ ic('target') }} <span>{{ t('admin.overview') }}</span></a>
+        {{ navlink('admin.cohorts', 'calendar', t('admin.cohorts'), '/admin/cohorts') }}
+        {{ navlink('admin.users', 'key', t('admin.users'), '/admin/users') }}
+        {{ navlink('admin.customers', 'building', t('admin.customers'), '/admin/customers') }}
+        {{ navlink('admin.certificates', 'medal', t('admin.certificates'), '/admin/certificates') }}
+        {{ navlink('admin.leads', 'inbox', t('admin.leads'), '/admin/leads') }}
+        {{ navlink('admin.audit_log', 'file-text', t('admin.audit'), '/admin/audit') }}
+      {% endif %}
+    </nav>
+    <div class="p-3 border-t border-slate-100">
+      <a href="{{ url_for('auth.account') }}" class="flex items-center gap-2 px-2 py-2 rounded-lg bg-slate-50 hover:bg-slate-100">
+        <div class="w-8 h-8 rounded-full bg-brand-600 text-white text-xs font-bold flex items-center justify-center">{{ user.initials }}</div>
+        <div class="min-w-0 flex-1">
+          <div class="text-sm font-semibold truncate">{{ user.full_name }}</div>
+          <div class="text-xs text-slate-500 truncate">{{ user.email }}</div>
+        </div>
+      </a>
+      <a href="{{ url_for('auth.logout') }}" class="flex items-center justify-center gap-1.5 mt-2 text-xs text-slate-500 hover:text-slate-900 py-1.5">{{ ic('log-out', 'w-3.5 h-3.5') }} {{ t('nav.logout') }}</a>
+    </div>
+  </aside>
+  <div id="sidebar-backdrop" class="hidden fixed inset-0 bg-slate-900/40 z-30 lg:hidden" data-toggle-sidebar></div>
+
+  <div class="flex-1 min-w-0 flex flex-col">
+    <header class="bg-white border-b border-slate-200 h-14 flex items-center px-4 gap-3 print:hidden">
+      <button type="button" class="lg:hidden p-2 -ml-2 rounded-lg hover:bg-slate-100" data-toggle-sidebar aria-label="{{ t('nav.menu') }}">{{ ic('menu', 'w-5 h-5') }}</button>
+      <a href="{{ url_for('learn.home') }}" class="lg:hidden font-extrabold">USTEM <span class="text-brand-600">Academy</span></a>
+      <div class="flex-1"></div>
+      <a href="{{ url_for('auth.notifications') }}" class="relative p-2 rounded-lg hover:bg-slate-100" aria-label="{{ t('nav.notifications') }}">
+        {{ ic('bell', 'w-5 h-5 text-slate-600') }}
+        {% if unread_count %}<span class="absolute top-1 right-1 min-w-4 h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] font-bold flex items-center justify-center">{{ unread_count }}</span>{% endif %}
+      </a>
+    </header>
+    <main class="flex-1 p-4 sm:p-6 lg:p-8 max-w-6xl w-full mx-auto">
+      {% include "_flash.html" %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% else %}
+<header class="bg-white border-b border-slate-200 print:hidden">
+  <div class="max-w-6xl mx-auto px-4 h-16 flex items-center gap-4">
+    <a href="{{ url_for('public.home') }}" class="flex items-center gap-2.5">
+      <img src="{{ url_for('static', filename='img/ustem-mark.png') }}" alt="USTEM" class="w-9 h-9 object-contain">
+      <span class="font-extrabold text-lg">USTEM <span class="text-brand-600">Academy</span></span>
+    </a>
+    <nav class="hidden md:flex items-center gap-5 text-sm text-slate-600 ml-6">
+      <a href="{{ url_for('public.home') }}#programs" class="hover:text-brand-700">{{ t('pub.nav_programs') }}</a>
+      <a href="{{ url_for('public.home') }}#how" class="hover:text-brand-700">{{ t('pub.nav_how') }}</a>
+      <a href="{{ url_for('public.verify_form') }}" class="hover:text-brand-700">{{ t('pub.nav_verify') }}</a>
+    </nav>
+    <div class="flex-1"></div>
+    <a href="{{ url_for('auth.login') }}" class="text-sm font-semibold text-slate-700 hover:text-brand-700">{{ t('auth.login') }}</a>
+    <a href="{{ url_for('auth.register') }}" class="btn-primary hidden sm:inline-flex">{{ t('auth.register') }}</a>
+  </div>
+</header>
+<main>
+  <div class="max-w-6xl mx-auto px-4">{% include "_flash.html" %}</div>
+  {% block public %}{% endblock %}
+</main>
+<footer class="border-t border-slate-200 bg-white mt-16">
+  <div class="max-w-6xl mx-auto px-4 py-8 text-sm text-slate-500 flex flex-col sm:flex-row gap-3 sm:items-center justify-between">
+    <div>© {{ today.year }} USTEM Foundation · {{ t('brand.footer') }}</div>
+    <div class="flex gap-4"><a href="{{ url_for('public.verify_form') }}" class="hover:text-brand-700">{{ t('pub.nav_verify') }}</a><a href="mailto:hello@ustemfoundation.org" class="hover:text-brand-700">hello@ustemfoundation.org</a></div>
+  </div>
+</footer>
+{% endif %}
+
+<script src="{{ static_v('js/app.js') }}" defer></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

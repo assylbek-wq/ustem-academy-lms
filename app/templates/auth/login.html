@@ -1,0 +1,16 @@
+{% extends "auth/_card.html" %}
+{% from "_macros.html" import csrf with context %}
+{% block title %}{{ t('auth.login') }} - USTEM Academy{% endblock %}
+{% block heading %}{{ t('auth.login_title') }}{% endblock %}
+{% block form %}
+<form method="post" class="space-y-4">
+  {{ csrf() }}
+  <div><label class="label" for="email">Email</label><input id="email" type="email" name="email" value="{{ email }}" class="input" autocomplete="email" required autofocus></div>
+  <div><label class="label" for="password">{{ t('auth.password') }}</label><input id="password" type="password" name="password" class="input" autocomplete="current-password" required></div>
+  <button class="btn-primary w-full">{{ t('auth.login') }}</button>
+</form>
+<div class="mt-4 flex justify-between text-sm">
+  <a href="{{ url_for('auth.forgot') }}" class="text-slate-500 hover:text-brand-700">{{ t('auth.forgot') }}</a>
+  <a href="{{ url_for('auth.register') }}" class="text-brand-700 font-semibold">{{ t('auth.register') }}</a>
+</div>
+{% endblock %}

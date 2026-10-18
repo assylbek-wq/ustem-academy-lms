@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, page_header, badge, ml_field with context %}
+{% from "_icons.html" import ic %}
+{% block title %}{{ t('nav.studio') }}{% endblock %}
+{% block content %}
+{{ page_header(t('studio.title'), t('studio.sub')) }}
+<div class="grid lg:grid-cols-3 gap-6">
+  <div class="lg:col-span-2 card divide-y divide-slate-100">
+    {% for p in programs %}
+      <a href="{{ url_for('studio.program', program_id=p.id) }}" class="flex items-center gap-4 p-4 hover:bg-slate-50">
+        <span class="w-3 h-10 rounded-full" style="background: {{ p.color }}"></span>
+        <div class="flex-1 min-w-0">
+          <div class="font-semibold truncate">{{ p.title|loc }}</div>
+          <div class="text-sm text-slate-500">{{ t('dir.' ~ p.direction) }} · {{ t('studio.levels_n', n=p.levels|length) }} · {{ t('studio.lessons_n', n=p.levels|map(attribute='lessons')|map('length')|sum) }}{% if p.version %} · v{{ p.version }}{% endif %}</div>
+        </div>
+        {{ badge(p.status, 'pstatus') }}
+      </a>
+    {% else %}<p class="p-8 text-center text-slate-500">{{ t('studio.empty') }}</p>{% endfor %}
+  </div>
+  <form method="post" class="card p-5 space-y-4 h-fit">
+    {{ csrf() }}
+    <div class="font-semibold">{{ t('studio.new_program') }}</div>
+    {{ ml_field('title', {}, t('studio.f_title'), required=True) }}
+    <div><label class="label">{{ t('studio.f_direction') }}</label>
+      <select name="direction" class="input">{% for d in directions %}<option value="{{ d }}">{{ t('dir.' ~ d) }}</option>{% endfor %}</select></div>
+    <button class="btn-primary w-full">{{ ic('plus', 'w-4 h-4') }} {{ t('studio.create') }}</button>
+    <p class="help">{{ t('studio.new_hint') }}</p>
+  </form>
+</div>
+{% endblock %}

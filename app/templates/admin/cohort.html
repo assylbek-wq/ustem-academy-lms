@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, page_header, badge, progress_bar, stat with context %}
+{% from "_icons.html" import ic %}
+{% block title %}{{ c.name }}{% endblock %}
+{% block content %}
+{% call page_header(c.name, c.program.title|loc ~ ' · ' ~ c.level.title|loc, url_for('admin.cohorts'), t('admin.cohorts')) %}
+  {{ badge(c.status, 'cstatus') }}
+  <a href="{{ url_for('cohorts.detail', cohort_id=c.id) }}" class="btn-ghost btn-sm">{{ ic('users', 'w-4 h-4') }} {{ t('admin.trainer_view') }}</a>
+  <a href="{{ url_for('reports.cohort', cohort_id=c.id) }}" class="btn-ghost btn-sm">{{ ic('chart', 'w-4 h-4') }} {{ t('nav.reports') }}</a>
+  <a href="{{ url_for('admin.cohort_import', cohort_id=c.id) }}" class="btn-secondary btn-sm">{{ ic('download', 'w-4 h-4') }} {{ t('admin.import') }}</a>
+{% endcall %}
+
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+  {{ stat(t('report.learners'), summary.count ~ (('/' ~ c.capacity) if c.capacity else ''), 'users') }}
+  {{ stat(t('report.avg'), summary.avg_percent ~ '%', 'chart') }}
+  {{ stat(t('report.completed'), summary.completed, 'award') }}
+  {{ stat(t('admin.s_pending'), summary.pending_reviews, 'clock') }}
+</div>
+
+<div class="grid lg:grid-cols-3 gap-6">
+  <div class="lg:col-span-2 space-y-6">
+    <section id="roster" class="card overflow-hidden">
+      <div class="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
+        <div class="font-semibold flex-1">{{ t('cohort.learners') }}</div>
+        {% if pending_invites %}
+          <form method="post">{{ csrf() }}<input type="hidden" name="anchor" value="roster"><button name="action" value="send_invites" class="btn-ghost btn-sm">{{ ic('message', 'w-4 h-4') }} {{ t('admin.send_invites', n=pending_invites|length) }}</button></form>
+        {% endif %}
+      </div>
+      <div class="overflow-x-auto">
+      <table class="table">
+        <thead><tr><th>{{ t('col.name') }}</th><th>{{ t('col.mentor') }}</th><th>{{ t('col.progress') }}</th><th></th></tr></thead>
+        <tbody>
+        {% for enr, st in summary.rows %}
+          <tr>
+            <td><a href="{{ url_for('admin.user', user_id=enr.user_id) }}" class="font-semibold hover:text-brand-700">{{ enr.user.full_name }}</a>
+              <div class="text-xs text-slate-500">{{ enr.user.email }}{% if not enr.user.password_hash %} · <span class="text-amber-700">{{ t('admin.not_activated') }}</span>{% endif %}</div></td>
+            <td class="text-sm">{{ enr.mentor.full_name if enr.mentor else '-' }}</td>
+            <td class="min-w-32"><div class="flex items-center gap-2"><div class="flex-1">{{ progress_bar(st.percent) }}</div><span class="text-xs">{{ st.percent }}%</span></div>
+              {% if enr.status == 'completed' %}<span class="text-xs text-emerald-700 font-semibold">{{ t('enr.completed') }}</span>{% endif %}</td>
+            <td class="text-right whitespace-nowrap">
+              {% if enr.status == 'active' and st.percent >= 0 %}
+                <form method="post" action="{{ url_for('admin.certificates') }}" class="inline">{{ csrf() }}<input type="hidden" name="enrollment_id" value="{{ enr.id }}">
+                  <button name="action" value="issue" class="btn-icon" title="{{ t('admin.issue_cert') }}" data-confirm="{{ t('admin.confirm_issue') }}">{{ ic('award', 'w-4 h-4') }}</button></form>
+              {% endif %}
+              <form method="post" class="inline">{{ csrf() }}<input type="hidden" name="anchor" value="roster"><input type="hidden" name="enrollment_id" value="{{ enr.id }}">
+                <button name="action" value="drop" class="btn-icon hover:text-rose-600" title="{{ t('admin.drop') }}" data-confirm="{{ t('admin.confirm_drop') }}">{{ ic('x', 'w-4 h-4') }}</button></form>
+            </td>
+          </tr>
+        {% else %}<tr><td colspan="4" class="text-center text-slate-500 py-8">{{ t('cohort.no_learners') }}</td></tr>{% endfor %}
+        </tbody>
+      </table>
+      </div>
+      <form method="post" class="px-5 py-4 border-t border-slate-100 grid sm:grid-cols-[1fr_1fr_auto] gap-2">
+        {{ csrf() }}<input type="hidden" name="action" value="add_learner"><input type="hidden" name="anchor" value="roster">
+        <input type="email" name="email" class="input" placeholder="Email" required>
+        <input name="full_name" class="input" placeholder="{{ t('admin.name_if_new') }}">
+        <button class="btn-secondary">{{ ic('plus', 'w-4 h-4') }} {{ t('admin.add_learner') }}</button>
+      </form>
+      {% if dropped %}
+        <details class="px-5 py-3 border-t border-slate-100 text-sm">
+          <summary class="cursor-pointer text-slate-500">{{ t('admin.dropped', n=dropped|length) }}</summary>
+          {% for enr in dropped %}
+            <form method="post" class="flex items-center gap-2 mt-2">{{ csrf() }}<input type="hidden" name="enrollment_id" value="{{ enr.id }}"><input type="hidden" name="anchor" value="roster">
+              <span class="flex-1">{{ enr.user.full_name }}</span><button name="action" value="restore" class="btn-ghost btn-sm">{{ t('admin.restore') }}</button></form>
+          {% endfor %}
+        </details>
+      {% endif %}
+    </section>
+
+    {% if pending_invites %}
+    <section class="card p-5">
+      <div class="font-semibold">{{ t('admin.invite_links') }}</div>
+      <p class="help mb-3">{{ t('admin.invite_links_hint') }}</p>
+      <ul class="space-y-2 text-sm">
+        {% for u in pending_invites %}{% set link = invite_link(u) %}
+          <li class="flex items-center gap-2"><span class="flex-1 truncate">{{ u.full_name }}</span>
+            {% if link %}<button type="button" class="btn-ghost btn-sm" data-copy="{{ link }}">{{ ic('link', 'w-4 h-4') }} {{ t('common.copy_link') }}</button>{% endif %}</li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+
+    <section id="sessions" class="card p-5">
+      <div class="font-semibold mb-3">{{ t('cohort.sessions') }}</div>
+      {% for s in c.sessions %}
+        <div class="flex items-start gap-3 py-3 border-t border-slate-100 first:border-0 first:pt-0">
+          <div class="flex-1"><div class="font-medium">{{ s.title }} <span class="text-xs text-slate-400">· {{ t('session.' ~ s.kind) }}</span></div>
+            <div class="text-sm text-slate-500">{{ s.starts_at|dt }}{% if s.ends_at %} - {{ s.ends_at.strftime('%H:%M') }}{% endif %}{% if s.location %} · {{ s.location }}{% endif %}</div>
+            {% if s.notes %}<div class="text-xs text-slate-500 mt-0.5">{{ s.notes }}</div>{% endif %}</div>
+          <form method="post">{{ csrf() }}<input type="hidden" name="anchor" value="sessions"><input type="hidden" name="session_id" value="{{ s.id }}"><button name="action" value="delete_session" class="btn-icon hover:text-rose-600" data-confirm="{{ t('common.confirm') }}">{{ ic('trash', 'w-4 h-4') }}</button></form>
+        </div>
+      {% else %}<p class="text-sm text-slate-500">{{ t('cohort.no_sessions') }}</p>{% endfor %}
+      <form method="post" class="mt-4 pt-4 border-t border-slate-100 grid sm:grid-cols-2 gap-3">
+        {{ csrf() }}<input type="hidden" name="action" value="add_session"><input type="hidden" name="anchor" value="sessions">
+        <div class="sm:col-span-2"><label class="label">{{ t('admin.session_title') }}</label><input name="title" class="input" placeholder="{{ t('session.default') }}"></div>
+        <div><label class="label">{{ t('admin.session_start') }}</label><input type="datetime-local" name="starts_at" class="input" required></div>
+        <div><label class="label">{{ t('admin.session_end') }}</label><input type="datetime-local" name="ends_at" class="input"></div>
+        <div><label class="label">{{ t('admin.session_kind') }}</label><select name="kind" class="input"><option value="intensive">{{ t('session.intensive') }}</option><option value="online">{{ t('session.online') }}</option></select></div>
+        <div><label class="label">{{ t('admin.session_location') }}</label><input name="location" class="input"></div>
+        <div class="sm:col-span-2"><label class="label">{{ t('learn.bring') }}</label><input name="notes" class="input"></div>
+        <div><button class="btn-secondary">{{ ic('plus', 'w-4 h-4') }} {{ t('admin.add_session') }}</button></div>
+      </form>
+    </section>
+  </div>
+
+  <div class="space-y-6">
+    {% if c.is_open %}
+    <div class="card p-5">
+      <div class="font-semibold">{{ t('admin.join_link') }}</div>
+      <p class="help mb-2">{{ t('admin.join_link_hint') }}</p>
+      <div class="flex gap-2"><input class="input text-xs font-mono" value="{{ join_url }}" readonly><button type="button" class="btn-secondary btn-sm" data-copy="{{ join_url }}">{{ ic('link', 'w-4 h-4') }}</button></div>
+    </div>
+    {% endif %}
+    <form method="post" class="card p-5 space-y-4">
+      {{ csrf() }}<input type="hidden" name="action" value="meta">
+      <div class="font-semibold">{{ t('admin.cohort_settings') }}</div>
+      {% include "admin/_cohort_fields.html" %}
+      <button class="btn-primary">{{ t('common.save') }}</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

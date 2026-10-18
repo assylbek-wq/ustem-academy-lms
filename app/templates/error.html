@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% set msg_key = {403: 'err.403', 404: 'err.404', 409: 'err.409', 413: 'err.413', 400: 'err.400'}.get(code, 'err.500') %}
+{% macro body() %}
+<div class="max-w-lg mx-auto text-center py-16">
+  <div class="text-6xl font-extrabold text-brand-600">{{ code }}</div>
+  <p class="mt-4 text-lg text-slate-600">{{ t(msg_key) }}</p>
+  <a href="{{ url_for('learn.home') if user else url_for('public.home') }}" class="btn-primary mt-6">{{ t('err.home') }}</a>
+</div>
+{% endmacro %}
+{% block content %}{{ body() }}{% endblock %}
+{% block public %}{{ body() }}{% endblock %}

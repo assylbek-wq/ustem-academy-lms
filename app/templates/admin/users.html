@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_header with context %}
+{% from "_icons.html" import ic %}
+{% block title %}{{ t('admin.users') }}{% endblock %}
+{% block content %}
+{% call page_header(t('admin.users'), t('admin.users_sub')) %}
+  <a href="{{ url_for('admin.user_new') }}" class="btn-primary btn-sm">{{ ic('plus', 'w-4 h-4') }} {{ t('admin.new_user') }}</a>
+{% endcall %}
+<form class="flex flex-col sm:flex-row gap-2 mb-4">
+  <input name="q" value="{{ q }}" class="input" placeholder="{{ t('admin.search_users') }}">
+  <select name="role" class="input sm:w-56"><option value="">{{ t('admin.all_roles') }}</option>{% for r in roles %}<option value="{{ r }}" {% if role == r %}selected{% endif %}>{{ t('role.' ~ r) }}</option>{% endfor %}</select>
+  <button class="btn-secondary">{{ t('common.search') }}</button>
+</form>
+<div class="card overflow-x-auto">
+  <table class="table">
+    <thead><tr><th>{{ t('col.name') }}</th><th>{{ t('col.org') }}</th><th>{{ t('admin.roles') }}</th><th>{{ t('admin.last_login') }}</th></tr></thead>
+    <tbody>
+      {% for u in items %}
+        <tr class="{% if not u.is_active %}opacity-50{% endif %}">
+          <td><a href="{{ url_for('admin.user', user_id=u.id) }}" class="font-semibold hover:text-brand-700">{{ u.full_name }}</a><div class="text-xs text-slate-500">{{ u.email }}</div></td>
+          <td class="text-sm">{{ u.organization or '' }}{% if u.city %}<div class="text-xs text-slate-500">{{ u.city }}</div>{% endif %}</td>
+          <td>{% for r in u.role_names|sort %}<span class="badge bg-brand-50 text-brand-800 mr-1">{{ t('role.' ~ r) }}</span>{% else %}<span class="text-xs text-slate-400">{{ t('role.learner') }}</span>{% endfor %}</td>
+          <td class="text-sm text-slate-500 whitespace-nowrap">{{ u.last_login_at|d if u.last_login_at else (t('admin.not_activated') if not u.password_hash else '-') }}</td>
+        </tr>
+      {% else %}<tr><td colspan="4" class="text-center py-8 text-slate-500">{{ t('common.nothing_found') }}</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

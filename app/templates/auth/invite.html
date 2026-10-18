@@ -1,0 +1,14 @@
+{% extends "auth/_card.html" %}
+{% from "_macros.html" import csrf with context %}
+{% block heading %}{{ t('invite.title') }}{% endblock %}
+{% block sub %}<p class="text-slate-500 mt-1">{{ invited.full_name }} · {{ invited.email }}</p>{% endblock %}
+{% block form %}
+<form method="post" class="space-y-4">
+  {{ csrf() }}
+  <div><label class="label">{{ t('invite.new_password') }}</label><input type="password" name="password" class="input" minlength="8" autocomplete="new-password" required autofocus><p class="help">{{ t('auth.password_hint') }}</p></div>
+  {% if not invited.consent_at %}
+  <label class="flex items-start gap-2 text-sm text-slate-600"><input type="checkbox" name="consent" value="1" class="mt-1" required> <span>{{ t('auth.consent') }}</span></label>
+  {% endif %}
+  <button class="btn-primary w-full">{{ t('invite.save') }}</button>
+</form>
+{% endblock %}

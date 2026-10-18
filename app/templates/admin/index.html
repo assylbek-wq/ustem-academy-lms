@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_header, stat, progress_bar, badge with context %}
+{% from "_icons.html" import ic %}
+{% block title %}{{ t('admin.overview') }}{% endblock %}
+{% block content %}
+{% call page_header(t('admin.overview'), t('admin.overview_sub')) %}
+  <a href="{{ url_for('admin.cohort_new') }}" class="btn-primary btn-sm">{{ ic('plus', 'w-4 h-4') }} {{ t('admin.new_cohort') }}</a>
+{% endcall %}
+<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
+  {{ stat(t('admin.s_users'), stats.users, 'users') }}
+  {{ stat(t('admin.s_programs'), stats.programs, 'layers') }}
+  {{ stat(t('admin.s_cohorts'), stats.cohorts_active, 'calendar') }}
+  {{ stat(t('admin.s_learners'), stats.enrollments, 'book') }}
+  {{ stat(t('admin.s_pending'), stats.pending, 'clock') }}
+  {{ stat(t('admin.s_certs'), stats.certificates, 'award') }}
+</div>
+<div class="grid lg:grid-cols-3 gap-6">
+  <div class="lg:col-span-2">
+    <div class="flex items-center mb-3"><h2 class="font-bold flex-1">{{ t('admin.current_cohorts') }}</h2><a href="{{ url_for('admin.cohorts') }}" class="text-sm text-brand-700">{{ t('common.all') }}</a></div>
+    <div class="card divide-y divide-slate-100">
+      {% for c, s in cohorts %}
+        <a href="{{ url_for('admin.cohort', cohort_id=c.id) }}" class="flex items-center gap-4 p-4 hover:bg-slate-50">
+          <div class="flex-1 min-w-0"><div class="font-semibold truncate">{{ c.name }}</div>
+            <div class="text-sm text-slate-500 truncate">{{ c.program.title|loc }} · {{ c.level.title|loc }} · {{ c.start_date|d }}</div></div>
+          <div class="w-28 hidden sm:block">{{ progress_bar(s.avg_percent) }}</div>
+          <span class="text-sm text-slate-500 w-14 text-right">{{ ic('users', 'w-3.5 h-3.5 inline') }} {{ s.count }}</span>
+          {{ badge(c.status, 'cstatus') }}
+        </a>
+      {% else %}<p class="p-6 text-slate-500 text-center">{{ t('admin.no_cohorts') }}</p>{% endfor %}
+    </div>
+  </div>
+  <div>
+    {% if stats.leads %}
+      <a href="{{ url_for('admin.leads') }}" class="card p-4 mb-4 flex items-center gap-3 border-brand-200 bg-brand-50/50">{{ ic('inbox', 'w-6 h-6 text-brand-600') }}<span class="font-semibold">{{ t('admin.new_leads', n=stats.leads) }}</span></a>
+    {% endif %}
+    <h2 class="font-bold mb-3">{{ t('admin.recent') }}</h2>
+    <div class="card divide-y divide-slate-100 text-sm">
+      {% for e in log %}
+        <div class="p-3"><div>{{ t('audit.' ~ e.action) }}</div><div class="text-xs text-slate-400">{{ e.user.full_name if e.user else '-' }} · {{ e.created_at|dt }}</div></div>
+      {% else %}<p class="p-4 text-slate-500">-</p>{% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

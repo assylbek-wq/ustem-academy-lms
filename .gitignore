@@ -1,28 +1,10 @@
-# macOS
-.DS_Store
-.AppleDouble
-.LSOverride
-
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
-
-# Logs
-*.log
-npm-debug.log*
-
-# OS
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-
-# Tmp
-*.tmp
-.cache/
-
-# Локальные настройки разработчика
+__pycache__/
+*.pyc
+*.db
+uploads/
+.tools/
 .env
-.env.local
+.venv/
+venv/
+node_modules/
+.DS_Store

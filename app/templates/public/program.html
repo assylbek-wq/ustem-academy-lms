@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% from "_icons.html" import ic %}
+{% from "_macros.html" import lesson_icon with context %}
+{% block title %}{{ program.title|loc }} - USTEM Academy{% endblock %}
+{% macro body() %}
+<div class="max-w-6xl mx-auto px-4 py-10">
+  <a href="{{ url_for('public.home') }}#programs" class="text-sm text-slate-500 hover:text-brand-700 inline-flex items-center gap-1">{{ ic('arrow-left', 'w-3.5 h-3.5') }} {{ t('pub.all_programs') }}</a>
+  <div class="mt-4 grid lg:grid-cols-3 gap-8">
+    <div class="lg:col-span-2">
+      <div class="text-xs font-semibold uppercase tracking-wide" style="color: {{ program.color }}">{{ t('dir.' ~ program.direction) }}</div>
+      <h1 class="text-3xl font-extrabold mt-1">{{ program.title|loc }}</h1>
+      <p class="text-lg text-slate-600 mt-3">{{ program.summary|loc }}</p>
+      <div class="prose-content mt-6">{{ (program.description|loc)|md }}</div>
+
+      <h2 class="text-xl font-bold mt-10 mb-4">{{ t('pub.structure') }}</h2>
+      <div class="space-y-4">
+        {% for lv in program.levels %}
+          <details class="card p-5" {% if loop.first %}open{% endif %}>
+            <summary class="flex items-center gap-3 cursor-pointer list-none">
+              <span class="w-8 h-8 rounded-lg bg-brand-600 text-white font-bold flex items-center justify-center">{{ lv.number }}</span>
+              <span class="font-semibold flex-1">{{ lv.title|loc }}</span>
+              {% if lv.duration|loc %}<span class="text-sm text-slate-500">{{ lv.duration|loc }}</span>{% endif %}
+            </summary>
+            {% if lv.outcomes|loc %}<div class="prose-content mt-4 text-sm">{{ (lv.outcomes|loc)|md }}</div>{% endif %}
+            {% for m in lv.modules %}
+              <div class="mt-4">
+                <div class="text-sm font-semibold text-slate-700">{{ m.title|loc }}</div>
+                <ul class="mt-1.5 space-y-1">
+                  {% for l in m.lessons %}<li class="text-sm text-slate-500 flex items-center gap-2">{{ lesson_icon(l.kind, 'w-3.5 h-3.5') }} {{ l.title|loc }} <span class="text-slate-400">· {{ l.duration_min }} {{ t('common.min') }}</span></li>{% endfor %}
+                </ul>
+              </div>
+            {% endfor %}
+            {% if lv.assignments %}
+              <div class="mt-4 text-sm"><span class="font-semibold text-slate-700">{{ t('pub.practice') }}:</span>
+                {% for a in lv.assignments %}{{ a.title|loc }}{% if not loop.last %}; {% endif %}{% endfor %}</div>
+            {% endif %}
+          </details>
+        {% endfor %}
+      </div>
+    </div>
+    <aside class="space-y-4">
+      {% if program.audience|loc %}<div class="card p-5"><div class="font-semibold mb-2">{{ t('pub.audience') }}</div><div class="prose-content text-sm">{{ (program.audience|loc)|md }}</div></div>{% endif %}
+      {% if program.equipment|loc %}<div class="card p-5"><div class="font-semibold mb-2">{{ t('pub.equipment') }}</div><div class="prose-content text-sm">{{ (program.equipment|loc)|md }}</div></div>{% endif %}
+      <div class="card p-5">
+        <div class="font-semibold mb-3">{{ t('pub.cohorts') }}</div>
+        {% for c in cohorts %}
+          <div class="py-3 border-t border-slate-100 first:border-0 first:pt-0">
+            <div class="font-medium">{{ c.name }}</div>
+            <div class="text-sm text-slate-500">{{ c.start_date|d }}{% if c.city %} · {{ c.city }}{% endif %} · {{ c.language|upper }}</div>
+            <a href="{{ url_for('public.join', code=c.invite_code) }}" class="btn-primary btn-sm mt-2">{{ t('pub.join') }}</a>
+          </div>
+        {% else %}
+          <p class="text-sm text-slate-500">{{ t('pub.no_cohorts') }}</p>
+          <a href="{{ url_for('public.home') }}#request" class="btn-secondary btn-sm mt-3">{{ t('pub.cta_request') }}</a>
+        {% endfor %}
+      </div>
+    </aside>
+  </div>
+</div>
+{% endmacro %}
+{% block public %}{{ body() }}{% endblock %}
+{% block content %}{{ body() }}{% endblock %}

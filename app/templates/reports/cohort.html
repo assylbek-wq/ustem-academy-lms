@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_header, progress_bar, badge, stat with context %}
+{% from "_icons.html" import ic %}
+{% block title %}{{ t('report.title') }}: {{ c.name }}{% endblock %}
+{% block content %}
+{% call page_header(c.name, c.program.title|loc ~ ' · ' ~ c.level.title|loc ~ ' · ' ~ (c.start_date|d) ~ ((' - ' ~ (c.end_date|d)) if c.end_date else ''), url_for('reports.index'), t('nav.reports')) %}
+  <a href="{{ url_for('reports.cohort_xlsx', cohort_id=c.id) }}" class="btn-primary btn-sm">{{ ic('download', 'w-4 h-4') }} Excel</a>
+  <button type="button" class="btn-secondary btn-sm" onclick="window.print()">{{ ic('file-text', 'w-4 h-4') }} PDF</button>
+{% endcall %}
+<div class="hidden print:block mb-4 text-sm">USTEM Academy · {{ t('report.generated') }} {{ today|d }}{% if c.customer %} · {{ c.customer.name }}{% endif %}</div>
+<div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+  {{ stat(t('report.learners'), summary.count, 'users') }}
+  {{ stat(t('report.avg'), summary.avg_percent ~ '%', 'chart') }}
+  {{ stat(t('report.completed'), summary.completed, 'check-circle') }}
+  {{ stat(t('report.certs'), certs, 'award') }}
+  {{ stat(t('report.attendance'), (summary.attendance_percent ~ '%') if summary.attendance_percent is not none else '-', 'calendar') }}
+</div>
+<div class="card overflow-x-auto">
+  <table class="table">
+    <thead><tr><th>{{ t('col.name') }}</th><th>{{ t('col.org') }}</th><th>{{ t('col.lessons') }}</th><th>{{ t('col.assignments') }}</th><th>{{ t('col.attendance') }}</th><th>{{ t('col.progress') }}</th><th>{{ t('col.status') }}</th></tr></thead>
+    <tbody>
+      {% for enr, st in summary.rows %}
+        <tr>
+          <td class="font-semibold">{{ enr.user.full_name }}</td>
+          <td class="text-sm">{{ enr.user.organization or '' }}{% if enr.user.city %}<div class="text-xs text-slate-500">{{ enr.user.city }}</div>{% endif %}</td>
+          <td>{{ st.lessons_done }}/{{ st.lessons_total }}</td>
+          <td>{{ st.assignments_accepted }}/{{ st.assignments_total }}</td>
+          <td>{% if st.sessions_required %}{{ st.sessions_attended }}/{{ st.sessions_required }}{% else %}-{% endif %}</td>
+          <td class="min-w-28"><div class="flex items-center gap-2"><div class="flex-1">{{ progress_bar(st.percent) }}</div><span class="text-xs">{{ st.percent }}%</span></div></td>
+          <td>{{ badge(enr.status, 'enr') }}</td>
+        </tr>
+      {% else %}<tr><td colspan="7" class="text-center text-slate-500 py-8">{{ t('cohort.no_learners') }}</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

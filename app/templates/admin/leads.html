@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, page_header, badge, empty with context %}
+{% block title %}{{ t('admin.leads') }}{% endblock %}
+{% block content %}
+{{ page_header(t('admin.leads'), t('admin.leads_sub')) }}
+{% if items %}
+<div class="space-y-3">
+  {% for l in items %}
+    <div class="card p-5 flex flex-col sm:flex-row gap-4">
+      <div class="flex-1">
+        <div class="flex items-center gap-2"><span class="font-semibold">{{ l.org_name }}</span>{{ badge(l.status, 'lead') }}</div>
+        <div class="text-sm text-slate-600 mt-1">{{ l.contact_name }}{% if l.email %} · <a href="mailto:{{ l.email }}" class="text-brand-700">{{ l.email }}</a>{% endif %}{% if l.phone %} · {{ l.phone }}{% endif %}</div>
+        <div class="text-sm text-slate-500 mt-1">{% if l.program %}{{ l.program.title|loc }}{% endif %}{% if l.teachers_count %} · {{ t('lead.teachers_n', n=l.teachers_count) }}{% endif %} · {{ l.created_at|dt }}</div>
+        {% if l.message %}<p class="text-sm mt-2 whitespace-pre-line">{{ l.message }}</p>{% endif %}
+      </div>
+      <form method="post" class="flex gap-2 items-start">{{ csrf() }}<input type="hidden" name="lead_id" value="{{ l.id }}">
+        <select name="status" class="input py-1.5 text-sm" onchange="this.form.submit()">{% for s in ['new', 'in_progress', 'done'] %}<option value="{{ s }}" {% if l.status == s %}selected{% endif %}>{{ t('lead.' ~ s) }}</option>{% endfor %}</select>
+      </form>
+    </div>
+  {% endfor %}
+</div>
+{% else %}{{ empty(t('admin.no_leads'), 'inbox') }}{% endif %}
+{% endblock %}
