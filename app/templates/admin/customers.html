@@ -3,9 +3,9 @@
 {% from "_icons.html" import ic %}
 {% block title %}{{ t('admin.customers') }}{% endblock %}
 {% block content %}
-{{ page_header(t('admin.customers'), t('admin.customers_sub')) }}
+{{ page_header(t('admin.customers'), t('admin.customers_sub'), icon='🏛️') }}
 <div class="grid lg:grid-cols-3 gap-6">
-  <div class="lg:col-span-2 card divide-y divide-slate-100">
+  <div class="lg:col-span-2 card divide-y divide-slate-200/70">
     {% for cu in items %}
       <div class="p-4 flex items-start gap-3">
         {{ ic('building', 'w-5 h-5 text-slate-400 mt-0.5') }}

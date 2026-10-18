@@ -2,15 +2,16 @@
 
 {% macro csrf() -%}<input type="hidden" name="_csrf" value="{{ csrf_token() }}">{%- endmacro %}
 
-{% macro page_header(title, subtitle=None, back=None, back_label=None) -%}
-<div class="mb-6">
-  {% if back %}<a href="{{ back }}" class="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-brand-700 mb-2">{{ ic('arrow-left', 'w-3.5 h-3.5') }} {{ back_label or t('common.back') }}</a>{% endif %}
+{% macro page_header(title, subtitle=None, back=None, back_label=None, icon=None) -%}
+<div class="mb-8">
+  {% if back %}<a href="{{ back }}" class="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded px-1.5 py-0.5 -ml-1.5 mb-3">{{ ic('arrow-left', 'w-3.5 h-3.5') }} {{ back_label or t('common.back') }}</a>{% endif %}
+  {% if icon %}<div class="page-icon bg-slate-100">{{ icon }}</div>{% endif %}
   <div class="flex flex-col sm:flex-row sm:items-end gap-3 justify-between">
     <div class="min-w-0">
-      <h1 class="text-2xl font-extrabold tracking-tight">{{ title }}</h1>
-      {% if subtitle %}<p class="text-slate-500 mt-1">{{ subtitle }}</p>{% endif %}
+      <h1 class="text-[28px] sm:text-[34px] leading-tight font-bold tracking-tight text-slate-800">{{ title }}</h1>
+      {% if subtitle %}<p class="text-slate-500 mt-1.5">{{ subtitle }}</p>{% endif %}
     </div>
-    {% if caller %}<div class="flex flex-wrap gap-2 shrink-0">{{ caller() }}</div>{% endif %}
+    {% if caller %}<div class="flex flex-wrap items-center gap-1.5 shrink-0">{{ caller() }}</div>{% endif %}
   </div>
 </div>
 {%- endmacro %}
@@ -42,14 +43,14 @@
 {%- endmacro %}
 
 {% macro progress_bar(percent, size='h-2') -%}
-<div class="w-full bg-slate-100 rounded-full {{ size }} overflow-hidden" role="progressbar" aria-valuenow="{{ percent }}" aria-valuemin="0" aria-valuemax="100">
-  <div class="{{ size }} rounded-full {% if percent >= 100 %}bg-accent-500{% else %}bg-brand-500{% endif %}" style="width: {{ percent }}%"></div>
+<div class="w-full bg-slate-200/70 rounded-full {{ size }} overflow-hidden" role="progressbar" aria-valuenow="{{ percent }}" aria-valuemin="0" aria-valuemax="100">
+  <div class="{{ size }} rounded-full {% if percent >= 100 %}bg-accent-500{% else %}bg-brand-600{% endif %}" style="width: {{ percent }}%"></div>
 </div>
 {%- endmacro %}
 
 {% macro badge(status, prefix='status') -%}
 {% set colors = {
-  'todo': 'bg-slate-100 text-slate-600', 'submitted': 'bg-amber-100 text-amber-800',
+  'todo': 'bg-slate-200/70 text-slate-600', 'submitted': 'bg-amber-100 text-amber-800',
   'returned': 'bg-rose-100 text-rose-700', 'accepted': 'bg-emerald-100 text-emerald-700',
   'active': 'bg-brand-100 text-brand-800', 'completed': 'bg-emerald-100 text-emerald-700',
   'dropped': 'bg-slate-100 text-slate-500', 'planned': 'bg-slate-100 text-slate-600',
@@ -62,18 +63,18 @@
 {%- endmacro %}
 
 {% macro empty(text, icon='inbox') -%}
-<div class="card p-10 text-center text-slate-500">
-  <div class="w-12 h-12 mx-auto mb-3 rounded-full bg-slate-100 flex items-center justify-center">{{ ic(icon, 'w-6 h-6 text-slate-400') }}</div>
+<div class="rounded-xl border border-dashed border-slate-300 p-10 text-center text-slate-500">
+  <div class="w-10 h-10 mx-auto mb-3 rounded-lg bg-slate-100 flex items-center justify-center">{{ ic(icon, 'w-5 h-5 text-slate-400') }}</div>
   <p>{{ text }}</p>
   {% if caller %}<div class="mt-4">{{ caller() }}</div>{% endif %}
 </div>
 {%- endmacro %}
 
 {% macro stat(label, value, icon='chart', hint=None) -%}
-<div class="card p-4">
-  <div class="flex items-center gap-2 text-slate-500 text-xs font-medium uppercase tracking-wide">{{ ic(icon, 'w-3.5 h-3.5') }} {{ label }}</div>
-  <div class="text-2xl font-extrabold mt-1">{{ value }}</div>
-  {% if hint %}<div class="text-xs text-slate-500 mt-0.5">{{ hint }}</div>{% endif %}
+<div class="rounded-xl border border-slate-200 px-4 py-3">
+  <div class="flex items-center gap-1.5 text-slate-500 text-[13px]">{{ ic(icon, 'w-3.5 h-3.5') }} {{ label }}</div>
+  <div class="text-[26px] font-semibold text-slate-800 mt-0.5 tracking-tight">{{ value }}</div>
+  {% if hint %}<div class="text-xs text-slate-500">{{ hint }}</div>{% endif %}
 </div>
 {%- endmacro %}
 

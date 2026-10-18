@@ -3,7 +3,7 @@
 {% from "_icons.html" import ic %}
 {% block title %}{{ lesson.title|loc }} - {{ t('nav.studio') }}{% endblock %}
 {% block content %}
-{% call page_header(lesson.title|loc, lv.title|loc ~ ' · ' ~ lesson.module.title|loc, url_for('studio.level', level_id=lv.id), lv.title|loc) %}
+{% call page_header(lesson.title|loc, lv.title|loc ~ ' · ' ~ lesson.module.title|loc, url_for('studio.level', level_id=lv.id), lv.title|loc, icon='✏️') %}
   <a href="{{ url_for('studio.lesson_preview', lesson_id=lesson.id) }}" target="_blank" class="btn-ghost btn-sm">{{ ic('eye', 'w-4 h-4') }} {{ t('studio.preview') }}</a>
 {% endcall %}
 

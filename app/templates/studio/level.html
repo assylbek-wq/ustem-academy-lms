@@ -8,13 +8,13 @@
   <button class="{{ cls }}" title="{{ label }}" aria-label="{{ label }}" {% if confirm %}data-confirm="{{ confirm }}"{% endif %}>{{ ic(icon, 'w-4 h-4') }}</button></form>
 {%- endmacro %}
 {% block content %}
-{{ page_header(t('studio.level_n', n=lv.number) ~ ': ' ~ lv.title|loc, p.title|loc, url_for('studio.program', program_id=p.id), p.title|loc) }}
+{{ page_header(t('studio.level_n', n=lv.number) ~ ': ' ~ lv.title|loc, p.title|loc, url_for('studio.program', program_id=p.id), p.title|loc, icon='🪜') }}
 
 <div class="grid lg:grid-cols-5 gap-6">
   <div class="lg:col-span-3 space-y-4">
     {% for m in lv.modules %}
       <div class="card" id="m{{ m.id }}">
-        <div class="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+        <div class="px-4 py-3 border-b border-slate-200/70 flex items-center gap-2">
           <span class="text-slate-400 text-sm font-semibold">{{ loop.index }}.</span>
           <details class="flex-1 min-w-0">
             <summary class="font-semibold cursor-pointer truncate">{{ m.title|loc }}</summary>
@@ -27,7 +27,7 @@
           {{ mini('move_module', t('studio.down'), 'chevron-down', {'module_id': m.id, 'dir': 'down'}) }}
           {{ mini('delete_module', t('common.delete'), 'trash', {'module_id': m.id}, 'btn-icon hover:text-rose-600', t('studio.confirm_delete_module')) }}
         </div>
-        <ul class="divide-y divide-slate-100">
+        <ul class="divide-y divide-slate-200/70">
           {% for l in m.lessons %}
             <li class="flex items-center gap-3 px-4 py-2.5">
               <span class="text-slate-400">{{ lesson_icon(l.kind) }}</span>
@@ -41,7 +41,7 @@
             </li>
           {% endfor %}
         </ul>
-        <form method="post" class="px-4 py-3 border-t border-slate-100 flex flex-wrap items-center gap-2">{{ csrf() }}
+        <form method="post" class="px-4 py-3 border-t border-slate-200/70 flex flex-wrap items-center gap-2">{{ csrf() }}
           <input type="hidden" name="action" value="add_lesson"><input type="hidden" name="module_id" value="{{ m.id }}">
           <span class="text-sm text-slate-500">{{ t('studio.add_lesson') }}:</span>
           {% for k in lesson_kinds %}<button name="kind" value="{{ k }}" class="btn-ghost btn-sm">{{ lesson_icon(k) }} {{ t('lesson.kind_' ~ k) }}</button>{% endfor %}
@@ -54,9 +54,9 @@
     </form>
 
     <div class="card">
-      <div class="px-4 py-3 border-b border-slate-100 font-semibold">{{ t('studio.assignments') }}</div>
+      <div class="px-4 py-3 border-b border-slate-200/70 font-semibold">{{ t('studio.assignments') }}</div>
       {% for a in lv.assignments %}
-        <a href="{{ url_for('studio.assignment', assignment_id=a.id) }}" class="flex items-center gap-3 px-4 py-3 border-b border-slate-100 last:border-0 hover:bg-slate-50">
+        <a href="{{ url_for('studio.assignment', assignment_id=a.id) }}" class="flex items-center gap-3 px-4 py-3 border-b border-slate-200/70 last:border-0 hover:bg-slate-50">
           {{ ic('upload', 'w-4 h-4 text-slate-400') }}<span class="flex-1">{{ a.title|loc }}</span>
           <span class="text-xs text-slate-400">{{ t('assignment.kind_' ~ a.evidence_kind) }} · {{ t('studio.criteria_n', n=a.criteria|length) }}</span>
         </a>

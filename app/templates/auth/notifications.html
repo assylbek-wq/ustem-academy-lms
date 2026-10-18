@@ -3,9 +3,9 @@
 {% from "_icons.html" import ic %}
 {% block title %}{{ t('nav.notifications') }}{% endblock %}
 {% block content %}
-{{ page_header(t('nav.notifications')) }}
+{{ page_header(t('nav.notifications'), icon='🔔') }}
 {% if items %}
-<div class="card divide-y divide-slate-100">
+<div class="card divide-y divide-slate-200/70">
   {% for n in items %}
     <a href="{{ n.url or '#' }}" class="flex items-start gap-3 p-4 hover:bg-slate-50">
       <span class="mt-1.5 w-2 h-2 rounded-full {% if n.id in unread_ids %}bg-brand-500{% else %}bg-slate-200{% endif %}"></span>

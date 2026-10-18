@@ -4,10 +4,10 @@
 {% block title %}{{ t('verify.title') }} - USTEM Academy{% endblock %}
 {% macro body() %}
 <div class="max-w-xl mx-auto px-4 py-12">
-  <h1 class="text-2xl font-extrabold text-center">{{ t('verify.title') }}</h1>
+  <h1 class="text-2xl font-bold text-center">{{ t('verify.title') }}</h1>
   <form method="post" action="{{ url_for('public.verify_form') }}" class="mt-6 flex gap-2">
     {{ csrf() }}
-    <input name="code" value="{{ code }}" class="input font-mono uppercase" placeholder="{{ t('pub.verify_placeholder') }}" required>
+    <input name="code" value="{{ code }}" class="input font-mono" placeholder="{{ t('pub.verify_placeholder') }}" required>
     <button class="btn-primary">{{ t('pub.verify_btn') }}</button>
   </form>
   {% if code %}

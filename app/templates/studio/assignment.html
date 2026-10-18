@@ -3,7 +3,7 @@
 {% from "_icons.html" import ic %}
 {% block title %}{{ a.title|loc }} - {{ t('nav.studio') }}{% endblock %}
 {% block content %}
-{{ page_header(a.title|loc, lv.title|loc, url_for('studio.level', level_id=lv.id), lv.title|loc) }}
+{{ page_header(a.title|loc, lv.title|loc, url_for('studio.level', level_id=lv.id), lv.title|loc, icon='📹') }}
 <div class="grid lg:grid-cols-5 gap-6">
   <form method="post" class="lg:col-span-2 card p-5 space-y-4 h-fit">
     {{ csrf() }}<input type="hidden" name="action" value="meta">

@@ -3,12 +3,12 @@
 {% from "_icons.html" import ic %}
 {% block title %}{{ t('nav.studio') }}{% endblock %}
 {% block content %}
-{{ page_header(t('studio.title'), t('studio.sub')) }}
+{{ page_header(t('studio.title'), t('studio.sub'), icon='🧩') }}
 <div class="grid lg:grid-cols-3 gap-6">
-  <div class="lg:col-span-2 card divide-y divide-slate-100">
+  <div class="lg:col-span-2 card divide-y divide-slate-200/70">
     {% for p in programs %}
       <a href="{{ url_for('studio.program', program_id=p.id) }}" class="flex items-center gap-4 p-4 hover:bg-slate-50">
-        <span class="w-3 h-10 rounded-full" style="background: {{ p.color }}"></span>
+        <span class="w-9 h-9 rounded-md flex items-center justify-center text-xl shrink-0" style="background: {{ p.color }}1a">{{ dir_icon.get(p.direction, '📘') }}</span>
         <div class="flex-1 min-w-0">
           <div class="font-semibold truncate">{{ p.title|loc }}</div>
           <div class="text-sm text-slate-500">{{ t('dir.' ~ p.direction) }} · {{ t('studio.levels_n', n=p.levels|length) }} · {{ t('studio.lessons_n', n=p.levels|map(attribute='lessons')|map('length')|sum) }}{% if p.version %} · v{{ p.version }}{% endif %}</div>

@@ -3,7 +3,7 @@
 {% from "_icons.html" import ic %}
 {% block title %}{{ t('nav.certificates') }}{% endblock %}
 {% block content %}
-{{ page_header(t('nav.certificates'), t('certs.sub')) }}
+{{ page_header(t('nav.certificates'), t('certs.sub'), icon='🏅') }}
 {% if certs %}
 <div class="grid sm:grid-cols-2 gap-4">
   {% for c in certs %}

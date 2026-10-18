@@ -3,14 +3,14 @@
 {% from "_icons.html" import ic %}
 {% block title %}{{ t('nav.cohorts') }}{% endblock %}
 {% block content %}
-{{ page_header(t('cohort.my_title'), t('cohort.my_sub')) }}
+{{ page_header(t('cohort.my_title'), t('cohort.my_sub'), icon='👥') }}
 {% if cohorts %}
 <div class="grid md:grid-cols-2 gap-4">
   {% for c, s in cohorts %}
     <a href="{{ url_for('cohorts.detail', cohort_id=c.id) }}" class="card card-hover p-5">
       <div class="flex items-start gap-2">
         <div class="flex-1">
-          <div class="text-xs text-slate-400 font-semibold uppercase">{{ c.program.title|loc }} · {{ c.level.title|loc }}</div>
+          <div class="text-xs text-slate-400 font-semibold">{{ c.program.title|loc }} · {{ c.level.title|loc }}</div>
           <div class="font-bold mt-0.5">{{ c.name }}</div>
           <div class="text-sm text-slate-500">{{ c.start_date|d }}{% if c.city %} · {{ c.city }}{% endif %}</div>
         </div>

@@ -4,11 +4,11 @@
 {% block title %}{{ lesson.title|loc }}{% endblock %}
 {% block content %}
 {% set done = lesson.id in st.done_lesson_ids %}
-{{ page_header(lesson.title|loc, lesson.module.title|loc, url_for('learn.cohort', cohort_id=cohort.id), cohort.level.title|loc) }}
+{{ page_header(lesson.title|loc, lesson.module.title|loc, url_for('learn.cohort', cohort_id=cohort.id), cohort.level.title|loc, icon={'video': '🎬', 'quiz': '❓'}.get(lesson.kind, '📄')) }}
 
 <div class="grid lg:grid-cols-3 gap-6">
   <div class="lg:col-span-2 space-y-6">
-    <article class="card p-5 sm:p-7">
+    <article class="sm:pr-6">
       {% include "learn/_lesson_content.html" %}
 
       {% if lesson.kind == 'quiz' %}
@@ -68,7 +68,7 @@
   <aside class="space-y-4">
     {% if ai_enabled %}
     <div class="card flex flex-col max-h-[70vh]" data-ai-chat data-url="{{ url_for('api.ai_ask', cohort_id=cohort.id, lesson_id=lesson.id) }}">
-      <div class="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+      <div class="px-4 py-3 border-b border-slate-200/70 flex items-center gap-2">
         {{ ic('sparkles', 'w-4 h-4 text-brand-600') }}<span class="font-semibold">{{ t('ai.title') }}</span>
       </div>
       <div class="flex-1 overflow-y-auto p-4 space-y-3 text-sm min-h-40" data-ai-log>
@@ -77,7 +77,7 @@
           <div class="ai-msg ai-msg-{{ m.role }}">{% if m.role == 'assistant' %}{{ m.content|md }}{% else %}{{ m.content }}{% endif %}</div>
         {% endfor %}
       </div>
-      <form class="p-3 border-t border-slate-100 flex gap-2" data-ai-form>
+      <form class="p-3 border-t border-slate-200/70 flex gap-2" data-ai-form>
         <input name="message" class="input" placeholder="{{ t('ai.placeholder') }}" autocomplete="off" required maxlength="2000">
         <button class="btn-primary px-3" aria-label="{{ t('ai.send') }}">{{ ic('arrow-right', 'w-4 h-4') }}</button>
       </form>

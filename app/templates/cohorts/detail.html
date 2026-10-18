@@ -3,7 +3,7 @@
 {% from "_icons.html" import ic %}
 {% block title %}{{ c.name }}{% endblock %}
 {% block content %}
-{% call page_header(c.name, c.program.title|loc ~ ' · ' ~ c.level.title|loc ~ ' · ' ~ (c.start_date|d), url_for('cohorts.index'), t('nav.cohorts')) %}
+{% call page_header(c.name, c.program.title|loc ~ ' · ' ~ c.level.title|loc ~ ' · ' ~ (c.start_date|d), url_for('cohorts.index'), t('nav.cohorts'), icon='👥') %}
   {% if user.is_admin %}<a href="{{ url_for('admin.cohort', cohort_id=c.id) }}" class="btn-secondary btn-sm">{{ ic('edit', 'w-4 h-4') }} {{ t('cohort.manage') }}</a>{% endif %}
   <a href="{{ url_for('review.queue', cohort=c.id) }}" class="btn-secondary btn-sm">{{ ic('check-circle', 'w-4 h-4') }} {{ t('nav.review') }}</a>
 {% endcall %}
@@ -18,7 +18,7 @@
 <div class="card p-5 mb-6">
   <div class="font-semibold mb-3">{{ t('cohort.sessions') }}</div>
   {% for s in c.sessions %}
-    <div class="flex flex-col sm:flex-row sm:items-center gap-2 py-3 border-t border-slate-100 first:border-0 first:pt-0">
+    <div class="flex flex-col sm:flex-row sm:items-center gap-2 py-3 border-t border-slate-200/70 first:border-0 first:pt-0">
       <div class="flex-1"><div class="font-medium">{{ s.title }} <span class="text-xs text-slate-400">· {{ t('session.' ~ s.kind) }}</span></div>
         <div class="text-sm text-slate-500">{{ s.starts_at|dt }}{% if s.location %} · {{ s.location }}{% endif %}</div></div>
       <a href="{{ url_for('cohorts.attendance', cohort_id=c.id, session_id=s.id) }}" class="btn-primary btn-sm">{{ ic('check', 'w-4 h-4') }} {{ t('cohort.mark_attendance') }}</a>
@@ -28,7 +28,7 @@
 
 <form method="post" class="card overflow-hidden">
   {{ csrf() }}<input type="hidden" name="action" value="mentors">
-  <div class="px-5 py-3 border-b border-slate-100 flex items-center gap-3">
+  <div class="px-5 py-3 border-b border-slate-200/70 flex items-center gap-3">
     <div class="font-semibold flex-1">{{ t('cohort.learners') }}</div>
     <button class="btn-secondary btn-sm">{{ t('cohort.save_mentors') }}</button>
   </div>

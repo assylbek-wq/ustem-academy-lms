@@ -3,7 +3,7 @@
 {% from "_icons.html" import ic %}
 {% block title %}{{ p.title|loc }} - {{ t('nav.studio') }}{% endblock %}
 {% block content %}
-{% call page_header(p.title|loc, t('dir.' ~ p.direction) ~ (' · v' ~ p.version if p.version else ''), url_for('studio.index'), t('nav.studio')) %}
+{% call page_header(p.title|loc, t('dir.' ~ p.direction) ~ (' · v' ~ p.version if p.version else ''), url_for('studio.index'), t('nav.studio'), icon='🧩') %}
   {{ badge(p.status, 'pstatus') }}
   <a href="{{ url_for('public.program', slug=p.slug) }}" target="_blank" class="btn-ghost btn-sm">{{ ic('eye', 'w-4 h-4') }} {{ t('studio.view_public') }}</a>
   <form method="post" class="inline">{{ csrf() }}

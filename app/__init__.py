@@ -70,6 +70,7 @@ def create_app(config: type = Config, **overrides) -> Flask:
             "locales": LOCALES, "locale_names": LOCALE_NAMES, "csrf_token": csrf_token,
             "unread_count": unread, "static_v": _static_v(app), "video_embed": video_embed,
             "today": local_today(),
+            "dir_icon": DIR_ICONS,
         }
 
     app.jinja_env.filters["md"] = render_markdown
@@ -124,6 +125,11 @@ def _static_v(app):
         return cache[filename]
     return static_v
 
+
+DIR_ICONS = {
+    "base": "🧭", "fll-future": "🧱", "ftc": "🔧", "battle-bots": "🤖", "physical-ai": "🦾", "drones": "🚁",
+    "wso": "🚀", "future-race": "🏎️", "fll-challenge": "🏆", "fll-explore": "🔍", "ai-teacher": "✨", "other": "📘",
+}
 
 MONTHS = {
     "ru": ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"],

@@ -3,7 +3,7 @@
 {% from "_icons.html" import ic %}
 {% block title %}{{ t('admin.certificates') }}{% endblock %}
 {% block content %}
-{{ page_header(t('admin.certificates'), t('admin.certificates_sub')) }}
+{{ page_header(t('admin.certificates'), t('admin.certificates_sub'), icon='🏅') }}
 <form class="flex gap-2 mb-4"><input name="q" value="{{ q }}" class="input" placeholder="{{ t('admin.search_certs') }}"><button class="btn-secondary">{{ t('common.search') }}</button></form>
 <div class="card overflow-x-auto">
   <table class="table">

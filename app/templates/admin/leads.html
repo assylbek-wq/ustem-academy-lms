@@ -2,7 +2,7 @@
 {% from "_macros.html" import csrf, page_header, badge, empty with context %}
 {% block title %}{{ t('admin.leads') }}{% endblock %}
 {% block content %}
-{{ page_header(t('admin.leads'), t('admin.leads_sub')) }}
+{{ page_header(t('admin.leads'), t('admin.leads_sub'), icon='📥') }}
 {% if items %}
 <div class="space-y-3">
   {% for l in items %}

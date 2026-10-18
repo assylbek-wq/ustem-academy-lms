@@ -3,7 +3,7 @@
 {% from "_icons.html" import ic %}
 {% block title %}{{ enr.user.full_name }}{% endblock %}
 {% block content %}
-{{ page_header(enr.user.full_name, (enr.user.organization or '') ~ ' · ' ~ enr.user.email, url_for('cohorts.detail', cohort_id=c.id), c.name) }}
+{{ page_header(enr.user.full_name, (enr.user.organization or '') ~ ' · ' ~ enr.user.email, url_for('cohorts.detail', cohort_id=c.id), c.name, icon='👤') }}
 <div class="card p-5 mb-6 flex items-center gap-4">
   <div class="flex-1">{{ progress_bar(st.percent, 'h-3') }}</div><span class="font-bold">{{ st.percent }}%</span>{{ badge(enr.status, 'enr') }}
 </div>
@@ -26,7 +26,7 @@
   <div class="card p-5">
     <div class="font-semibold mb-3">{{ t('learn.step_practice') }}</div>
     {% for a in st.assignments %}
-      <div class="flex items-center gap-2 py-2 border-t border-slate-100 first:border-0">
+      <div class="flex items-center gap-2 py-2 border-t border-slate-200/70 first:border-0">
         <span class="flex-1 text-sm">{{ a.assignment.title|loc }}{% if a.due %}<span class="block text-xs {% if a.overdue %}text-rose-600{% else %}text-slate-400{% endif %}">{{ a.due|d }}</span>{% endif %}</span>
         {{ badge(a.status) }}
         {% if a.evidence %}<a href="{{ url_for('review.detail', evidence_id=a.evidence.id) }}" class="btn-ghost btn-sm">{{ t('common.open') }}</a>{% endif %}

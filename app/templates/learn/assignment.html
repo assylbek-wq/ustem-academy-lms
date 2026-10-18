@@ -3,7 +3,7 @@
 {% from "_icons.html" import ic %}
 {% block title %}{{ a.title|loc }}{% endblock %}
 {% block content %}
-{{ page_header(a.title|loc, t('assignment.kind_' ~ a.evidence_kind) ~ (' · ' ~ t('learn.due') ~ ': ' ~ (due|d) if due else ''), url_for('learn.cohort', cohort_id=cohort.id), cohort.level.title|loc) }}
+{{ page_header(a.title|loc, t('assignment.kind_' ~ a.evidence_kind) ~ (' · ' ~ t('learn.due') ~ ': ' ~ (due|d) if due else ''), url_for('learn.cohort', cohort_id=cohort.id), cohort.level.title|loc, icon='📹') }}
 
 <div class="grid lg:grid-cols-3 gap-6">
   <div class="lg:col-span-2 space-y-6">

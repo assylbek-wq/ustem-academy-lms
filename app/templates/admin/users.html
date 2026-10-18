@@ -3,7 +3,7 @@
 {% from "_icons.html" import ic %}
 {% block title %}{{ t('admin.users') }}{% endblock %}
 {% block content %}
-{% call page_header(t('admin.users'), t('admin.users_sub')) %}
+{% call page_header(t('admin.users'), t('admin.users_sub'), icon='🔑') %}
   <a href="{{ url_for('admin.user_new') }}" class="btn-primary btn-sm">{{ ic('plus', 'w-4 h-4') }} {{ t('admin.new_user') }}</a>
 {% endcall %}
 <form class="flex flex-col sm:flex-row gap-2 mb-4">

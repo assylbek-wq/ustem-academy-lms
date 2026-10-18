@@ -3,7 +3,7 @@
 {% from "_icons.html" import ic %}
 {% block title %}{{ u.full_name if u else t('admin.new_user') }}{% endblock %}
 {% block content %}
-{{ page_header(u.full_name if u else t('admin.new_user'), u.email if u else t('admin.new_user_sub'), url_for('admin.users'), t('admin.users')) }}
+{{ page_header(u.full_name if u else t('admin.new_user'), u.email if u else t('admin.new_user_sub'), url_for('admin.users'), t('admin.users'), icon='👤') }}
 <div class="grid lg:grid-cols-3 gap-6">
   <form method="post" class="lg:col-span-2 card p-6 space-y-5">
     {{ csrf() }}<input type="hidden" name="action" value="save">
@@ -54,7 +54,7 @@
     <div class="card p-5">
       <div class="font-semibold mb-2">{{ t('admin.user_cohorts') }}</div>
       {% for e in enrollments %}
-        <a href="{{ url_for('admin.cohort', cohort_id=e.cohort_id) }}" class="flex items-center gap-2 py-2 border-t border-slate-100 first:border-0 text-sm hover:text-brand-700"><span class="flex-1">{{ e.cohort.name }}</span>{{ badge(e.status, 'enr') }}</a>
+        <a href="{{ url_for('admin.cohort', cohort_id=e.cohort_id) }}" class="flex items-center gap-2 py-2 border-t border-slate-200/70 first:border-0 text-sm hover:text-brand-700"><span class="flex-1">{{ e.cohort.name }}</span>{{ badge(e.status, 'enr') }}</a>
       {% else %}<p class="text-sm text-slate-500">-</p>{% endfor %}
     </div>
     <div class="card p-5 text-sm text-slate-500 space-y-1">

@@ -3,14 +3,14 @@
 {% from "_icons.html" import ic %}
 {% block title %}{{ t('nav.reports') }}{% endblock %}
 {% block content %}
-{{ page_header(t('report.title'), t('report.sub')) }}
+{{ page_header(t('report.title'), t('report.sub'), icon='📊') }}
 <div class="grid grid-cols-3 gap-3 mb-6">
   {{ stat(t('report.cohorts'), totals.cohorts, 'calendar') }}
   {{ stat(t('report.learners'), totals.learners, 'users') }}
   {{ stat(t('report.completed'), totals.completed, 'award') }}
 </div>
 {% if rows %}
-<div class="card divide-y divide-slate-100">
+<div class="card divide-y divide-slate-200/70">
   {% for c, s in rows %}
     <a href="{{ url_for('reports.cohort', cohort_id=c.id) }}" class="flex flex-col sm:flex-row sm:items-center gap-3 p-4 hover:bg-slate-50">
       <div class="flex-1 min-w-0"><div class="font-semibold">{{ c.name }}</div>

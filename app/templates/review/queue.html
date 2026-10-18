@@ -3,7 +3,7 @@
 {% from "_icons.html" import ic %}
 {% block title %}{{ t('nav.review') }}{% endblock %}
 {% block content %}
-{{ page_header(t('review.queue_title'), t('review.queue_sub')) }}
+{{ page_header(t('review.queue_title'), t('review.queue_sub'), icon='📝') }}
 <div class="flex flex-col sm:flex-row gap-3 mb-5">
   <div class="tabs">
     {% for s in ['submitted', 'returned', 'accepted'] %}
@@ -21,7 +21,7 @@
   {% endif %}
 </div>
 {% if items %}
-<div class="card divide-y divide-slate-100">
+<div class="card divide-y divide-slate-200/70">
   {% for ev in items %}
     {% set days = (today - ev.submitted_at.date()).days %}
     <a href="{{ url_for('review.detail', evidence_id=ev.id) }}" class="flex items-center gap-4 p-4 hover:bg-slate-50">

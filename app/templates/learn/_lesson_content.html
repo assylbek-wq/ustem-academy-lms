@@ -16,7 +16,7 @@
   {% if not lesson.body.get(locale) %}<p class="help mt-4">{{ t('lesson.fallback_lang') }}</p>{% endif %}
 {% endif %}
 {% if lesson.materials %}
-  <div class="mt-6 border-t border-slate-100 pt-4">
+  <div class="mt-6 border-t border-slate-200/70 pt-4">
     <div class="font-semibold text-sm mb-2">{{ t('lesson.materials') }}</div>
     <ul class="space-y-1.5">
       {% for m in lesson.materials %}

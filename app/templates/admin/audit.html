@@ -2,7 +2,7 @@
 {% from "_macros.html" import page_header with context %}
 {% block title %}{{ t('admin.audit') }}{% endblock %}
 {% block content %}
-{{ page_header(t('admin.audit'), t('admin.audit_sub')) }}
+{{ page_header(t('admin.audit'), t('admin.audit_sub'), icon='📜') }}
 <div class="card overflow-x-auto">
   <table class="table">
     <thead><tr><th>{{ t('admin.when') }}</th><th>{{ t('admin.who') }}</th><th>{{ t('admin.what') }}</th><th>{{ t('admin.object') }}</th></tr></thead>

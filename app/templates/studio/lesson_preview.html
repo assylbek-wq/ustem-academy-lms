@@ -3,7 +3,7 @@
 {% block title %}{{ t('studio.preview') }}: {{ lesson.title|loc }}{% endblock %}
 {% block content %}
 <div class="flash flash-info mb-4">{{ t('studio.preview_note') }}</div>
-{{ page_header(lesson.title|loc, lv.program.title|loc ~ ' · ' ~ lesson.module.title|loc) }}
+{{ page_header(lesson.title|loc, lv.program.title|loc ~ ' · ' ~ lesson.module.title|loc, icon='👀') }}
 <article class="card p-5 sm:p-7 max-w-3xl">
   {% include "learn/_lesson_content.html" %}
   {% if lesson.kind == 'quiz' %}
