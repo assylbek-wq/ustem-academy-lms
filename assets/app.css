@@ -88,7 +88,9 @@ body { font-family: 'Inter', ui-sans-serif, -apple-system, 'Segoe UI', sans-seri
   .prose-content table { @apply w-full my-3 text-sm border-collapse; }
   .prose-content th { @apply font-medium text-slate-500 text-left px-3 py-2 border border-slate-200 bg-slate-50; }
   .prose-content td { @apply px-3 py-2 border border-slate-200; }
-  .prose-content img { @apply rounded-md my-3 max-w-full; }
+  .prose-content img { @apply rounded-lg mt-4 mb-1 w-full max-w-full border border-slate-200; }
+  .prose-content a:has(> img) { @apply block no-underline; }
+  .prose-content .figcap { @apply block text-[13px] text-slate-500 mb-4; }
   .prose-content hr { @apply my-6 border-slate-200; }
   .prose-content > :first-child { @apply mt-0; }
 

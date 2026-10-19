@@ -127,7 +127,7 @@ class Customer(db.Model):
 # ─── Контент ─────────────────────────────────────────────────────────────
 DIRECTIONS = (
     "base", "fll-future", "ftc", "battle-bots", "physical-ai", "drones",
-    "wso", "future-race", "fll-challenge", "fll-explore", "ai-teacher", "other",
+    "wso", "future-race", "fll-challenge", "fll-explore", "ai-teacher", "first-season", "other",
 )
 
 

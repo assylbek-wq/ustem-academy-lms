@@ -348,6 +348,7 @@ _S.update({
     "dir.fll-challenge": ("FLL Challenge (Founders)", "FLL Challenge (Founders)", "FLL Challenge (Founders)"),
     "dir.fll-explore": ("FLL Explore (Founders)", "FLL Explore (Founders)", "FLL Explore (Founders)"),
     "dir.ai-teacher": ("ИИ в обучении", "Оқытудағы ЖИ", "AI in teaching"),
+    "dir.first-season": ("Сезон FIRST: правила", "FIRST маусымы: ережелер", "FIRST season: rules"),
     "dir.other": ("Другое", "Басқа", "Other"),
 
     "ckind.akimat": ("Акимат", "Әкімдік", "Akimat"),

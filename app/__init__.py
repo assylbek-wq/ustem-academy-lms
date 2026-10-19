@@ -91,6 +91,9 @@ def create_app(config: type = Config, **overrides) -> Flask:
             seed_demo()
         elif app.config.get("SEED_CONTENT"):
             seed_content()
+        if app.config.get("SEED_CONTENT") or app.config.get("SEED_DEMO"):
+            from .content import ensure_all
+            ensure_all()  # готовые курсы из app/content, которых еще нет в базе
         db.session.remove()
         db.engine.dispose()  # gunicorn --preload: не передавать соединения в дочерние процессы
 
@@ -130,7 +133,7 @@ def _static_v(app):
 
 DIR_ICONS = {
     "base": "🧭", "fll-future": "🧱", "ftc": "🔧", "battle-bots": "🤖", "physical-ai": "🦾", "drones": "🚁",
-    "wso": "🚀", "future-race": "🏎️", "fll-challenge": "🏆", "fll-explore": "🔍", "ai-teacher": "✨", "other": "📘",
+    "wso": "🚀", "future-race": "🏎️", "fll-challenge": "🏆", "fll-explore": "🔍", "ai-teacher": "✨", "first-season": "🌿", "other": "📘",
 }
 
 MONTHS = {

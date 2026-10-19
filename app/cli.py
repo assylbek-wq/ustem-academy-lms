@@ -29,6 +29,19 @@ def register_cli(app):
             raise SystemExit(1)
         click.echo("yes")
 
+    @app.cli.command("load-course")
+    @click.argument("slug")
+    @click.option("--replace", is_flag=True, help="Пересоздать, даже если есть группы (прогресс будет потерян)")
+    @click.option("--no-cohorts", is_flag=True, help="Не создавать открытые онлайн-потоки")
+    def load_course_cmd(slug, replace, no_cohorts):
+        """Загрузить готовый курс из app/content (например, canopy-2026)."""
+        from .content import CourseError, load
+        try:
+            p = load(slug, replace=replace, cohorts=not no_cohorts)
+        except CourseError as e:
+            raise click.ClickException(str(e))
+        click.echo(f"OK: {p.slug}, уровней: {len(p.levels)}")
+
     @app.cli.command("seed-demo")
     def seed_demo_cmd():
         from .seed import seed_demo
