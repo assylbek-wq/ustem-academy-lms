@@ -7,4 +7,4 @@ COPY . .
 RUN useradd -r -u 1001 academy && mkdir -p /data/uploads && chown -R academy /data
 USER academy
 EXPOSE 8010
-CMD ["gunicorn", "wsgi:app", "--bind", "0.0.0.0:8010", "--workers", "3", "--threads", "4", "--timeout", "300", "--forwarded-allow-ips", "*"]
+CMD ["gunicorn", "wsgi:app", "--bind", "0.0.0.0:8010", "--workers", "3", "--threads", "4", "--timeout", "300", "--forwarded-allow-ips", "*", "--preload"]
