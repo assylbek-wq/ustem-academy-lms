@@ -17,7 +17,10 @@ USTEM Academy - LMS для подготовки учителей. Flask + SQLAlc
 - В шаблонах не называйте переменные `p`: в `base.html` есть `cur_path`, а имена из базового шаблона перекрывают
   переменные страницы.
 - Прогресс и выдача сертификата - только через `services/progress.py` (`state`, `maybe_complete`).
-- Схема создается `db.create_all()`. Для изменения существующих таблиц в продакшене понадобятся миграции (Alembic) -
-  добавить при первом изменении схемы после запуска.
+- Схема: миграции Alembic (Flask-Migrate) в `migrations/`, применяются сами при старте (`app/dbinit.py`).
+  Изменили модели - `DB_AUTO_INIT=0 flask --app wsgi db migrate -m "..."`, проверьте файл (для Boolean в Postgres
+  `server_default=sa.false()`, не `'0'`), закоммитьте. Тесты (`TESTING`) работают через `create_all()`.
+- Программа «в своем темпе» (`Program.self_paced`): у каждого уровня постоянный открытый поток без дат и дедлайнов,
+  потоки создает и закрывает `services/selfpaced.py` (`sync_program`). Включается галочкой в Студии.
 - Готовые курсы хранятся в коде: `app/content/<курс>.py`, фото в `app/static/course/<курс>/`. При старте
   недостающие курсы загружаются сами (`ensure_all`); пересоздать вручную: `flask --app wsgi load-course canopy-2026 --replace`.

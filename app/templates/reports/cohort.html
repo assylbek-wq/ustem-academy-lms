@@ -3,7 +3,7 @@
 {% from "_icons.html" import ic %}
 {% block title %}{{ t('report.title') }}: {{ c.name }}{% endblock %}
 {% block content %}
-{% call page_header(c.name, c.program.title|loc ~ ' · ' ~ c.level.title|loc ~ ' · ' ~ (c.start_date|d) ~ ((' - ' ~ (c.end_date|d)) if c.end_date else ''), url_for('reports.index'), t('nav.reports'), icon='📊') %}
+{% call page_header(c.name, c.program.title|loc ~ ' · ' ~ c.level.title|loc ~ ' · ' ~ (c|when) ~ ((' - ' ~ (c.end_date|d)) if c.end_date else ''), url_for('reports.index'), t('nav.reports'), icon='📊') %}
   <a href="{{ url_for('reports.cohort_xlsx', cohort_id=c.id) }}" class="btn-primary btn-sm">{{ ic('download', 'w-4 h-4') }} Excel</a>
   <button type="button" class="btn-secondary btn-sm" onclick="window.print()">{{ ic('file-text', 'w-4 h-4') }} PDF</button>
 {% endcall %}

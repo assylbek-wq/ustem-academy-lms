@@ -95,3 +95,100 @@ class CatalogTest(AppTestCase):
         self.assertGreaterEqual(html.count("/join/"), 5)
         home = client.get("/my").get_data(as_text=True)
         self.assertIn('href="/catalog"', home)
+
+
+class SelfPacedTest(AppTestCase):
+    def test_canopy_is_self_paced_without_deadlines(self):
+        p = load("canopy-2026")
+        self.assertTrue(p.self_paced)
+        cohorts = Cohort.query.filter_by(program_id=p.id).all()
+        self.assertEqual(len(cohorts), 5)
+        for c in cohorts:
+            self.assertTrue(c.self_paced and c.is_open)
+            self.assertEqual(c.capacity, 0)  # без ограничения мест
+            self.assertIsNone(c.due_date(c.level.assignments[0]))
+        client = self.new_client("teacher2@academy.demo")
+        html = client.get("/catalog").get_data(as_text=True)
+        self.assertIn("Начать", html)
+        self.assertIn("в любое время", html)
+
+    def test_studio_toggle_creates_and_closes_cohorts(self):
+        from app.models import Program
+        p = Program.query.filter_by(slug="fll-future-edition").one()
+        methodist = self.new_client("methodist@academy.demo")
+        form = {"action": "meta", "title_ru": p.title["ru"], "direction": p.direction, "color": p.color,
+                "position": "0", "slug": p.slug, "self_paced": "1"}
+        r = methodist.post(f"/studio/programs/{p.id}", data=form)
+        self.assertEqual(r.status_code, 302)
+        sp = Cohort.query.filter_by(program_id=p.id, self_paced=True).all()
+        self.assertEqual(len(sp), len(p.levels))
+        self.assertTrue(all(c.is_open for c in sp))
+        # учитель записывается в любой момент
+        learner = self.new_client("teacher3@academy.demo")
+        r = learner.get(f"/join/{sp[0].invite_code}")
+        self.assertEqual(r.status_code, 302)
+        self.assertTrue(Enrollment.query.filter_by(cohort_id=sp[0].id).first())
+        # выключили режим: запись закрыта, начатое обучение сохраняется
+        form.pop("self_paced")
+        methodist.post(f"/studio/programs/{p.id}", data=form)
+        db.session.expire_all()
+        self.assertFalse(any(c.is_open for c in Cohort.query.filter_by(program_id=p.id, self_paced=True)))
+        self.assertTrue(Enrollment.query.filter_by(cohort_id=sp[0].id).first())
+        # повторное включение не плодит потоки
+        form["self_paced"] = "1"
+        methodist.post(f"/studio/programs/{p.id}", data=form)
+        self.assertEqual(Cohort.query.filter_by(program_id=p.id, self_paced=True).count(), len(p.levels))
+
+    def test_existing_course_switches_to_self_paced_keeping_links(self):
+        from app.content import _apply_self_paced
+        from app.models import Program
+        p = load("canopy-2026", cohorts=False)
+        p.self_paced = False
+        for lv in p.levels:  # как было на сервере: обычные открытые потоки
+            db.session.add(Cohort(name="Онлайн-поток", program_id=p.id, level_id=lv.id, is_open=True, capacity=1000))
+        db.session.commit()
+        codes = {c.invite_code for c in Cohort.query.filter_by(program_id=p.id)}
+        _apply_self_paced(p)
+        db.session.commit()
+        sp = Cohort.query.filter_by(program_id=p.id, self_paced=True).all()
+        self.assertEqual({c.invite_code for c in sp}, codes)
+        self.assertTrue(db.session.get(Program, p.id).self_paced)
+
+
+class MigrationTest(AppTestCase):
+    def test_legacy_and_fresh_databases_upgrade(self):
+        import os
+        import sqlite3
+        import tempfile
+        from flask_migrate import upgrade
+        from app import create_app
+        from app.config import Config
+        from app.dbinit import MIGRATIONS_DIR
+
+        class Prod(Config):
+            TESTING = False
+            SEED_CONTENT = False
+            SEED_DEMO = False
+
+        with tempfile.TemporaryDirectory() as d:
+            legacy = os.path.join(d, "legacy.db")
+            app = create_app(Prod, SQLALCHEMY_DATABASE_URI=f"sqlite:///{legacy}", DB_AUTO_INIT=False)
+            with app.app_context():
+                upgrade(directory=MIGRATIONS_DIR, revision="0001_baseline")
+            con = sqlite3.connect(legacy)
+            con.execute("DROP TABLE alembic_version")  # база, созданная до миграций
+            con.execute("INSERT INTO programs(slug, direction, title, status, version, position) "
+                        "VALUES ('old', 'base', '{}', 'published', 1, 0)")
+            con.commit()
+            con.close()
+            create_app(Prod, SQLALCHEMY_DATABASE_URI=f"sqlite:///{legacy}")
+            con = sqlite3.connect(legacy)
+            self.assertEqual(con.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0002_self_paced")
+            self.assertEqual(con.execute("SELECT self_paced FROM programs WHERE slug='old'").fetchone()[0], 0)
+            con.close()
+
+            fresh = os.path.join(d, "fresh.db")
+            create_app(Prod, SQLALCHEMY_DATABASE_URI=f"sqlite:///{fresh}")
+            con = sqlite3.connect(fresh)
+            self.assertEqual(con.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0002_self_paced")
+            con.close()

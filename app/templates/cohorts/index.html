@@ -12,7 +12,7 @@
         <div class="flex-1">
           <div class="text-xs text-slate-400 font-semibold">{{ c.program.title|loc }} · {{ c.level.title|loc }}</div>
           <div class="font-bold mt-0.5">{{ c.name }}</div>
-          <div class="text-sm text-slate-500">{{ c.start_date|d }}{% if c.city %} · {{ c.city }}{% endif %}</div>
+          <div class="text-sm text-slate-500">{{ c|when }}{% if c.city %} · {{ c.city }}{% endif %}</div>
         </div>
         {{ badge(c.status, 'cstatus') }}
       </div>

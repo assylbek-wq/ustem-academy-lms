@@ -10,7 +10,7 @@ from ..i18n import LOCALES, t
 from ..models import (DIRECTIONS, EVIDENCE_KINDS, LESSON_KINDS, Assignment, Cohort, Evidence, Lesson,
                       LessonMaterial, LessonProgress, Level, Module, Program, QuizQuestion, RubricCriterion, db,
                       utcnow)
-from ..services import storage
+from ..services import selfpaced, storage
 
 bp = Blueprint("studio", __name__, url_prefix="/studio")
 
@@ -100,6 +100,7 @@ def program(program_id):
             if re.fullmatch(r"#[0-9a-fA-F]{6}", color):
                 p.color = color
             p.position = request.form.get("position", type=int) or 0
+            p.self_paced = bool(request.form.get("self_paced"))
             slug = slugify(request.form.get("slug") or "")
             if slug:
                 p.slug = unique_slug(slug, exclude_id=p.id)
@@ -116,6 +117,11 @@ def program(program_id):
             db.session.add(Level(program_id=p.id, number=n, title={"ru": f"Уровень {n}", "kk": f"{n}-деңгей",
                                                                     "en": f"Level {n}"}))
         elif action == "delete":
+            # пустые постоянные потоки «в своем темпе» удаляются вместе с программой
+            for c in Cohort.query.filter_by(program_id=p.id, self_paced=True).all():
+                if not c.enrollments:
+                    db.session.delete(c)
+            db.session.flush()
             if Cohort.query.filter_by(program_id=p.id).first():
                 flash(t("studio.err_in_use"), "error")
             else:
@@ -123,6 +129,8 @@ def program(program_id):
                 db.session.delete(p)
                 db.session.commit()
                 return redirect(url_for("studio.index"))
+        db.session.flush()
+        selfpaced.sync_program(p)
         db.session.commit()
         return redirect(url_for("studio.program", program_id=p.id))
     return render_template("studio/program.html", p=p, directions=DIRECTIONS, lesson_kinds=LESSON_KINDS)
@@ -192,6 +200,10 @@ def level(level_id):
             db.session.commit()
             return redirect(url_for("studio.assignment", assignment_id=a.id))
         elif action == "delete_level":
+            for c in Cohort.query.filter_by(level_id=lv.id, self_paced=True).all():
+                if not c.enrollments:
+                    db.session.delete(c)
+            db.session.flush()
             if Cohort.query.filter_by(level_id=lv.id).first():
                 flash(t("studio.err_in_use"), "error")
             else:

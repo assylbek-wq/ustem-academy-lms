@@ -143,6 +143,8 @@ class Program(db.Model):
     equipment = db.Column(JSON, default=dict)     # оборудование и софт
     color = db.Column(db.String(16), default="#0085ff")
     status = db.Column(db.String(16), default="draft")  # draft | published | archived
+    # в своем темпе: у каждого уровня постоянный открытый поток без дат и дедлайнов
+    self_paced = db.Column(db.Boolean, default=False, nullable=False, server_default=db.false())
     version = db.Column(db.Integer, default=0, nullable=False)
     published_at = db.Column(db.DateTime)
     position = db.Column(db.Integer, default=0)
@@ -279,6 +281,7 @@ class Cohort(db.Model):
     capacity = db.Column(db.Integer, default=25)
     status = db.Column(db.String(16), default="planned")  # planned | active | finished
     is_open = db.Column(db.Boolean, default=False, nullable=False)  # самозапись по ссылке
+    self_paced = db.Column(db.Boolean, default=False, nullable=False, server_default=db.false())
     invite_code = db.Column(db.String(32), unique=True, default=lambda: secrets.token_hex(4))
     created_at = db.Column(db.DateTime, default=utcnow)
 
@@ -291,7 +294,7 @@ class Cohort(db.Model):
                                cascade="all, delete-orphan")
 
     def due_date(self, assignment: Assignment) -> date | None:
-        if not self.start_date or assignment.due_days is None:
+        if self.self_paced or not self.start_date or assignment.due_days is None:
             return None
         return self.start_date + timedelta(days=assignment.due_days)
 

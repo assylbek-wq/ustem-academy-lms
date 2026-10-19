@@ -3,7 +3,7 @@
 {% from "_icons.html" import ic %}
 {% block title %}{{ c.name }}{% endblock %}
 {% block content %}
-{% call page_header(c.name, c.program.title|loc ~ ' · ' ~ c.level.title|loc ~ ' · ' ~ (c.start_date|d), url_for('cohorts.index'), t('nav.cohorts'), icon='👥') %}
+{% call page_header(c.name, c.program.title|loc ~ ' · ' ~ c.level.title|loc ~ ' · ' ~ (c|when), url_for('cohorts.index'), t('nav.cohorts'), icon='👥') %}
   {% if user.is_admin %}<a href="{{ url_for('admin.cohort', cohort_id=c.id) }}" class="btn-secondary btn-sm">{{ ic('edit', 'w-4 h-4') }} {{ t('cohort.manage') }}</a>{% endif %}
   <a href="{{ url_for('review.queue', cohort=c.id) }}" class="btn-secondary btn-sm">{{ ic('check-circle', 'w-4 h-4') }} {{ t('nav.review') }}</a>
 {% endcall %}

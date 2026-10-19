@@ -19,7 +19,7 @@
         <tr>
           <td><a href="{{ url_for('admin.cohort', cohort_id=c.id) }}" class="font-semibold hover:text-brand-700">{{ c.name }}</a><div class="text-xs text-slate-500">{{ c.trainer.full_name if c.trainer else t('admin.no_trainer') }}</div></td>
           <td class="text-sm">{{ c.program.title|loc }}<div class="text-xs text-slate-500">{{ c.level.title|loc }}</div></td>
-          <td class="text-sm whitespace-nowrap">{{ c.start_date|d }}</td>
+          <td class="text-sm whitespace-nowrap">{{ c|when }}</td>
           <td class="text-sm">{{ c.customer.name if c.customer else '-' }}</td>
           <td>{{ s.count }}{% if c.capacity %}<span class="text-slate-400">/{{ c.capacity }}</span>{% endif %}</td>
           <td class="min-w-28"><div class="flex items-center gap-2"><div class="flex-1">{{ progress_bar(s.avg_percent) }}</div><span class="text-xs">{{ s.avg_percent }}%</span></div></td>

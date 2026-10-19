@@ -3,7 +3,7 @@
 {% from "_icons.html" import ic %}
 {% block title %}{{ cohort.level.title|loc }} - {{ cohort.program.title|loc }}{% endblock %}
 {% block content %}
-{{ page_header(cohort.program.title|loc ~ ' · ' ~ cohort.level.title|loc, cohort.name ~ ' · ' ~ (cohort.start_date|d), url_for('learn.home'), t('nav.my'), icon='🧭') }}
+{{ page_header(cohort.program.title|loc ~ ' · ' ~ cohort.level.title|loc, cohort.name ~ ' · ' ~ (cohort|when), url_for('learn.home'), t('nav.my'), icon='🧭') }}
 
 <div class="card p-5 mb-6">
   <div class="flex flex-col sm:flex-row sm:items-center gap-4">

@@ -55,6 +55,7 @@ class Config:
     PERMANENT_SESSION_LIFETIME = 60 * 60 * 24 * 30
 
     SEED_DEMO = _bool("SEED_DEMO", False)
+    DB_AUTO_INIT = _bool("DB_AUTO_INIT", True)  # создавать и обновлять схему при старте
     SEED_CONTENT = _bool("SEED_CONTENT", True)  # каталог программ при первом запуске
     TESTING = False
 

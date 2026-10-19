@@ -21,7 +21,7 @@
       {% for c, s in cohorts %}
         <a href="{{ url_for('admin.cohort', cohort_id=c.id) }}" class="flex items-center gap-4 p-4 hover:bg-slate-50">
           <div class="flex-1 min-w-0"><div class="font-semibold truncate">{{ c.name }}</div>
-            <div class="text-sm text-slate-500 truncate">{{ c.program.title|loc }} · {{ c.level.title|loc }} · {{ c.start_date|d }}</div></div>
+            <div class="text-sm text-slate-500 truncate">{{ c.program.title|loc }} · {{ c.level.title|loc }} · {{ c|when }}</div></div>
           <div class="w-28 hidden sm:block">{{ progress_bar(s.avg_percent) }}</div>
           <span class="text-sm text-slate-500 w-14 text-right">{{ ic('users', 'w-3.5 h-3.5 inline') }} {{ s.count }}</span>
           {{ badge(c.status, 'cstatus') }}

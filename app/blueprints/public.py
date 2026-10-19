@@ -24,7 +24,7 @@ def home():
         # вошедшим пользователям каталог показываем в рабочем интерфейсе
         return redirect(url_for("learn.catalog" if request.args.get("public") else "learn.home"))
     programs = _published()
-    upcoming = (Cohort.query.filter(Cohort.is_open.is_(True), Cohort.status != "finished",
+    upcoming = (Cohort.query.filter(Cohort.is_open.is_(True), Cohort.status != "finished", Cohort.self_paced.is_(False),
                                     Cohort.start_date >= local_today())
                 .order_by(Cohort.start_date).limit(6).all())
     return render_template("public/home.html", programs=programs, upcoming=upcoming)

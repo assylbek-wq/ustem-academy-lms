@@ -46,6 +46,11 @@
       <div><label class="label">{{ t('studio.f_color') }}</label><input type="color" name="color" value="{{ p.color }}" class="input h-10 p-1"></div>
       <div><label class="label">{{ t('studio.f_position') }}</label><input type="number" name="position" value="{{ p.position }}" class="input"></div>
     </div>
+    <label class="flex items-start gap-3 p-3 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50">
+      <input type="checkbox" name="self_paced" value="1" class="mt-1" {% if p.self_paced %}checked{% endif %}>
+      <span><span class="font-medium">{{ t('studio.self_paced') }}</span>
+        <span class="help block">{{ t('studio.self_paced_hint') }}</span></span>
+    </label>
     <div><label class="label">{{ t('studio.f_slug') }}</label><input name="slug" value="{{ p.slug }}" class="input font-mono text-sm"><p class="help">academy.ustem.kz/programs/{{ p.slug }}</p></div>
     <button class="btn-primary">{{ t('common.save') }}</button>
   </form>

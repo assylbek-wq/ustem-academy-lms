@@ -157,7 +157,7 @@ def _program_fll() -> Program:
 
 def _program_base() -> Program:
     p = Program(slug="ustem-foundations", direction="base", status="published", version=1, published_at=utcnow(),
-                color="#11181c", position=0, title=ml("Основа USTEM", "USTEM негізі", "USTEM Foundations"),
+                color="#11181c", position=0, self_paced=True, title=ml("Основа USTEM", "USTEM негізі", "USTEM Foundations"),
                 summary=ml("Общий блок перед любым направлением: инженерный процесс, ценности FIRST, безопасность, рубрики, ИИ в уроке.",
                            "Кез келген бағыт алдындағы ортақ блок: инженерлік процесс, FIRST құндылықтары, қауіпсіздік, рубрикалар, сабақтағы ЖИ.",
                            "The shared block before any track: engineering process, FIRST Core Values, safety, rubrics, AI in lessons."))

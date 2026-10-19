@@ -77,6 +77,7 @@ def create_app(config: type = Config, **overrides) -> Flask:
     app.jinja_env.filters["loc"] = loc
     app.jinja_env.filters["dt"] = _fmt_dt
     app.jinja_env.filters["d"] = _fmt_date
+    app.jinja_env.filters["when"] = _cohort_when
     app.jinja_env.filters["mmss"] = fmt_seconds
     app.jinja_env.filters["size"] = human_size
 
@@ -85,7 +86,8 @@ def create_app(config: type = Config, **overrides) -> Flask:
 
     with app.app_context():
         _sqlite_tweaks()
-        db.create_all()
+        from .dbinit import init_db
+        init_db(app)
         from .seed import seed_content, seed_demo
         if app.config.get("SEED_DEMO"):
             seed_demo()
@@ -94,6 +96,9 @@ def create_app(config: type = Config, **overrides) -> Flask:
         if app.config.get("SEED_CONTENT") or app.config.get("SEED_DEMO"):
             from .content import ensure_all
             ensure_all()  # готовые курсы из app/content, которых еще нет в базе
+        if not app.config.get("TESTING") and app.config.get("DB_AUTO_INIT", True):
+            from .services.selfpaced import sync_all
+            sync_all()  # постоянные потоки для программ «в своем темпе»
         db.session.remove()
         db.engine.dispose()  # gunicorn --preload: не передавать соединения в дочерние процессы
 
@@ -141,6 +146,12 @@ MONTHS = {
     "kk": ["қаң", "ақп", "нау", "сәу", "мам", "мау", "шіл", "там", "қыр", "қаз", "қар", "жел"],
     "en": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
 }
+
+
+def _cohort_when(cohort) -> str:
+    """Когда идет поток: дата старта или «в любое время» для режима «в своем темпе»."""
+    from .i18n import t
+    return t("selfpaced.when") if getattr(cohort, "self_paced", False) else _fmt_date(cohort.start_date)
 
 
 def _fmt_date(value) -> str:

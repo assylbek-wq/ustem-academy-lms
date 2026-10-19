@@ -22,7 +22,7 @@
           <div class="flex-1 min-w-0">
             <div class="text-xs text-slate-400 font-semibold">{{ c.program.title|loc }}</div>
             <div class="font-bold text-lg leading-tight">{{ c.level.title|loc }}</div>
-            <div class="text-sm text-slate-500 mt-0.5">{{ c.name }} · {{ c.start_date|d }}</div>
+            <div class="text-sm text-slate-500 mt-0.5">{{ c.name }} · {{ c|when }}</div>
           </div>
           {{ badge(enr.status, 'enr') }}
         </div>

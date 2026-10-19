@@ -5,7 +5,7 @@
   <div class="card p-7 text-center">
     <div class="text-xs text-slate-400 font-semibold">{{ cohort.program.title|loc }} · {{ cohort.level.title|loc }}</div>
     <h1 class="text-2xl font-bold mt-2">{{ cohort.name }}</h1>
-    <p class="text-slate-500 mt-2 inline-flex items-center gap-1.5">{{ ic('calendar', 'w-4 h-4') }} {{ cohort.start_date|d }}{% if cohort.city %} · {{ cohort.city }}{% endif %}</p>
+    <p class="text-slate-500 mt-2 inline-flex items-center gap-1.5">{{ ic('calendar', 'w-4 h-4') }} {{ cohort|when }}{% if cohort.city %} · {{ cohort.city }}{% endif %}</p>
     <p class="mt-5 text-slate-600">{{ t('join.text') }}</p>
     <div class="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
       <a href="{{ url_for('auth.register') }}" class="btn-primary">{{ t('auth.register') }}</a>

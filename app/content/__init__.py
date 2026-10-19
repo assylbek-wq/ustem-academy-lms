@@ -72,7 +72,7 @@ def load(slug: str, replace: bool = False, cohorts: bool = True) -> Program:
     p = Program(slug=spec["slug"], direction=spec["direction"], title=spec["title"], summary=spec["summary"],
                 description=spec["description"], audience=spec["audience"], equipment=spec["equipment"],
                 color=spec["color"], position=spec.get("position", 0), status="published", version=1,
-                published_at=utcnow())
+                published_at=utcnow(), self_paced=bool(spec.get("self_paced")))
     db.session.add(p)
     db.session.flush()
     for number, lv in enumerate(spec["levels"], start=1):
@@ -104,21 +104,42 @@ def load(slug: str, replace: bool = False, cohorts: bool = True) -> Program:
             for ci, (title, descriptors) in enumerate(a["rubric"]):
                 db.session.add(RubricCriterion(assignment_id=asg.id, position=ci, title=title,
                                                descriptors=descriptors))
-        if cohorts and lv.get("cohort"):
+        if cohorts and lv.get("cohort") and not p.self_paced:
             db.session.add(Cohort(name=lv["cohort"], program_id=p.id, level_id=level.id, program_version=1,
                                   language="ru", start_date=date.today(), capacity=1000, status="active",
                                   is_open=True))
+    db.session.flush()
+    if cohorts:
+        from ..services.selfpaced import sync_program
+        sync_program(p)  # постоянные потоки для курсов «в своем темпе»
     db.session.commit()
     return p
+
+
+def _apply_self_paced(p: Program) -> None:
+    """Переводит уже загруженный курс в режим «в своем темпе»: его открытые онлайн-потоки без тренера
+    становятся постоянными (ссылки на запись сохраняются)."""
+    from ..services.selfpaced import SELF_PACED_NAME
+    p.self_paced = True
+    taken = set()
+    for c in Cohort.query.filter_by(program_id=p.id).order_by(Cohort.id):
+        if (not c.self_paced and c.is_open and c.trainer_id is None and not c.sessions
+                and c.level_id not in taken):
+            c.self_paced, c.name = True, SELF_PACED_NAME
+            taken.add(c.level_id)
 
 
 def ensure_all() -> list[str]:
     """Загружает курсы, которых еще нет в базе (вызывается при старте приложения)."""
     created = []
     for slug, mod in COURSES.items():
-        if not Program.query.filter_by(slug=mod.PROGRAM["slug"]).first():
+        p = Program.query.filter_by(slug=mod.PROGRAM["slug"]).first()
+        if not p:
             load(slug)
             created.append(slug)
+        elif mod.PROGRAM.get("self_paced") and not p.self_paced:
+            _apply_self_paced(p)
+            db.session.commit()
     return created
 
 

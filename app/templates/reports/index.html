@@ -14,7 +14,7 @@
   {% for c, s in rows %}
     <a href="{{ url_for('reports.cohort', cohort_id=c.id) }}" class="flex flex-col sm:flex-row sm:items-center gap-3 p-4 hover:bg-slate-50">
       <div class="flex-1 min-w-0"><div class="font-semibold">{{ c.name }}</div>
-        <div class="text-sm text-slate-500">{{ c.program.title|loc }} · {{ c.level.title|loc }} · {{ c.start_date|d }}{% if c.customer %} · {{ c.customer.name }}{% endif %}</div></div>
+        <div class="text-sm text-slate-500">{{ c.program.title|loc }} · {{ c.level.title|loc }} · {{ c|when }}{% if c.customer %} · {{ c.customer.name }}{% endif %}</div></div>
       <div class="sm:w-40 flex items-center gap-2"><div class="flex-1">{{ progress_bar(s.avg_percent) }}</div><span class="text-xs">{{ s.avg_percent }}%</span></div>
       <div class="text-sm text-slate-500 sm:w-28">{{ s.completed }}/{{ s.count }} {{ t('report.done_short') }}</div>
       {{ badge(c.status, 'cstatus') }}
