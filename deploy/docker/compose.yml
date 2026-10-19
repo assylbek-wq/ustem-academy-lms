@@ -1,0 +1,38 @@
+# USTEM Academy рядом с CRM на сервере 87.199.128.244.
+# Caddy из /opt/ustem-crm проксирует academy.ustem.kz -> academy:8010 через общую сеть ustem-crm_internal.
+name: ustem-academy
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: academy
+      POSTGRES_USER: academy
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      TZ: Asia/Almaty
+    volumes: [dbdata:/var/lib/postgresql/data]
+    networks: [default]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U academy -d academy"]
+      interval: 10s
+      retries: 5
+  academy:
+    build: ./app
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://academy:${DB_PASSWORD}@db:5432/academy
+      UPLOAD_DIR: /data/uploads
+    volumes: [uploads:/data/uploads]
+    depends_on:
+      db: {condition: service_healthy}
+    networks:
+      default: {}
+      crm:
+        aliases: [academy]
+volumes: {dbdata: {}, uploads: {}}
+networks:
+  default: {}
+  crm:
+    external: true
+    name: ustem-crm_internal
