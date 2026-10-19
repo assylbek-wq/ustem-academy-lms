@@ -25,7 +25,15 @@ _BLOCK_START = re.compile(r"^(\s*[-*+] |\s*\d+\. |#|\||\[!\[|<|---|```)")
 def unwrap(md_text: str) -> str:
     """Склеивает переносы внутри абзацев: рендер Markdown превращает каждый перенос в <br> (nl2br)."""
     out: list[str] = []
+    in_code = False
     for line in textwrap.dedent(md_text).strip().split("\n"):
+        if line.lstrip().startswith("```"):
+            in_code = not in_code
+            out.append(line)
+            continue
+        if in_code:  # код не склеиваем: переносы строк в нем значимы
+            out.append(line)
+            continue
         prev = out[-1] if out else ""
         cont = line.strip()
         if (out and cont and prev.strip() and not _BLOCK_START.match(line)
@@ -232,6 +240,7 @@ def ensure_all() -> list[str]:
     return created
 
 
-from . import canopy_2026  # noqa: E402
+from . import canopy_2026, ftc_start_2026  # noqa: E402
 
 register(canopy_2026)
+register(ftc_start_2026)
