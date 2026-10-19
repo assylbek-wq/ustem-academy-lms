@@ -48,7 +48,7 @@
       </div>
     {% else %}
       {% call empty(t('learn.no_programs'), 'book') %}
-        <a href="{{ url_for('public.home', public=1) }}#programs" class="btn-primary btn-sm">{{ t('pub.cta_programs') }}</a>
+        <a href="{{ url_for('learn.catalog') }}" class="btn-primary btn-sm">{{ t('pub.cta_programs') }}</a>
       {% endcall %}
     {% endfor %}
   </div>

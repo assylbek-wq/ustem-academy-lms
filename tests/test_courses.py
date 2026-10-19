@@ -81,3 +81,17 @@ class CanopyCourseTest(AppTestCase):
             for l in lv.lessons:
                 for src in re.findall(r"\((/static/course/[^)]+)\)", (l.body or {}).get("ru", "")):
                     self.assertTrue(os.path.exists(root + src), src)
+
+
+class CatalogTest(AppTestCase):
+    def test_logged_in_user_sees_catalog_not_empty_page(self):
+        load("canopy-2026")
+        client = self.new_client("teacher1@academy.demo")
+        r = client.get("/?public=1")
+        self.assertEqual(r.status_code, 302)
+        self.assertTrue(r.headers["Location"].endswith("/catalog"))
+        html = client.get("/catalog").get_data(as_text=True)
+        self.assertIn("Сезон FIRST CANOPY 2026-2027", html)
+        self.assertGreaterEqual(html.count("/join/"), 5)
+        home = client.get("/my").get_data(as_text=True)
+        self.assertIn('href="/catalog"', home)

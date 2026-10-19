@@ -8,7 +8,7 @@ from flask import Blueprint, Response, abort, flash, g, redirect, render_templat
 from ..core import audit, login_required, notify
 from ..i18n import t
 from ..models import (Certificate, Cohort, Enrollment, Evidence, EvidenceFile, Lesson, LessonMaterial,
-                      LessonProgress, Session, User, UserRole, db, local_now, utcnow)
+                      LessonProgress, Level, Program, Session, User, UserRole, db, local_now, utcnow)
 from ..services import ai, progress, storage
 from ..services.certificates import render_pdf
 from ..services.mail import absolute
@@ -63,6 +63,21 @@ def home():
     certs = Certificate.query.filter_by(user_id=g.user.id, status="valid").count()
     return render_template("learn/home.html", items=items, sessions=sessions, deadlines=deadlines,
                            certs=certs, staff_links=staff_home_links())
+
+
+@bp.route("/catalog")
+@login_required
+def catalog():
+    """Каталог опубликованных программ с открытыми потоками для вошедшего пользователя."""
+    programs = Program.query.filter_by(status="published").order_by(Program.position, Program.id).all()
+    open_cohorts = (Cohort.query.filter(Cohort.is_open.is_(True), Cohort.status != "finished")
+                    .join(Level, Cohort.level_id == Level.id).order_by(Level.number, Cohort.start_date).all())
+    cohorts: dict[int, list] = {}
+    for c in open_cohorts:
+        cohorts.setdefault(c.program_id, []).append(c)
+    mine = {e.cohort_id for e in Enrollment.query.filter(Enrollment.user_id == g.user.id,
+                                                         Enrollment.status != "dropped")}
+    return render_template("learn/catalog.html", programs=programs, cohorts=cohorts, mine=mine)
 
 
 @bp.route("/my/cohort/<int:cohort_id>")

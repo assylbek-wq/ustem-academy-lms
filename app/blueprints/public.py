@@ -20,8 +20,9 @@ def _published():
 
 @bp.route("/")
 def home():
-    if g.user and not request.args.get("public"):
-        return redirect(url_for("learn.home"))
+    if g.user:
+        # вошедшим пользователям каталог показываем в рабочем интерфейсе
+        return redirect(url_for("learn.catalog" if request.args.get("public") else "learn.home"))
     programs = _published()
     upcoming = (Cohort.query.filter(Cohort.is_open.is_(True), Cohort.status != "finished",
                                     Cohort.start_date >= local_today())
