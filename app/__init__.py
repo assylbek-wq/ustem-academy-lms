@@ -91,6 +91,8 @@ def create_app(config: type = Config, **overrides) -> Flask:
             seed_demo()
         elif app.config.get("SEED_CONTENT"):
             seed_content()
+        db.session.remove()
+        db.engine.dispose()  # gunicorn --preload: не передавать соединения в дочерние процессы
 
     from .cli import register_cli
     register_cli(app)
