@@ -10,7 +10,7 @@
 {% block content %}
 {{ page_header(t('studio.level_n', n=lv.number) ~ ': ' ~ lv.title|loc, p.title|loc, url_for('studio.program', program_id=p.id), p.title|loc, icon='🪜') }}
 
-<div class="grid lg:grid-cols-5 gap-6">
+<div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
   <div class="lg:col-span-3 space-y-4">
     {% for m in lv.modules %}
       <div class="card" id="m{{ m.id }}">

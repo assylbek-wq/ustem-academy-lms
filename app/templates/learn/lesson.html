@@ -6,8 +6,8 @@
 {% set done = lesson.id in st.done_lesson_ids %}
 {{ page_header(lesson.title|loc, lesson.module.title|loc, url_for('learn.cohort', cohort_id=cohort.id), cohort.level.title|loc, icon={'video': '🎬', 'quiz': '❓'}.get(lesson.kind, '📄')) }}
 
-<div class="grid lg:grid-cols-3 gap-6">
-  <div class="lg:col-span-2 space-y-6">
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <div class="lg:col-span-2 space-y-6 min-w-0">
     <article class="sm:pr-6">
       {% include "learn/_lesson_content.html" %}
 

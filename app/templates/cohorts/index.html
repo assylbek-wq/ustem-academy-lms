@@ -5,7 +5,7 @@
 {% block content %}
 {{ page_header(t('cohort.my_title'), t('cohort.my_sub'), icon='👥') }}
 {% if cohorts %}
-<div class="grid md:grid-cols-2 gap-4">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
   {% for c, s in cohorts %}
     <a href="{{ url_for('cohorts.detail', cohort_id=c.id) }}" class="card card-hover p-5">
       <div class="flex items-start gap-2">

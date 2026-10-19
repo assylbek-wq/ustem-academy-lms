@@ -4,7 +4,7 @@
 {% block title %}{{ t('review.title') }}: {{ enr.user.full_name }}{% endblock %}
 {% block content %}
 {{ page_header(enr.user.full_name, a.title|loc ~ ' · ' ~ enr.cohort.name, url_for('review.queue'), t('review.queue_title'), icon='📝') }}
-<div class="grid lg:grid-cols-5 gap-6">
+<div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
   <div class="lg:col-span-3 space-y-4">
     <div class="card p-5">
       <div class="flex items-center gap-2 mb-4">

@@ -33,11 +33,12 @@ def register_cli(app):
     @click.argument("slug")
     @click.option("--replace", is_flag=True, help="Пересоздать, даже если есть группы (прогресс будет потерян)")
     @click.option("--no-cohorts", is_flag=True, help="Не создавать открытые онлайн-потоки")
-    def load_course_cmd(slug, replace, no_cohorts):
-        """Загрузить готовый курс из app/content (например, canopy-2026)."""
-        from .content import CourseError, load
+    @click.option("--update", is_flag=True, help="Обновить уроки на месте, сохранив потоки и прогресс слушателей")
+    def load_course_cmd(slug, replace, no_cohorts, update):
+        """Загрузить или обновить готовый курс из app/content (например, canopy-2026)."""
+        from .content import CourseError, load, update as update_course
         try:
-            p = load(slug, replace=replace, cohorts=not no_cohorts)
+            p = update_course(slug) if update else load(slug, replace=replace, cohorts=not no_cohorts)
         except CourseError as e:
             raise click.ClickException(str(e))
         click.echo(f"OK: {p.slug}, уровней: {len(p.levels)}")

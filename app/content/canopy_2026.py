@@ -8,6 +8,7 @@ Future Edition Rulebook, Explore Reviewing Sheet, BIOBUZZ Game Card). Фото �
 from __future__ import annotations
 
 from . import ml, ru
+from . import canopy_2026_extra as X
 
 SLUG = "canopy-2026"
 IMG_DIR = "/static/course/canopy-2026/"
@@ -104,7 +105,7 @@ L1_STAGES = ru(f"""
 6. **Мировой финал FIRST Championship** - Хьюстон, США, **28.04-01.05.2027**.
 7. **Межсезонные соревнования (Off-Season)** - апрель-июнь 2027.
 
-Даты региональных соревнований публикуются в общей таблице, ссылка на нее есть в Положении (раздел 5.10).
+Все даты по регионам - в уроке «Календарь сезона 2026-2027 по регионам» этого уровня.
 
 ## Какие регионы входят в Qualifier
 
@@ -361,7 +362,8 @@ L1_ASSIGNMENT = {
            Отметьте, что каждый участник подходит по возрасту.
         3. Тренеры (не более двух) и контакты для официальной переписки.
         4. Полное официальное название организации, как оно будет в регистрационной форме.
-        5. План сезона: какой региональный этап или Qualifier, ориентировочные даты, участие в Social Media Challenge.
+        5. План сезона по официальному календарю: дата скриммеджа, регионального этапа и вашего Qualifier,
+           задания Social Media Challenge, которые возьмет команда.
         6. Статус согласий родителей и участников (собраны / в работе).
 
         Данные детей можно обезличить (например, только инициалы), если это требует ваша школа.
@@ -442,8 +444,8 @@ L2_EXPLORE_SEASON = ru(f"""
 ## Материалы тренера
 
 Официальные документы: Руководство по работе с командой (Team Meeting Guide, 10 занятий) и Инженерная тетрадь.
-Русские версии - по ссылкам в Положении (Приложение 2), оригиналы - на странице ресурсов Explore на
-firstinspires.org.
+Русские и казахские версии - в уроке «Материалы сезона» первого уровня, оригиналы - на странице ресурсов
+Explore на firstinspires.org. Подробный план сессий - в уроке «План сезона: 10 сессий Explore».
 
 {img("kz-explore-model.jpg", "Команда FLL Explore работает с моделью на соревновательном коврике")}
 {SOURCES}
@@ -1380,7 +1382,7 @@ PROGRAM = {
     "levels": [
         {
             "title": ml("Общие правила сезона", "Маусымның жалпы ережелері", "General season rules"),
-            "duration": ml("2-3 часа", "2-3 сағат", "2-3 hours"),
+            "duration": ml("3-4 часа", "3-4 сағат", "3-4 hours"),
             "outcomes": ru("""
                 - Знаю игры, даты и этапы сезона 2026-2027
                 - Понимаю, как распределяются квоты в своей категории
@@ -1393,6 +1395,10 @@ PROGRAM = {
                           "FIRST CANOPY: games, dates, programs", L1_SEASON, 12, video="_g9kl7xb8nU"),
                     _text("Этапы чемпионата и квоты", "Чемпионат кезеңдері мен квоталар", "Championship stages and quotas",
                           L1_STAGES, 15),
+                    _text("Календарь сезона 2026-2027 по регионам", "2026-2027 маусымының күнтізбесі өңірлер бойынша",
+                          "Season calendar 2026-2027 by region", X.CALENDAR, 15),
+                    _text("Официальное письмо РНПЦ «Дарын»", "«Дарын» РҒПО ресми хаты", "Official letter from Daryn",
+                          X.LETTER, 6),
                 ]},
                 {"title": ml("Команда и ценности", "Команда және құндылықтар", "Team and values"), "lessons": [
                     _text("Состав команды, возраст и роль тренера", "Команда құрамы, жас және жаттықтырушы рөлі",
@@ -1405,19 +1411,24 @@ PROGRAM = {
                           "Registration, Team Number and consent", L1_REGISTRATION, 12),
                     _text("Каналы связи, свои мероприятия, расходы", "Байланыс арналары, өз іс-шаралары, шығындар",
                           "Communication, own events, costs", L1_ORG, 8),
+                    _text("Social Media Challenge: общие правила и дедлайны", "Social Media Challenge: жалпы ережелер",
+                          "Social Media Challenge: rules and deadlines", X.SMC_COMMON, 10),
+                    _text("Материалы сезона на русском и казахском", "Маусым материалдары орыс және қазақ тілдерінде",
+                          "Season materials in Russian and Kazakh", X.MATERIALS, 8),
                     _quiz("Тест: общие правила сезона", "Тест: маусымның жалпы ережелері", "Quiz: general season rules",
-                          L1_QUIZ, 12),
+                          L1_QUIZ + X.L1_EXTRA_QUIZ, 15),
                 ]},
             ],
             "assignments": [L1_ASSIGNMENT],
         },
         {
             "title": ml("FLL Discover и Explore", "FLL Discover және Explore", "FLL Discover and Explore"),
-            "duration": ml("2 часа", "2 сағат", "2 hours"),
+            "duration": ml("3 часа", "3 сағат", "3 hours"),
             "outcomes": ru("""
                 - Знаю особенности Discover в сезоне без новых материалов
                 - Проверяю модель Explore по всем требованиям
                 - Готовлю детей к фестивалю: постер, тетрадь, 15-20 минут с экспертами
+                - Планирую сезон по 10 сессиям Руководства и веду команду в Social Media Challenge
             """),
             "modules": [
                 {"title": ml("FLL Discover", "FLL Discover", "FLL Discover"), "lessons": [
@@ -1427,22 +1438,34 @@ PROGRAM = {
                 {"title": ml("FLL Explore", "FLL Explore", "FLL Explore"), "lessons": [
                     _text("Сезон BIOGLOW в Explore", "Explore-дағы BIOGLOW маусымы", "BIOGLOW in Explore",
                           L2_EXPLORE_SEASON, 10, video="KzOHoFuJH4k"),
-                    _text("Модель, постер и инженерная тетрадь", "Модель, постер және инженерлік дәптер",
-                          "Model, poster and engineering notebook", L2_EXPLORE_MODEL, 12),
+                    _text("План сезона: 10 сессий Explore", "Маусым жоспары: Explore-дың 10 сессиясы",
+                          "Season plan: 10 Explore sessions", X.EXPLORE_PLAN, 15),
+                    _text("Тема сезона: история Explore, слои леса, профессии", "Маусым тақырыбы: Explore тарихы, орман қабаттары, мамандықтар",
+                          "Season theme: Explore story, rainforest layers, jobs", X.EXPLORE_THEME, 10),
+                ]},
+                {"title": ml("Модель, постер и фестиваль", "Модель, постер және фестиваль", "Model, poster and festival"), "lessons": [
+                    _text("Командная модель BIOGLOW, постер и роли на фестивале", "BIOGLOW командалық моделі, постер және фестивальдегі рөлдер",
+                          "BIOGLOW team model, poster and festival roles", X.EXPLORE_MODEL_OFFICIAL, 12),
+                    _text("Требования Положения к модели, постеру и тетради", "Ереже талаптары: модель, постер, дәптер",
+                          "Regulation requirements: model, poster, notebook", L2_EXPLORE_MODEL, 12),
                     _text("Защита, оценивание и награды", "Қорғау, бағалау және марапаттар", "Review, scoring and awards",
                           L2_EXPLORE_JUDGING, 10),
-                    _quiz("Тест: Discover и Explore", "Тест: Discover және Explore", "Quiz: Discover and Explore", L2_QUIZ),
+                    _text("Social Media Challenge для Explore", "Explore үшін Social Media Challenge",
+                          "Social Media Challenge for Explore", X.SMC_EXPLORE, 10),
+                    _quiz("Тест: Discover и Explore", "Тест: Discover және Explore", "Quiz: Discover and Explore",
+                          L2_QUIZ + X.EXPLORE_EXTRA_QUIZ, 12),
                 ]},
             ],
             "assignments": [L2_ASSIGNMENT],
         },
         {
             "title": ml("FLL Challenge", "FLL Challenge", "FLL Challenge"),
-            "duration": ml("3-4 часа", "3-4 сағат", "3-4 hours"),
+            "duration": ml("4-5 часов", "4-5 сағат", "4-5 hours"),
             "outcomes": ru("""
                 - Знаю 15 миссий BIOGLOW, новые доки, бонусы и Challenge Updates
                 - Знаю правила матча: две домашние зоны, прерывания, жетоны точности
                 - Готовлю команду к 30-минутной судейской сессии по рубрикам
+                - Веду сезон по 12 сессиям Руководства, помогаю с инновационным проектом и SMC
             """),
             "modules": [
                 {"title": ml("Игра роботов BIOGLOW", "BIOGLOW роботтар ойыны", "BIOGLOW robot game"), "lessons": [
@@ -1453,12 +1476,23 @@ PROGRAM = {
                     _text("Правила матча и оборудование", "Матч ережелері және жабдық", "Match rules and equipment",
                           L3_RULES, 15, video="wDan0826cn0"),
                 ]},
-                {"title": ml("Судейство и проект", "Төрешілік және жоба", "Judging and project"), "lessons": [
+                {"title": ml("Сезон команды", "Команданың маусымы", "The team's season"), "lessons": [
+                    _text("План сезона: 12 сессий и контрольные точки", "Маусым жоспары: 12 сессия және бақылау нүктелері",
+                          "Season plan: 12 sessions and checkpoints", X.CHALLENGE_PLAN, 15),
+                    _text("Инновационный проект BIOGLOW и Project Sparks", "BIOGLOW инновациялық жобасы және Project Sparks",
+                          "BIOGLOW innovation project and Project Sparks", X.CHALLENGE_PROJECT, 15),
+                    _text("Роли в команде и инженерная тетрадь", "Командадағы рөлдер және инженерлік дәптер",
+                          "Team roles and engineering notebook", X.CHALLENGE_NOTEBOOK, 12),
+                ]},
+                {"title": ml("Судейство и турнир", "Төрешілік және турнир", "Judging and tournament"), "lessons": [
                     _text("Судейская сессия, рубрики и награды", "Төрешілік сессиясы, рубрикалар және марапаттар",
                           "Judging session, rubrics and awards", L3_JUDGING, 15, video="9TMFtLKYT6o"),
                     _text("Проект, тетрадь, постер и пит", "Жоба, дәптер, постер және пит",
                           "Project, notebook, poster and pit", L3_PROJECT_PIT, 10),
-                    _quiz("Тест: FLL Challenge", "Тест: FLL Challenge", "Quiz: FLL Challenge", L3_QUIZ, 12),
+                    _text("Social Media Challenge для Challenge и Future Edition", "Challenge және Future Edition үшін Social Media Challenge",
+                          "Social Media Challenge for Challenge and Future Edition", X.SMC_CHALLENGE, 12),
+                    _quiz("Тест: FLL Challenge", "Тест: FLL Challenge", "Quiz: FLL Challenge",
+                          L3_QUIZ + X.CHALLENGE_EXTRA_QUIZ, 15),
                 ]},
             ],
             "assignments": [L3_ASSIGNMENT],
@@ -1482,6 +1516,8 @@ PROGRAM = {
                 {"title": ml("Судейство", "Төрешілік", "Judging"), "lessons": [
                     _text("Судейская сессия, рубрики и награды", "Төрешілік сессиясы, рубрикалар және марапаттар",
                           "Judging session, rubrics and awards", L4_JUDGING, 12),
+                    _text("Social Media Challenge для Challenge и Future Edition", "Challenge және Future Edition үшін Social Media Challenge",
+                          "Social Media Challenge for Challenge and Future Edition", X.SMC_CHALLENGE, 12),
                     _quiz("Тест: Future Edition", "Тест: Future Edition", "Quiz: Future Edition", L4_QUIZ),
                 ]},
             ],
@@ -1513,8 +1549,10 @@ PROGRAM = {
                           L5_TOURNAMENT, 12),
                     _text("Награды, Leadership Award и портфолио", "Марапаттар, Leadership Award және портфолио",
                           "Awards, Leadership Award and portfolio", L5_AWARDS, 12),
+                    _text("Social Media Challenge FTC и партнер Lepsi Organic", "FTC Social Media Challenge және Lepsi Organic серіктесі",
+                          "FTC Social Media Challenge and Lepsi Organic", X.SMC_FTC, 12),
                     _quiz("Тест: FIRST Tech Challenge", "Тест: FIRST Tech Challenge", "Quiz: FIRST Tech Challenge",
-                          L5_QUIZ, 12),
+                          L5_QUIZ + X.FTC_EXTRA_QUIZ, 15),
                 ]},
             ],
             "assignments": [L5_ASSIGNMENT],

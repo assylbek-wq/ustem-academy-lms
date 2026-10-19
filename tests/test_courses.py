@@ -67,8 +67,10 @@ class CanopyCourseTest(AppTestCase):
         r = admin.post(f"/review/{ev.id}", data=data)
         self.assertEqual(r.status_code, 302)
         cert = Certificate.query.filter_by(enrollment_id=enr.id).one()
-        # 79 минут уроков + 60 минут практики = 2 ч 19 мин -> 3 часа
-        self.assertEqual(cert.hours, 3)
+        # минуты уроков + 60 минут практики, округление вверх
+        import math
+        minutes = sum(l.duration_min for l in cohort.level.lessons) + 60
+        self.assertEqual(cert.hours, math.ceil(minutes / 60))
         self.assertEqual(certificates._completed_key(cert), "cert.pdf.completed_online")
         pdf = learner.get(f"/my/certificates/{cert.code}.pdf")
         self.assertEqual(pdf.status_code, 200)
@@ -192,3 +194,46 @@ class MigrationTest(AppTestCase):
             con = sqlite3.connect(fresh)
             self.assertEqual(con.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0002_self_paced")
             con.close()
+
+
+class CourseUpdateTest(AppTestCase):
+    def test_update_keeps_cohorts_progress_and_rebuilds_lessons(self):
+        import copy
+        from app import content
+        from app.models import Lesson, LessonProgress, Program, User
+        mod = content.COURSES["canopy-2026"]
+        original = mod.PROGRAM
+        old_spec = copy.deepcopy(original)
+        # «старая версия»: в первом уровне нет нового урока, зато есть устаревший
+        first = old_spec["levels"][0]["modules"][0]["lessons"]
+        first.pop(2)
+        first.append({"kind": "text", "title": {"ru": "Устаревший урок"}, "body": {"ru": "старое"}})
+        mod.PROGRAM = old_spec
+        try:
+            p = content.load("canopy-2026")
+        finally:
+            mod.PROGRAM = original
+        cohort = Cohort.query.filter_by(program_id=p.id).order_by(Cohort.id).first()
+        codes = {c.invite_code for c in Cohort.query.filter_by(program_id=p.id)}
+        user = User.query.filter_by(email="teacher1@academy.demo").one()
+        enr = Enrollment(cohort_id=cohort.id, user_id=user.id)
+        db.session.add(enr)
+        db.session.flush()
+        kept = Lesson.query.filter(Lesson.module.has(level_id=cohort.level_id)).order_by(Lesson.id).first()
+        db.session.add(LessonProgress(enrollment_id=enr.id, lesson_id=kept.id, attempts=1))
+        db.session.commit()
+        kept_id = kept.id
+
+        content.update("canopy-2026")
+        db.session.expire_all()
+        p = Program.query.filter_by(slug=original["slug"]).one()
+        self.assertEqual({c.invite_code for c in Cohort.query.filter_by(program_id=p.id)}, codes)
+        self.assertIsNotNone(db.session.get(Lesson, kept_id))
+        self.assertTrue(LessonProgress.query.filter_by(enrollment_id=enr.id, lesson_id=kept_id).first())
+        titles = [l.title["ru"] for l in p.levels[0].lessons]
+        self.assertNotIn("Устаревший урок", titles)
+        self.assertIn(original["levels"][0]["modules"][0]["lessons"][2]["title"]["ru"], titles)
+        expected = sum(len(m["lessons"]) for m in original["levels"][0]["modules"])
+        self.assertEqual(len(titles), expected)
+        quiz = [l for l in p.levels[0].lessons if l.kind == "quiz"][0]
+        self.assertEqual(len(quiz.questions), 15)

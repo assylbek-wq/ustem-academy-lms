@@ -14,7 +14,7 @@
   {{ stat(t('admin.s_pending'), stats.pending, 'clock') }}
   {{ stat(t('admin.s_certs'), stats.certificates, 'award') }}
 </div>
-<div class="grid lg:grid-cols-3 gap-6">
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
   <div class="lg:col-span-2">
     <div class="flex items-center mb-3"><h2 class="font-bold flex-1">{{ t('admin.current_cohorts') }}</h2><a href="{{ url_for('admin.cohorts') }}" class="text-sm text-brand-700">{{ t('common.all') }}</a></div>
     <div class="card divide-y divide-slate-200/70">

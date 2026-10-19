@@ -4,7 +4,7 @@
 {% block title %}{{ t('nav.studio') }}{% endblock %}
 {% block content %}
 {{ page_header(t('studio.title'), t('studio.sub'), icon='🧩') }}
-<div class="grid lg:grid-cols-3 gap-6">
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
   <div class="lg:col-span-2 card divide-y divide-slate-200/70">
     {% for p in programs %}
       <a href="{{ url_for('studio.program', program_id=p.id) }}" class="flex items-center gap-4 p-4 hover:bg-slate-50">

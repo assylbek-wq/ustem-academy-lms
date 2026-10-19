@@ -116,6 +116,95 @@ def load(slug: str, replace: bool = False, cohorts: bool = True) -> Program:
     return p
 
 
+def update(slug: str) -> Program:
+    """Обновляет уже загруженный курс на месте: программа, уровни, потоки и записи слушателей сохраняются.
+
+    Уроки сопоставляются по русскому названию внутри уровня: совпавшие обновляются (прогресс слушателей сохраняется),
+    новые создаются, исчезнувшие удаляются. Задания и критерии рубрик сопоставляются по порядку.
+    """
+    if slug not in COURSES:
+        raise CourseError(f"Курс {slug} не найден. Доступны: {', '.join(sorted(COURSES))}")
+    spec = COURSES[slug].PROGRAM
+    p = Program.query.filter_by(slug=spec["slug"]).first()
+    if p is None:
+        return load(slug)
+    for f in ("title", "summary", "description", "audience", "equipment", "color", "direction"):
+        setattr(p, f, spec[f])
+    p.self_paced = bool(spec.get("self_paced"))
+    p.version = (p.version or 0) + 1
+    p.published_at = utcnow()
+    levels = {lv.number: lv for lv in p.levels}
+    for number, lv_spec in enumerate(spec["levels"], start=1):
+        level = levels.get(number)
+        if level is None:
+            level = Level(program_id=p.id, number=number)
+            db.session.add(level)
+            db.session.flush()
+        level.title, level.description = lv_spec["title"], lv_spec.get("description", {})
+        level.outcomes, level.duration = lv_spec.get("outcomes", {}), lv_spec.get("duration", {})
+        level.min_quiz_score = lv_spec.get("min_quiz_score", 80)
+        level.require_attendance = False
+        _update_level_content(level, lv_spec)
+    db.session.flush()
+    from ..services.selfpaced import sync_program
+    sync_program(p)
+    db.session.commit()
+    return p
+
+
+def _update_level_content(level: Level, lv_spec: dict) -> None:
+    old_modules = list(level.modules)
+    old_lessons = {les.title.get("ru"): les for m in old_modules for les in m.lessons}
+    kept_ids = set()
+    for mi, mod_spec in enumerate(lv_spec["modules"]):
+        if mi < len(old_modules):
+            m = old_modules[mi]
+            m.position, m.title = mi, mod_spec["title"]
+        else:
+            m = Module(level_id=level.id, position=mi, title=mod_spec["title"])
+            db.session.add(m)
+            db.session.flush()
+        for li, les in enumerate(mod_spec["lessons"]):
+            lesson = old_lessons.get(les["title"]["ru"])
+            if lesson is None or lesson.id in kept_ids:
+                lesson = Lesson(module_id=m.id, title=les["title"])
+                db.session.add(lesson)
+            lesson.module_id, lesson.position, lesson.kind = m.id, li, les["kind"]
+            lesson.title, lesson.body = les["title"], les.get("body", {})
+            lesson.video_url, lesson.duration_min = les.get("video", {}), les.get("minutes", 10)
+            db.session.flush()
+            kept_ids.add(lesson.id)
+            QuizQuestion.query.filter_by(lesson_id=lesson.id).delete()
+            for qi, q in enumerate(les.get("questions", [])):
+                db.session.add(QuizQuestion(lesson_id=lesson.id, position=qi, prompt=q["q"], options=q["options"],
+                                            correct=q["correct"], explanation=q.get("why", {})))
+    db.session.flush()
+    for les in old_lessons.values():
+        if les.id not in kept_ids:
+            db.session.delete(les)
+    db.session.flush()
+    for m in old_modules[len(lv_spec["modules"]):]:
+        db.session.delete(m)
+    old_asg = list(level.assignments)
+    for ai, a in enumerate(lv_spec.get("assignments", [])):
+        asg = old_asg[ai] if ai < len(old_asg) else None
+        if asg is None:
+            asg = Assignment(level_id=level.id)
+            db.session.add(asg)
+        asg.position, asg.title, asg.description = ai, a["title"], a["description"]
+        asg.evidence_kind, asg.due_days = a.get("kind", "files"), a.get("due_days", 21)
+        asg.pass_min_level = a.get("pass_min_level", 2)
+        db.session.flush()
+        old_crit = list(asg.criteria)
+        for ci, (title, descriptors) in enumerate(a["rubric"]):
+            if ci < len(old_crit):
+                old_crit[ci].position, old_crit[ci].title, old_crit[ci].descriptors = ci, title, descriptors
+            else:
+                db.session.add(RubricCriterion(assignment_id=asg.id, position=ci, title=title, descriptors=descriptors))
+        for c in old_crit[len(a["rubric"]):]:
+            db.session.delete(c)
+
+
 def _apply_self_paced(p: Program) -> None:
     """Переводит уже загруженный курс в режим «в своем темпе»: его открытые онлайн-потоки без тренера
     становятся постоянными (ссылки на запись сохраняются)."""
