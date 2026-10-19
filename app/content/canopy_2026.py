@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from . import ml, ru
 from . import canopy_2026_extra as X
+from . import canopy_2026_more as M
 
 SLUG = "canopy-2026"
 IMG_DIR = "/static/course/canopy-2026/"
@@ -101,11 +102,13 @@ L1_STAGES = ru(f"""
 2. **Региональные соревнования (Regional)** - дают квоты на национальный этап.
 3. **FIRST Qualifier** - крупные отборочные в январе, объединяют несколько регионов.
 4. **Social Media Challenge** - 23.09.2026-25.01.2027. Для FLL это еще один путь на национальный этап.
-5. **Национальный / Центрально-Азиатский этап** - формирует сборную Казахстана. Даты уточняются.
+5. **Национальный / Центрально-Азиатский этап** - формирует сборную Казахстана. **Астана, февраль 2027**, точные даты объявят дополнительно.
 6. **Мировой финал FIRST Championship** - Хьюстон, США, **28.04-01.05.2027**.
 7. **Межсезонные соревнования (Off-Season)** - апрель-июнь 2027.
 
 Все даты по регионам - в уроке «Календарь сезона 2026-2027 по регионам» этого уровня.
+
+{img("kz-season-path.jpg", "Путь команды в сезоне FIRST CANOPY: от Kick-off до Хьюстона")}
 
 ## Какие регионы входят в Qualifier
 
@@ -196,7 +199,7 @@ Core Values - не отдельное задание. Судьи смотрят 
 на защите робота, у игрового стола и в питах. В FLL Challenge ценности дают **25%** итоговой оценки
 Champion's Award.
 
-{img("kz-explore-team.jpg", "Команда FLL Explore в едином стиле: командный дух тоже часть Core Values")}
+{img("fll-core-values-ru.jpg", "Основные ценности FIRST: страница 5 русского Руководства по работе с командой Explore")}
 
 ## Благородный профессионализм (Gracious Professionalism)
 
@@ -434,6 +437,8 @@ L2_EXPLORE_SEASON = ru(f"""
 
 Основные шаги сезона: изучить проблему, создать одно или несколько решений, испытать их и рассказать, чему научились.
 
+{img("fll-explore-ru-process.jpg", "Процесс инженерного проектирования Explore: исследуй, создавай, тестируй, делись")}
+
 {img("fll-explore-overview.jpg", "Официальный обзор сезона BIOGLOW для FLL Explore")}
 
 ## Состав команды
@@ -447,7 +452,7 @@ L2_EXPLORE_SEASON = ru(f"""
 Русские и казахские версии - в уроке «Материалы сезона» первого уровня, оригиналы - на странице ресурсов
 Explore на firstinspires.org. Подробный план сессий - в уроке «План сезона: 10 сессий Explore».
 
-{img("kz-explore-model.jpg", "Команда FLL Explore работает с моделью на соревновательном коврике")}
+{img("kz-explore-model.jpg", "Команда FLL Explore рядом со своей моделью: эксперты слушают защиту прямо у стола")}
 {SOURCES}
 """)
 
@@ -521,6 +526,8 @@ L2_EXPLORE_JUDGING = ru(f"""
 В Казахстане используется расширенный список номинаций (раздел 8.2 Положения): Champion's Award Winner и
 Finalist, Core Values, Coding, Challenge Solution, Team Model, Inspiration & Inclusion, Team Poster,
 Teamwork, Team Spirit и другие.
+
+{M.EXPLORE_PRACTICE}
 
 ## Пит (техническая зона)
 
@@ -601,6 +608,8 @@ L3_CHALLENGE_SEASON = ru(f"""
 | **Robot Game** | Выполняет миссии на поле за 2,5 минуты | 25% |
 
 Champion's Award определяется по сумме всех четырех частей.
+
+{img("fll-challenge-ru-overview.jpg", "Общий обзор FLL Challenge: что команда делает в каждой из четырех частей (стр. 5 Руководства)")}
 
 {img("fll-challenge-overview.jpg", "Официальный обзор сезона FLL Challenge BIOGLOW: поле игры роботов")}
 
@@ -769,6 +778,10 @@ Exceeds (4). Для Exceeds судья обязан написать комме�
 дополнительные награды.
 
 {img("fll-challenge-feedback.jpg", "Лист обратной связи судей: Great job и Think about")}
+
+{img("fll-challenge-ru-criteria.jpg", "Понимание критериев оценивания и Core Values: страница 25 русского Руководства")}
+
+Как подготовить детей к вопросам судей - в уроке «День турнира: чек-лист и тренировочная защита».
 {SOURCES}
 """)
 
@@ -798,7 +811,7 @@ L3_PROJECT_PIT = ru(f"""
 
 {img("kz-challenge-pit-qazygurt.jpg", "Пит команды Qazygurt: робот, инструменты и командный стиль")}
 {img("kz-challenge-pit-tolebi.jpg", "Пит команды #75231 Tolebi Daryn с наградами и национальным оформлением")}
-{img("kz-challenge-pit-urrobotics.jpg", "Пит в стиле темы сезона: судьи и гости видят историю проекта")}
+{img("kz-challenge-pit-urrobotics.jpg", "Пит в стиле темы проекта (сезон UNEARTHED, археология): судьи и гости сразу видят историю команды")}
 
 ## Роль тренера
 
@@ -1135,20 +1148,22 @@ L5_GAME = ru(f"""
 - Побеждает альянс с большим количеством очков. Дополнительные **ранговые очки (RP)** дают за другие достижения.
 
 {img("ftc-biobuzz-card.jpg", "Карточка игры BIOBUZZ presented by RTX")}
-{img("ftc-biobuzz-gameplay.jpg", "Схема игры: улей, ячейка, цветок, пыльца и нектар")}
+
+Поле, точный подсчет очков и ранговые очки - в уроке «Обзор поля BIOBUZZ», правила робота и фолы - в уроке «Правила робота, фолы и осмотр BIOBUZZ».
 
 ## Поле и команда
 
-- Поле **3,6 x 3,6 м**, борта около 30 см, покрытие из мягких плиток.
+- Поле около **3,66 x 3,66 м** из 36 мягких плиток, вокруг борта.
 - Команда - **2-15 участников 12-18 лет** (включая студентов колледжей до 18 лет), 1-2 тренера.
 - Команда проектирует, собирает и программирует робота, ведет **инженерное портфолио**, проходит собеседование
   с судьями и играет матчи.
 
 ## Где официальные правила
 
-- **Competition Manual** (правила, подсчет очков, игра): ftc-resources.firstinspires.org/ftc/game/manual
+- **Competition Manual** (правила, подсчет очков, игра): [ftc-resources.firstinspires.org/ftc/game](https://ftc-resources.firstinspires.org/ftc/game).
+  Правила обновляются еженедельно в **Team Updates** (последнее на момент курса - TU05 от 15.10.2026).
 - Видео: анимация игры, обзор поля, StarterBots.
-- Бесплатный курс FIRST **Skill Builders 2026-2027**: training.firstinspires.org.
+- Бесплатный курс FIRST **Skill Builders 2026-2027**: [training.firstinspires.org](https://training.firstinspires.org/courses/ftc-skill-builders-26-27).
 
 > Таблица тай-брейков в Положении перенесена из мануала. Перед турниром сверяйте критерии ранжирования
 > с актуальной версией Competition Manual BIOBUZZ.
@@ -1173,8 +1188,7 @@ L5_REGISTRATION = ru(f"""
 9. Через 1-2 дня команда появится в списке зарегистрированных.
 
 {img("ftc-reg-01-register.jpg", "Шаг 1: кнопка Register на firstinspires.org")}
-{img("ftc-reg-05-school.jpg", "Команда получила временный номер (пример #22753)")}
-{img("ftc-reg-06-order.jpg", "Оформление бесплатной регистрации сезона")}
+{img("ftc-reg-06-order.jpg", "Магазин FIRST: регистрация сезона за $0 в корзине, дальше CHECKOUT (скриншот из инструкции прошлого сезона, шаги те же)")}
 
 > **Команды прошлых сезонов** должны **активировать** регистрацию в Dashboard. Дедлайн в Положении -
 > **15.10.2026**. Если вы не успели, сразу напишите менеджеру FTC: mukagali@ustemfoundation.org.
@@ -1244,7 +1258,7 @@ L5_AWARDS = ru(f"""
 | **Winning / Finalist Alliance** | Альянсы финального матча |
 | **Compass Award** | Взрослому тренеру. Номинация от учеников - видео 40-60 секунд |
 
-{img("ftc-awards-table.jpg", "Сколько мест в каждой награде в зависимости от числа команд")}
+{img("ftc-awards-table.jpg", "Сколько мест в каждой награде в зависимости от числа команд (Competition Manual, таблица 6-1)")}
 
 > В Положении описание Connect Award по ошибке повторяет Think Award. Здесь дано описание по официальному
 > руководству FIRST.
@@ -1255,6 +1269,8 @@ L5_AWARDS = ru(f"""
 - Номинирует **ментор**, не больше **двух** участников от команды. Эссе и номинация **на английском**.
 - От Казахстана - до **четырех** региональных победителей, они получают приглашение на Championship.
 - **Дедлайн подачи: 15.12.2026.** Онлайн-интервью: **19-21.01.2027**.
+
+{M.FTC_JUDGING}
 
 ## Инженерное портфолио
 
@@ -1382,12 +1398,13 @@ PROGRAM = {
     "levels": [
         {
             "title": ml("Общие правила сезона", "Маусымның жалпы ережелері", "General season rules"),
-            "duration": ml("3-4 часа", "3-4 сағат", "3-4 hours"),
+            "duration": ml("4 часа", "4 сағат", "4 hours"),
             "outcomes": ru("""
                 - Знаю игры, даты и этапы сезона 2026-2027
                 - Понимаю, как распределяются квоты в своей категории
                 - Правильно регистрирую команду и получаю Team Number
                 - Знаю официальные каналы связи с Оргкомитетом
+                - Избегаю типичных ошибок и говорю с судьями на языке терминов FIRST
             """),
             "modules": [
                 {"title": ml("Сезон и этапы", "Маусым және кезеңдер", "Season and stages"), "lessons": [
@@ -1415,8 +1432,14 @@ PROGRAM = {
                           "Social Media Challenge: rules and deadlines", X.SMC_COMMON, 10),
                     _text("Материалы сезона на русском и казахском", "Маусым материалдары орыс және қазақ тілдерінде",
                           "Season materials in Russian and Kazakh", X.MATERIALS, 8),
+                ]},
+                {"title": ml("Шпаргалки тренера", "Жаттықтырушыға арналған жадынамалар", "Coach cheat sheets"), "lessons": [
+                    _text("Частые ошибки и ответы на вопросы тренеров", "Жиі кездесетін қателер мен сұрақтарға жауаптар",
+                          "Common mistakes and coach FAQ", M.FAQ, 12),
+                    _text("Глоссарий сезона: термины на русском и английском", "Маусым глоссарийі: орысша және ағылшынша терминдер",
+                          "Season glossary: Russian and English terms", M.GLOSSARY, 8),
                     _quiz("Тест: общие правила сезона", "Тест: маусымның жалпы ережелері", "Quiz: general season rules",
-                          L1_QUIZ + X.L1_EXTRA_QUIZ, 15),
+                          L1_QUIZ + X.L1_EXTRA_QUIZ + M.L1_MORE_QUIZ, 15),
                 ]},
             ],
             "assignments": [L1_ASSIGNMENT],
@@ -1466,6 +1489,7 @@ PROGRAM = {
                 - Знаю правила матча: две домашние зоны, прерывания, жетоны точности
                 - Готовлю команду к 30-минутной судейской сессии по рубрикам
                 - Веду сезон по 12 сессиям Руководства, помогаю с инновационным проектом и SMC
+                - Провожу тренировочную судейскую сессию и собираю команду на турнир по чек-листу
             """),
             "modules": [
                 {"title": ml("Игра роботов BIOGLOW", "BIOGLOW роботтар ойыны", "BIOGLOW robot game"), "lessons": [
@@ -1489,10 +1513,12 @@ PROGRAM = {
                           "Judging session, rubrics and awards", L3_JUDGING, 15, video="9TMFtLKYT6o"),
                     _text("Проект, тетрадь, постер и пит", "Жоба, дәптер, постер және пит",
                           "Project, notebook, poster and pit", L3_PROJECT_PIT, 10),
+                    _text("День турнира: чек-лист и тренировочная защита", "Турнир күні: чек-лист және жаттығу қорғауы",
+                          "Event day: checklist and practice judging", M.CHALLENGE_EVENT_DAY, 15),
                     _text("Social Media Challenge для Challenge и Future Edition", "Challenge және Future Edition үшін Social Media Challenge",
                           "Social Media Challenge for Challenge and Future Edition", X.SMC_CHALLENGE, 12),
                     _quiz("Тест: FLL Challenge", "Тест: FLL Challenge", "Quiz: FLL Challenge",
-                          L3_QUIZ + X.CHALLENGE_EXTRA_QUIZ, 15),
+                          L3_QUIZ + X.CHALLENGE_EXTRA_QUIZ + M.CHALLENGE_MORE_QUIZ, 15),
                 ]},
             ],
             "assignments": [L3_ASSIGNMENT],
@@ -1525,22 +1551,20 @@ PROGRAM = {
         },
         {
             "title": ml("FIRST Tech Challenge", "FIRST Tech Challenge", "FIRST Tech Challenge"),
-            "duration": ml("3 часа", "3 сағат", "3 hours"),
+            "duration": ml("4 часа", "4 сағат", "4 hours"),
             "outcomes": ru("""
                 - Понимаю игру BIOBUZZ и где искать официальные правила
                 - Регистрирую команду в системе FIRST
-                - Знаю формат турнира, плей-офф и награды, готовлю портфолио
+                - Знаю поле, подсчет очков, ранговые очки и правила робота BIOBUZZ
+                - Знаю формат турнира, собеседования с судьями, плей-офф и награды, готовлю портфолио
             """),
             "modules": [
                 {"title": ml("Игра и регистрация", "Ойын және тіркеу", "Game and registration"), "lessons": [
                     _text("Игра BIOBUZZ", "BIOBUZZ ойыны", "The BIOBUZZ game", L5_GAME, 12, video="sUH3z5a5S9I"),
                     _text("Обзор поля BIOBUZZ", "BIOBUZZ алаңына шолу", "BIOBUZZ field walkthrough",
-                          ru("""
-                              Видео FIRST: игровые элементы, размеры поля и варианты набора очков.
-
-                              Смотрите вместе с командой и записывайте вопросы, на которые ответ нужно искать в
-                              Competition Manual.
-                          """), 10, video="47X9sYnPijw"),
+                          M.FTC_FIELD, 15, video="47X9sYnPijw"),
+                    _text("Правила робота, фолы и осмотр BIOBUZZ", "BIOBUZZ робот ережелері, фолдар және тексеру",
+                          "BIOBUZZ robot rules, fouls and inspection", M.FTC_ROBOT, 12),
                     _text("Регистрация в системе FIRST", "FIRST жүйесінде тіркелу", "Registering with FIRST",
                           L5_REGISTRATION, 10),
                 ]},
@@ -1552,7 +1576,7 @@ PROGRAM = {
                     _text("Social Media Challenge FTC и партнер Lepsi Organic", "FTC Social Media Challenge және Lepsi Organic серіктесі",
                           "FTC Social Media Challenge and Lepsi Organic", X.SMC_FTC, 12),
                     _quiz("Тест: FIRST Tech Challenge", "Тест: FIRST Tech Challenge", "Quiz: FIRST Tech Challenge",
-                          L5_QUIZ + X.FTC_EXTRA_QUIZ, 15),
+                          L5_QUIZ + X.FTC_EXTRA_QUIZ + M.FTC_MORE_QUIZ, 15),
                 ]},
             ],
             "assignments": [L5_ASSIGNMENT],

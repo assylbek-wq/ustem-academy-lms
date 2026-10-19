@@ -236,4 +236,5 @@ class CourseUpdateTest(AppTestCase):
         expected = sum(len(m["lessons"]) for m in original["levels"][0]["modules"])
         self.assertEqual(len(titles), expected)
         quiz = [l for l in p.levels[0].lessons if l.kind == "quiz"][0]
-        self.assertEqual(len(quiz.questions), 15)
+        spec_quiz = [les for m in original["levels"][0]["modules"] for les in m["lessons"] if les["kind"] == "quiz"][0]
+        self.assertEqual(len(quiz.questions), len(spec_quiz["questions"]))
