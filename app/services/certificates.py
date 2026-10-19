@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import io
+import math
 from pathlib import Path
 
 import segno
@@ -17,13 +18,29 @@ INK = (17, 24, 28)
 MUTED = (100, 116, 139)
 
 
+ASSIGNMENT_MINUTES = 60  # практическое задание с разбором наставника
+
+
 def course_hours(enr: Enrollment) -> int:
     level = enr.cohort.level
     minutes = sum(l.duration_min or 0 for l in level.lessons)
+    minutes += ASSIGNMENT_MINUTES * len(level.assignments)
     for s in enr.cohort.sessions:
         if s.kind == "intensive" and s.ends_at and s.starts_at:
             minutes += max(0, int((s.ends_at - s.starts_at).total_seconds() // 60))
-    return max(1, round(minutes / 60))
+    return max(1, math.ceil(minutes / 60))
+
+
+def _completed_key(cert: Certificate) -> str:
+    """Текст сертификата по формату уровня: с очным интенсивом или полностью онлайн."""
+    enr = db.session.get(Enrollment, cert.enrollment_id) if cert.enrollment_id else None
+    if enr is None:
+        return "cert.pdf.completed_generic"
+    had_intensive = enr.cohort.level.require_attendance and any(s.kind == "intensive" for s in enr.cohort.sessions)
+    has_practice = bool(enr.cohort.level.assignments)
+    if had_intensive:
+        return "cert.pdf.completed"
+    return "cert.pdf.completed_online" if has_practice else "cert.pdf.completed_generic"
 
 
 def issue_for_enrollment(enr: Enrollment, issued_by: int | None = None) -> Certificate:
@@ -91,7 +108,7 @@ def render_pdf(cert: Certificate, verify_url: str, locale: str = "ru") -> bytes:
     pdf.set_xy(30, 100)
     level = loc(cert.level_title, locale)
     program = loc(cert.program_title, locale)
-    text = t("cert.pdf.completed", locale=locale).format(level=level, number=cert.level_number, program=program)
+    text = t(_completed_key(cert), locale=locale).format(level=level, number=cert.level_number, program=program)
     pdf.multi_cell(W - 110, 7, text)
 
     pdf.set_font("Ustem", "", 10.5)

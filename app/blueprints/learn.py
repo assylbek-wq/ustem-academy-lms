@@ -8,7 +8,7 @@ from flask import Blueprint, Response, abort, flash, g, redirect, render_templat
 from ..core import audit, login_required, notify
 from ..i18n import t
 from ..models import (Certificate, Cohort, Enrollment, Evidence, EvidenceFile, Lesson, LessonMaterial,
-                      LessonProgress, Session, db, local_now, utcnow)
+                      LessonProgress, Session, User, UserRole, db, local_now, utcnow)
 from ..services import ai, progress, storage
 from ..services.certificates import render_pdf
 from ..services.mail import absolute
@@ -170,9 +170,14 @@ def assignment(cohort_id, assignment_id):
             f.evidence_id = ev.id
         audit("evidence.submitted", "evidence", ev.id, assignment=a.id)
         reviewer = enr.mentor_id or cohort.trainer_id
-        notify(reviewer, "review", t("notify.new_submission", name=g.user.full_name,
-                                     locale=enr.mentor.locale if enr.mentor else "ru"),
-               url=url_for("review.detail", evidence_id=ev.id))
+        # в открытых онлайн-потоках может не быть ни наставника, ни тренера: тогда сообщаем администраторам
+        reviewers = [reviewer] if reviewer else [u.id for u in User.query.join(UserRole).filter(
+            UserRole.role == "admin", User.is_active.is_(True)).all()]
+        for rid in reviewers:
+            r_user = db.session.get(User, rid)
+            notify(rid, "review", t("notify.new_submission", name=g.user.full_name,
+                                    locale=(r_user.locale if r_user else None) or "ru"),
+                   url=url_for("review.detail", evidence_id=ev.id))
         db.session.commit()
         flash(t("assignment.submitted"), "success")
         return redirect(url_for("learn.assignment", cohort_id=cohort.id, assignment_id=a.id))
