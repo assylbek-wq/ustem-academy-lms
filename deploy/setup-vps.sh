@@ -98,7 +98,7 @@ User=academy
 Group=academy
 WorkingDirectory=$APP_DIR/app
 EnvironmentFile=$ENV_FILE
-ExecStart=$APP_DIR/venv/bin/gunicorn wsgi:app --bind 127.0.0.1:$PORT --workers 3 --threads 4 --timeout 300
+ExecStart=$APP_DIR/venv/bin/gunicorn wsgi:app --bind 127.0.0.1:$PORT --workers 2 --threads 4 --timeout 300
 Restart=always
 RestartSec=3
 
