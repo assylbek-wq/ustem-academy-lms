@@ -1,30 +1,30 @@
 {
  "title": "TeleOp для mecanum: езда вбок",
- "task": "В программе есть только езда вперед и поворот. Добавьте x = gamepad1.left_stick_x в формулы колес (FL = y + x + r, FR = y - x - r, BL = y - x + r, BR = y + x - r) и выведите x в telemetry.\nПроверьте: A/D двигают робота вбок без поворота. Доберитесь до обоих флажков у стенки пилотов.",
+ "task": "В программе есть только езда вперед и поворот. Добавьте x = gamepad1.left_stick_x в формулы колес (FL = y + x + r, FR = y - x - r, BL = y - x + r, BR = y + x - r) и выведите x в telemetry.\nПроверьте: A/D двигают робота вбок без поворота. Доберитесь до обоих флажков.",
  "robot": {
   "drive": "mecanum",
   "size": 18,
   "modules": [],
-  "names": {}
+  "names": {},
+  "alliance": "red"
  },
  "start": {
-  "x": 0,
-  "y": -60,
+  "x": -36,
+  "y": -50,
   "h": 0
  },
- "pollen": "none",
  "code": "package org.firstinspires.ftc.teamcode;\n\nimport com.qualcomm.robotcore.eventloop.opmode.TeleOp;\nimport com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;\nimport com.qualcomm.robotcore.hardware.DcMotor;\n\n@TeleOp(name = \"TeleOp Mecanum\")\npublic class TeleOpMecanum extends LinearOpMode {\n    @Override\n    public void runOpMode() {\n        DcMotor fl = hardwareMap.get(DcMotor.class, \"frontLeft\");\n        DcMotor fr = hardwareMap.get(DcMotor.class, \"frontRight\");\n        DcMotor bl = hardwareMap.get(DcMotor.class, \"backLeft\");\n        DcMotor br = hardwareMap.get(DcMotor.class, \"backRight\");\n\n        fl.setDirection(DcMotor.Direction.REVERSE);\n        bl.setDirection(DcMotor.Direction.REVERSE);\n        for (DcMotor m : new DcMotor[]{fl, fr, bl, br}) {\n            m.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);\n        }\n\n        telemetry.addLine(\"Готов. Нажмите START\");\n        telemetry.update();\n        waitForStart();\n\n        while (opModeIsActive()) {\n            double y = -gamepad1.left_stick_y;  // вперед (стик вверх дает минус)\n            double r = gamepad1.right_stick_x;  // поворот\n            // TODO: добавьте x = gamepad1.left_stick_x и езду вбок\n\n            double max = Math.max(Math.abs(y) + Math.abs(r), 1.0);\n            fl.setPower((y + r) / max);\n            fr.setPower((y - r) / max);\n            bl.setPower((y + r) / max);\n            br.setPower((y - r) / max);\n\n            telemetry.addData(\"y / r\", \"%.2f / %.2f\", y, r);\n            telemetry.update();\n        }\n    }\n}\n",
  "marks": [
   {
-   "x": -50,
-   "y": -60,
-   "r": 7,
+   "x": -58,
+   "y": -50,
+   "r": 6,
    "label": "L"
   },
   {
-   "x": 50,
-   "y": -60,
-   "r": 7,
+   "x": -14,
+   "y": -50,
+   "r": 6,
    "label": "R"
   }
  ],
@@ -43,17 +43,18 @@
    "type": "zones",
    "zones": [
     {
-     "x": -50,
-     "y": -60,
-     "r": 7
+     "x": -58,
+     "y": -50,
+     "r": 6
     },
     {
-     "x": 50,
-     "y": -60,
-     "r": 7
+     "x": -14,
+     "y": -50,
+     "r": 6
     }
    ],
    "label": "Робот побывал у обоих флажков"
   }
- ]
+ ],
+ "alliance": "red"
 }

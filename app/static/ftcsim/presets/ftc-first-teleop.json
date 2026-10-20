@@ -1,35 +1,35 @@
 {
  "title": "Первый TeleOp: танковое шасси",
- "task": "Робот едет назад и крутится не в ту сторону. Исправьте код: минус перед стиком Y и REVERSE для левого мотора. Добавьте telemetry с мощностями «Левый» и «Правый».\nЗатем нажмите INIT, START и проедьте через три флажка (W/S - вперед-назад, стрелки - поворот).",
+ "task": "Робот едет назад и крутится не в ту сторону. Исправьте код: минус перед стиком Y и REVERSE для левого мотора. Добавьте telemetry с мощностями «Левый» и «Правый».\nЗатем нажмите INIT, START и проедьте через три флажка вокруг улья (W/S - вперед-назад, стрелки - поворот).",
  "robot": {
   "drive": "tank",
   "size": 18,
   "modules": [],
-  "names": {}
+  "names": {},
+  "alliance": "red"
  },
  "start": {
-  "x": 0,
-  "y": -60,
+  "x": -36,
+  "y": -63,
   "h": 0
  },
- "pollen": "none",
  "code": "package org.firstinspires.ftc.teamcode;\n\nimport com.qualcomm.robotcore.eventloop.opmode.TeleOp;\nimport com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;\nimport com.qualcomm.robotcore.hardware.DcMotor;\n\n@TeleOp(name = \"Первый TeleOp\")\npublic class FirstTeleOp extends LinearOpMode {\n    @Override\n    public void runOpMode() {\n        DcMotor left = hardwareMap.get(DcMotor.class, \"leftDrive\");\n        DcMotor right = hardwareMap.get(DcMotor.class, \"rightDrive\");\n\n        waitForStart();\n\n        while (opModeIsActive()) {\n            double drive = gamepad1.left_stick_y;   // вперед-назад\n            double turn = gamepad1.right_stick_x;   // поворот\n\n            left.setPower(drive + turn);\n            right.setPower(drive - turn);\n        }\n    }\n}\n",
  "marks": [
   {
-   "x": -40,
-   "y": -40,
+   "x": -36,
+   "y": -32,
    "r": 9,
    "label": "1"
   },
   {
-   "x": -44,
-   "y": 30,
+   "x": -42,
+   "y": 38,
    "r": 9,
    "label": "2"
   },
   {
-   "x": 30,
-   "y": 44,
+   "x": 0,
+   "y": 48,
    "r": 9,
    "label": "3"
   }
@@ -44,22 +44,23 @@
    "type": "zones",
    "zones": [
     {
-     "x": -40,
-     "y": -40,
+     "x": -36,
+     "y": -32,
      "r": 9
     },
     {
-     "x": -44,
-     "y": 30,
+     "x": -42,
+     "y": 38,
      "r": 9
     },
     {
-     "x": 30,
-     "y": 44,
+     "x": 0,
+     "y": 48,
      "r": 9
     }
    ],
    "label": "Робот проехал через все три флажка"
   }
- ]
+ ],
+ "alliance": "red"
 }

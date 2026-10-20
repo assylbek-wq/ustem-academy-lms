@@ -33,7 +33,8 @@ USTEM Academy - LMS для подготовки учителей. Flask + SQLAlc
   Сквозная проверка всех заданий в браузере: сервер с `SEED_DEMO=1`, затем
   `python3 tests/e2e/lab_solutions.py http://localhost:5080` (эталоны) и с `--negative` (стартовый код не проходит).
 - Симулятор FTC (шасси, механизмы, Java OpMode, Driver Hub): исходники `assets/lab/ftc/` (`java.js` - перевод
-  подмножества Java в async JS, `core.js` - SDK, физика и проверки без DOM, `sim.js` - интерфейс), та же сборка
+  подмножества Java в async JS, `field.js` - поле BIOBUZZ по CAD FIRST, `core.js` - SDK, физика, очки и проверки
+  без DOM, `sim.js` - интерфейс), та же сборка
   `bash deploy/build-lab.sh` -> `app/static/js/ftcsim.js`. Задания: `python3 assets/lab/ftc_presets.py` ->
   `app/static/ftcsim/presets/*.json`. В уроке блок `<div class="ftc-sim-ИМЯ"></div>` (задание `ftc-ИМЯ`),
   песочница `/lab/ftc`. Сквозная проверка: `python3 tests/e2e/ftc_solutions.py http://localhost:5080` и `--negative`.

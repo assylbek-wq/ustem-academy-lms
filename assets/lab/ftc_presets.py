@@ -5,8 +5,8 @@
 SOLUTIONS - эталонные решения для сквозной проверки (tests/e2e/ftc_solutions.py): код, робот и сценарий
 геймпада [[t0, t1, {кнопки и стики}], ...] по времени симуляции после START.
 
-Поле 144 x 144 дюйма, начало координат в центре, ось y от пилотов к дальней стене. Курс 0 - робот смотрит
-от пилотов, положительный угол - поворот против часовой стрелки (как yaw у IMU).
+Поле BIOBUZZ 144 x 144 дюйма (геометрия в assets/lab/ftc/field.js по CAD FIRST): начало в центре, +x к синему
+альянсу, +y к стене, дальней от зрителей. Курс 0 - робот смотрит в +y, положительный угол - против часовой стрелки.
 """
 from __future__ import annotations
 
@@ -16,8 +16,8 @@ from pathlib import Path
 
 OUT = Path(__file__).resolve().parents[2] / "app" / "static" / "ftcsim" / "presets"
 
-MECANUM = {"drive": "mecanum", "size": 18, "modules": ["intake", "launcher"], "names": {}}
-TANK = {"drive": "tank", "size": 18, "modules": [], "names": {}}
+MECANUM = {"drive": "mecanum", "size": 18, "modules": ["intake", "launcher"], "names": {}, "alliance": "red"}
+TANK = {"drive": "tank", "size": 18, "modules": [], "names": {}, "alliance": "red"}
 
 HEAD = """package org.firstinspires.ftc.teamcode;
 
@@ -386,8 +386,8 @@ public class Turn90 extends LinearOpMode {
 AUTO_IMPORTS = "import com.qualcomm.robotcore.hardware.Servo;\n"
 
 AUTO_START = head("Autonomous", AUTO_IMPORTS) + """
-@Autonomous(name = "Auto Пыльца")
-public class AutoPollen extends LinearOpMode {
+@Autonomous(name = "Auto Red Hive")
+public class AutoRedHive extends LinearOpMode {
     DcMotor fl, fr, bl, br, launcher;
     Servo gate;
 
@@ -405,10 +405,10 @@ public class AutoPollen extends LinearOpMode {
 
         waitForStart();
 
-        // TODO 1. Раскрутите маховик, откройте заслонку и забросьте 4 пыльцы в улей
-        // TODO 2. Закройте заслонку и припаркуйтесь в зоне PARK (правый нижний угол)
+        // TODO 1. Раскрутите маховик, откройте заслонку и забросьте POLLEN в верхнюю ячейку красного улья
+        // TODO 2. Закройте заслонку, уезжайте от стены и встаньте частично в красную LOADING ZONE
 
-        strafe(0.5, 1000);  // пока только сдвиг вправо
+        strafe(-0.5, 600);  // пока только немного влево
     }
 
     // Езда вбок: мощность вправо (минус - влево) и время в мс
@@ -416,6 +416,16 @@ public class AutoPollen extends LinearOpMode {
         fl.setPower(power);
         fr.setPower(-power);
         bl.setPower(-power);
+        br.setPower(power);
+        sleep(ms);
+        stopDrive();
+    }
+
+    // Езда вперед (минус - назад) на время в мс
+    void forward(double power, long ms) {
+        fl.setPower(power);
+        fr.setPower(power);
+        bl.setPower(power);
         br.setPower(power);
         sleep(ms);
         stopDrive();
@@ -431,10 +441,10 @@ public class AutoPollen extends LinearOpMode {
 """
 
 AUTO_SOLUTION = AUTO_START.replace(
-    """        // TODO 1. Раскрутите маховик, откройте заслонку и забросьте 4 пыльцы в улей
-        // TODO 2. Закройте заслонку и припаркуйтесь в зоне PARK (правый нижний угол)
+    """        // TODO 1. Раскрутите маховик, откройте заслонку и забросьте POLLEN в верхнюю ячейку красного улья
+        // TODO 2. Закройте заслонку, уезжайте от стены и встаньте частично в красную LOADING ZONE
 
-        strafe(0.5, 1000);  // пока только сдвиг вправо
+        strafe(-0.5, 600);  // пока только немного влево
 """, """        // 1. Маховик раскручивается около секунды, потом открываем заслонку
         launcher.setPower(1);
         sleep(1200);
@@ -443,19 +453,20 @@ AUTO_SOLUTION = AUTO_START.replace(
         gate.setPosition(0);
         launcher.setPower(0);
 
-        // 2. Парковка: вправо до зоны PARK
-        strafe(0.8, 1400);
+        // 2. Влево вдоль стены к LOADING ZONE, затем вперед: робот не касается стены (LEAVE)
+        strafe(-0.8, 1100);
+        forward(0.3, 500);
         telemetry.addLine("AUTO готов");
         telemetry.update();
 """)
 
-PARK_ZONES = "Зона PARK - правый нижний угол поля (желтая штриховка)."
+RED = "Робот играет за красный альянс: пилоты у левой стены, LOADING ZONE красного альянса - у той же стены дальше от зрителей."
 
 PRESETS = {
     "ftc-sandbox": {
         "title": "Свободная тренировка",
         "robot": MECANUM,
-        "start": {"x": 0, "y": -60, "h": 0},
+        "start": {"x": -63, "y": -10.8, "h": -90},
         "code": mech_teleop(MECH_LOOP, "TeleOp Main", "TeleOpMain"),
         "checks": [],
     },
@@ -465,39 +476,37 @@ PRESETS = {
                 "конфигурации (вкладка «Робот») и исправьте то или другое.\nКогда INIT пройдет, нажмите START: "
                 "робот должен проехать вперед примерно на 30 дюймов до отметки.",
         "robot": {**MECANUM, "modules": [], "names": {"frontLeft": "frontleft", "backRight": "back_right"}},
-        "start": {"x": 0, "y": -60, "h": 0},
-        "pollen": "none",
+        "start": {"x": -36, "y": -63, "h": 0},
         "code": CONFIG_CODE,
-        "marks": [{"x": 0, "y": -30, "r": 5, "label": "Финиш"}],
+        "marks": [{"x": -36, "y": -33, "r": 5, "label": "Финиш"}],
         "checks": [
             {"type": "init_ok", "label": "INIT проходит без ошибок"},
-            {"type": "pose_end", "x": 0, "y": -30, "tol": 5, "label": "Робот остановился у отметки «Финиш»"},
+            {"type": "pose_end", "x": -36, "y": -33, "tol": 5, "label": "Робот остановился у отметки «Финиш»"},
         ],
     },
     "ftc-first-teleop": {
         "title": "Первый TeleOp: танковое шасси",
         "task": "Робот едет назад и крутится не в ту сторону. Исправьте код: минус перед стиком Y и REVERSE "
                 "для левого мотора. Добавьте telemetry с мощностями «Левый» и «Правый».\nЗатем нажмите INIT, "
-                "START и проедьте через три флажка (W/S - вперед-назад, стрелки - поворот).",
+                "START и проедьте через три флажка вокруг улья (W/S - вперед-назад, стрелки - поворот).",
         "robot": TANK,
-        "start": {"x": 0, "y": -60, "h": 0},
-        "pollen": "none",
+        "start": {"x": -36, "y": -63, "h": 0},
         "code": TANK_START,
-        "marks": [{"x": -40, "y": -40, "r": 9, "label": "1"}, {"x": -44, "y": 30, "r": 9, "label": "2"},
-                  {"x": 30, "y": 44, "r": 9, "label": "3"}],
+        "marks": [{"x": -36, "y": -32, "r": 9, "label": "1"}, {"x": -42, "y": 38, "r": 9, "label": "2"},
+                  {"x": 0, "y": 48, "r": 9, "label": "3"}],
         "checks": [
             {"type": "telemetry", "text": "Левый", "label": "В telemetry видна мощность «Левый»"},
-            {"type": "zones", "zones": [{"x": -40, "y": -40, "r": 9}, {"x": -44, "y": 30, "r": 9}, {"x": 30, "y": 44, "r": 9}],
+            {"type": "zones", "zones": [{"x": -36, "y": -32, "r": 9}, {"x": -42, "y": 38, "r": 9}, {"x": 0, "y": 48, "r": 9}],
              "label": "Робот проехал через все три флажка"},
         ],
     },
     "ftc-builder": {
-        "title": "Конструктор: робот для практики",
-        "task": "Соберите робота для учебной игры: шасси mecanum, захват-ролик и пусковая установка. Робот должен "
+        "title": "Конструктор: робот для BIOBUZZ",
+        "task": "Соберите робота для игры: шасси mecanum, захват-ролик и пусковая установка. Робот должен "
                 "пройти осмотр: старт в кубе 18 дюймов, не больше 8 моторов и 8 сервоприводов.\nСейчас собран "
                 "танк с рамой 19 дюймов и длинной рукой: он осмотр не пройдет. Все меняется на вкладке «Робот».",
-        "robot": {"drive": "tank", "size": 19, "modules": ["arm"], "names": {}},
-        "start": {"x": 0, "y": -60, "h": 0},
+        "robot": {"drive": "tank", "size": 19, "modules": ["arm"], "names": {}, "alliance": "red"},
+        "start": {"x": -36, "y": -63, "h": 0},
         "code": mec_teleop(MEC_LOOP),
         "tab": "robot",
         "checks": [
@@ -510,31 +519,30 @@ PRESETS = {
         "title": "TeleOp для mecanum: езда вбок",
         "task": "В программе есть только езда вперед и поворот. Добавьте x = gamepad1.left_stick_x в формулы "
                 "колес (FL = y + x + r, FR = y - x - r, BL = y - x + r, BR = y + x - r) и выведите x в telemetry.\n"
-                "Проверьте: A/D двигают робота вбок без поворота. Доберитесь до обоих флажков у стенки пилотов.",
+                "Проверьте: A/D двигают робота вбок без поворота. Доберитесь до обоих флажков.",
         "robot": {**MECANUM, "modules": []},
-        "start": {"x": 0, "y": -60, "h": 0},
-        "pollen": "none",
+        "start": {"x": -36, "y": -50, "h": 0},
         "code": mec_teleop(MEC_LOOP_START),
-        "marks": [{"x": -50, "y": -60, "r": 7, "label": "L"}, {"x": 50, "y": -60, "r": 7, "label": "R"}],
+        "marks": [{"x": -58, "y": -50, "r": 6, "label": "L"}, {"x": -14, "y": -50, "r": 6, "label": "R"}],
         "checks": [
             {"type": "telemetry", "text": " x ", "label": "В telemetry есть значение x"},
             {"type": "strafe", "dist": 24, "label": "Робот проехал вбок 24 дюйма, не поворачивая"},
-            {"type": "zones", "zones": [{"x": -50, "y": -60, "r": 7}, {"x": 50, "y": -60, "r": 7}],
+            {"type": "zones", "zones": [{"x": -58, "y": -50, "r": 6}, {"x": -14, "y": -50, "r": 6}],
              "label": "Робот побывал у обоих флажков"},
         ],
     },
     "ftc-mechanisms": {
-        "title": "Механизмы на геймпаде: захват и пуск",
+        "title": "Механизмы на геймпаде: захват и бросок",
         "task": "Допишите управление механизмами: захват (правый бампер - E, выброс - K), маховик (правый триггер - C) "
-                "и заслонку (A - J). Робот начинает без пыльцы.\nСоберите хотя бы 3 пыльцы у боковой стены, "
-                "встаньте лицом к улью на расстоянии 24-84 дюйма и забросьте 2 в улей.",
+                "и заслонку (A - J). Робот начинает без POLLEN и стоит перед цветком у красной стены.\n"
+                "Заберите POLLEN через нижнее окно цветка, развернитесь к красному улью и забросьте 2 в верхнюю ячейку.",
         "robot": MECANUM,
-        "start": {"x": 0, "y": -60, "h": 0},
+        "start": {"x": -45, "y": -23.4, "h": 90},
         "preload": 0,
         "code": mech_teleop(MECH_START_LOOP, "TeleOp Механизмы", "TeleOpMechanisms"),
         "checks": [
-            {"type": "collect", "n": 3, "label": "Захват собрал 3 пыльцы"},
-            {"type": "hits", "n": 2, "label": "2 попадания в улей"},
+            {"type": "collect", "n": 3, "label": "Захват забрал 3 POLLEN"},
+            {"type": "hits", "n": 2, "label": "2 элемента в верхней ячейке улья"},
         ],
     },
     "ftc-encoder": {
@@ -543,13 +551,12 @@ PRESETS = {
                 "48 дюймов (537,7 тика на оборот, колесо 104 мм), используйте RUN_TO_POSITION и isBusy().\n"
                 "Робот должен остановиться у отметки с точностью 1,5 дюйма.",
         "robot": {**MECANUM, "modules": []},
-        "start": {"x": -36, "y": -60, "h": 0},
-        "pollen": "none",
+        "start": {"x": -36, "y": -63, "h": 0},
         "code": ENC_START,
-        "marks": [{"x": -36, "y": -12, "r": 1.5, "label": "48"}],
+        "marks": [{"x": -36, "y": -15, "r": 1.5, "label": "48"}],
         "checks": [
             {"type": "code_has", "re": "RUN_TO_POSITION|getCurrentPosition", "label": "Код использует энкодеры"},
-            {"type": "pose_end", "x": -36, "y": -12, "tol": 1.5, "label": "Робот проехал 48 дюймов (точность 1,5)"},
+            {"type": "pose_end", "x": -36, "y": -15, "tol": 1.5, "label": "Робот проехал 48 дюймов (точность 1,5)"},
         ],
     },
     "ftc-imu": {
@@ -558,8 +565,7 @@ PRESETS = {
                 "уменьшайте мощность у цели (P-регулятор).\nНалево - положительный угол. Робот должен остановиться "
                 "на 90 градусах с точностью 2 градуса.",
         "robot": {**MECANUM, "modules": []},
-        "start": {"x": -36, "y": -36, "h": 0},
-        "pollen": "none",
+        "start": {"x": -40, "y": -42, "h": 0},
         "code": IMU_START,
         "checks": [
             {"type": "code_has", "re": "getYaw", "label": "Код читает угол IMU"},
@@ -567,72 +573,84 @@ PRESETS = {
         ],
     },
     "ftc-auto": {
-        "title": "Автономный режим: заброс и парковка",
-        "task": "Робот стоит лицом к улью в 60 дюймах и везет 4 пыльцы. За 30 секунд AUTO: раскрутите маховик, "
-                "откройте заслонку, забросьте пыльцу, затем припаркуйтесь.\n" + PARK_ZONES,
+        "title": "AUTO: HIVE TIP, LEAVE и PARK",
+        "task": "Робот касается красной стены и смотрит на красный улей, в нем 4 POLLEN. В верхней ячейке уже 3 NECTAR: "
+                "еще 3 элемента перевернут улей (HIVE TIP, 20 очков).\nЗа 30 секунд: забросьте POLLEN, затем уезжайте "
+                "от стены (LEAVE, 3 очка) и встаньте хотя бы частично в красную LOADING ZONE (PARK, 5 очков).",
         "robot": MECANUM,
-        "start": {"x": 0, "y": -60, "h": 0},
+        "start": {"x": -63, "y": -10.8, "h": -90},
         "code": AUTO_START,
         "checks": [
-            {"type": "hits", "n": 3, "within": 30, "label": "Не меньше 3 попаданий в улей"},
-            {"type": "park", "label": "Робот в зоне PARK в конце AUTO"},
+            {"type": "tips", "n": 1, "label": "HIVE TIP красного улья"},
+            {"type": "leave", "label": "LEAVE: в конце AUTO робот не касается стены"},
+            {"type": "park", "label": "PARK: робот хотя бы частично в красной LOADING ZONE"},
             {"type": "finished", "label": "Программа завершилась сама за 30 секунд"},
         ],
     },
     "ftc-match": {
-        "title": "Тренировочный матч: 2 минуты",
-        "task": "Полная программа TeleOp уже готова. Сыграйте тренировочный матч: забросьте 4 стартовые пыльцы, "
-                "соберите еще и забросьте, в конце встаньте в зону PARK.\nЦель - 20 очков и больше. Попадание 3 очка, "
-                "парковка 5. " + PARK_ZONES,
+        "title": "Тренировочный матч: TELEOP 2 минуты",
+        "task": "Программа TeleOp готова, в роботе 4 POLLEN. Переверните улей, заберите POLLEN из цветка у своей стены, "
+                "забросьте в новую верхнюю ячейку и к концу встаньте в LOADING ZONE.\nЦель - 30 очков: TIP 20, "
+                "элемент в верхней ячейке в конце 2, PARK 5. За 60 секунд до конца открываются цветки.",
         "robot": MECANUM,
-        "start": {"x": 0, "y": -60, "h": 0},
+        "start": {"x": -63, "y": -10.8, "h": -90},
         "limit": 120,
         "play": True,
         "code": mech_teleop(MECH_LOOP, "TeleOp Match", "TeleOpMatch"),
         "checks": [
-            {"type": "hits", "n": 4, "label": "4 попадания в улей"},
-            {"type": "score", "n": 20, "label": "20 очков и больше"},
-            {"type": "park", "label": "В конце матча робот в зоне PARK"},
+            {"type": "tips", "n": 1, "label": "HIVE TIP"},
+            {"type": "score", "n": 30, "label": "30 очков и больше"},
+            {"type": "park", "label": "В конце матча робот в LOADING ZONE"},
         ],
     },
 }
 
-# Сценарии геймпада: [начало, конец, ввод] в секундах после START
-# Робот не поворачивается: сдвиг влево к стене, проезд вперед вдоль ряда пыльцы с захватом, назад,
-# сдвиг к центру (улей прямо по курсу), заброс, сдвиг в зону PARK.
+for _n, _p in PRESETS.items():
+    _p.setdefault("alliance", "red")
+
+# Сценарии геймпада: [начало, конец, ввод] в секундах после START.
+# Механизмы: вперед к цветку 3 и выемка 4 POLLEN, разворот на 180 (медленный режим), сдвиг к линии верхней
+# ячейки красного улья (y = -10,8), бросок.
 COLLECT_SCRIPT = [
-    [0.0, 1.1, {"left_stick_x": -1}],
-    [1.3, 2.65, {"left_stick_y": -1, "right_bumper": True}],
-    [2.85, 4.05, {"left_stick_y": 1}],
-    [4.2, 5.3, {"left_stick_x": 1}],
-    [5.5, 8.5, {"right_trigger": 1}], [6.8, 8.5, {"a": True}],
+    [0.0, 0.35, {"left_stick_y": -0.6, "right_bumper": True}],
+    [0.35, 2.2, {"right_bumper": True}],
+    [2.3, 2.6, {"left_stick_y": 0.6}],
+    [2.7, 4.45, {"right_stick_x": 1, "left_bumper": True}],
+    [4.6, 4.95, {"left_stick_x": -1}],
+    [5.1, 8.4, {"right_trigger": 1}], [6.4, 8.4, {"a": True}],
 ]
 
-
-def shifted(script, dt):
-    return [[a + dt, b + dt, v] for a, b, v in script]
-
-
-MATCH_SCRIPT = [[0.0, 3.2, {"right_trigger": 1}], [1.2, 3.2, {"a": True}]] + shifted(COLLECT_SCRIPT, 3.3) + [
-    [11.9, 13.0, {"left_stick_x": 1}]]
+MATCH_SCRIPT = [
+    [0.0, 3.2, {"right_trigger": 1}], [1.2, 3.2, {"a": True}],
+    [3.3, 3.55, {"left_stick_y": -0.6}],
+    [3.6, 3.95, {"left_stick_x": 1}],
+    [4.05, 5.8, {"right_stick_x": 1, "left_bumper": True}],
+    [5.9, 6.25, {"left_stick_y": -0.6, "right_bumper": True}],
+    [6.25, 8.2, {"right_bumper": True}],
+    [8.3, 8.6, {"left_stick_y": 0.6}],
+    [8.7, 10.45, {"right_stick_x": 1, "left_bumper": True}],
+    [10.6, 11.45, {"left_stick_x": -1}],
+    [11.6, 14.8, {"right_trigger": 1}], [12.8, 14.8, {"a": True}],
+    [14.9, 15.4, {"left_stick_x": -1}],
+    [15.5, 15.8, {"left_stick_y": 0.6}],
+]
 
 SOLUTIONS = {
     "ftc-config": {"robot": {**PRESETS["ftc-config"]["robot"], "names": {}}, "code": CONFIG_CODE, "seconds": 3},
     "ftc-first-teleop": {"code": TANK_SOLUTION, "seconds": 8, "script": [
-        [0.0, 0.6, {"right_stick_x": -0.3}], [0.8, 1.75, {"left_stick_y": -1}],
-        [1.95, 2.55, {"right_stick_x": 0.3}], [2.75, 3.95, {"left_stick_y": -1}],
-        [4.15, 4.79, {"right_stick_x": 0.3}], [4.95, 6.2, {"left_stick_y": -1}]]},
+        [0.0, 0.5, {"left_stick_y": -1}],
+        [0.7, 0.8, {"right_stick_x": -0.3}], [1.0, 2.33, {"left_stick_y": -1}],
+        [2.53, 3.25, {"right_stick_x": 0.3}], [3.45, 4.35, {"left_stick_y": -1}]]},
     "ftc-builder": {"robot": MECANUM, "code": mec_teleop(MEC_LOOP), "seconds": 0.5},
-    "ftc-mecanum": {"code": mec_teleop(MEC_LOOP), "seconds": 5, "script": [
-        [0.2, 1.4, {"left_stick_x": -1}], [1.6, 4.4, {"left_stick_x": 1}]]},
-    "ftc-mechanisms": {"code": mech_teleop(MECH_LOOP, "TeleOp Механизмы", "TeleOpMechanisms"), "seconds": 9.5,
+    "ftc-mecanum": {"code": mec_teleop(MEC_LOOP), "seconds": 4, "script": [
+        [0.2, 0.75, {"left_stick_x": -1}], [0.95, 2.4, {"left_stick_x": 1}]]},
+    "ftc-mechanisms": {"code": mech_teleop(MECH_LOOP, "TeleOp Механизмы", "TeleOpMechanisms"), "seconds": 9,
                        "script": COLLECT_SCRIPT},
     "ftc-encoder": {"code": ENC_SOLUTION, "seconds": 6},
     "ftc-imu": {"code": IMU_SOLUTION, "seconds": 6},
     "ftc-auto": {"code": AUTO_SOLUTION, "seconds": 30},
-    "ftc-match": {"code": mech_teleop(MECH_LOOP, "TeleOp Match", "TeleOpMatch"), "seconds": 14, "script": MATCH_SCRIPT},
+    "ftc-match": {"code": mech_teleop(MECH_LOOP, "TeleOp Match", "TeleOpMatch"), "seconds": 16, "script": MATCH_SCRIPT},
 }
-
 
 def write() -> list[Path]:
     OUT.mkdir(parents=True, exist_ok=True)

@@ -3,7 +3,10 @@ import { EditorView, basicSetup } from "codemirror";
 import { java } from "@codemirror/lang-java";
 import { keymap } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
-import { Core, advance, DRIVES, MODULES, deviceList, inspect, HALF, HIVE, PARK, CAPACITY, HIT_MIN, HIT_MAX, DEFAULT_ROBOT } from "./core.js";
+import { Core, advance, DRIVES, MODULES, deviceList, inspect, HALF, CAPACITY, LAUNCH_MIN, LAUNCH_MAX, DEFAULT_ROBOT,
+  ALLIANCES, FRAME, FRAME_LEGS, HIVES, CELL, TIP_AT, FLOWERS, flowerRect, LOADING, GARDEN, TRAY, POLLEN_R, NECTAR_R, cellCenter, otherSide } from "./core.js";
+
+let VIEW_ROT = 0; // поворот вида: поле «глазами пилотов» своего альянса
 
 const h = (tag, attrs = {}, ...kids) => {
   const e = document.createElement(tag);
@@ -56,12 +59,15 @@ class FtcSim {
     this.btnInit = h("button", { type: "button", class: "ftc-btn ftc-init", onclick: () => this.init() }, "INIT");
     this.btnStart = h("button", { type: "button", class: "ftc-btn ftc-start", onclick: () => this.start(), disabled: true }, "▶ START");
     this.btnStop = h("button", { type: "button", class: "ftc-btn ftc-stop", onclick: () => this.stop(), disabled: true }, "■ STOP");
+    this.viewSel = h("select", { class: "ftc-select", title: "Как смотреть на поле", onchange: (e) => { this.view = e.target.value; this.draw(); } },
+      h("option", { value: "driver" }, "Вид пилотов"), h("option", { value: "audience" }, "Вид зрителей"));
+    this.view = "driver";
     const speed = h("select", { class: "ftc-select", title: "Скорость симуляции", onchange: (e) => { this.speed = +e.target.value; } },
       h("option", { value: 1 }, "1x"), h("option", { value: 2 }, "2x"), h("option", { value: 4 }, "4x"));
     this.btnReset = h("button", { type: "button", class: "ftc-btn", title: "Вернуть стартовый код и робота задания", onclick: () => this.resetAll() }, "Сброс");
     const tb = h("div", { class: "ftc-toolbar" }, this.btnInit, this.btnStart, this.btnStop, this.opLabel, h("span", { class: "ftc-grow" }),
       h("button", { type: "button", class: "ftc-btn", title: "Вернуть робота и пыльцу на старт", onclick: () => this.resetField() }, "⟲ Поле"),
-      speed, this.btnReset,
+      this.viewSel, speed, this.btnReset,
       h("button", { type: "button", class: "ftc-btn", title: "Во весь экран", onclick: () => { this.root.classList.toggle("ftc-full"); this.resize(); } }, "⛶"));
 
     // Поле
@@ -253,10 +259,15 @@ class FtcSim {
   onCore(ev, data) {
     if (ev === "phase" || ev === "ready") { this.refreshButtons(); this.updateHub(); this.renderChecks(); if (ev === "phase" && ["done", "stopped", "error"].includes(this.core.phase)) this.afterRun(); }
     else if (ev === "shot") {
-      if (data.hit) this.toast("Попадание в улей! +3", "ok");
-      else if (data.dist < HIT_MIN || data.dist > HIT_MAX) this.toast(`Мимо: до улья ${Math.round(data.dist)} дюймов, нужно ${HIT_MIN}-${HIT_MAX}`, "bad");
-      else this.toast(`Мимо: робот смотрит на ${Math.round(data.err)}° в сторону от улья`, "bad");
-    } else if (ev === "collect") this.toast(`Пыльца в роботе: ${this.core.held}/${CAPACITY}`, "", "held");
+      if (data.hit) return;
+      if (data.dist < LAUNCH_MIN) this.toast(`Мимо: слишком близко к улью (${Math.round(data.dist)} дюймов, нужно от ${LAUNCH_MIN})`, "bad");
+      else if (data.dist > LAUNCH_MAX) this.toast(`Мимо: слишком далеко (${Math.round(data.dist)} дюймов, нужно до ${LAUNCH_MAX})`, "bad");
+      else this.toast(`Мимо верхней ячейки: промах ${Math.round(data.miss)} дюймов вбок`, "bad");
+    } else if (ev === "cell") this.toast(`В верхней ячейке ${this.core.cells[this.core.alliance].up.length}/${TIP_AT}`, "ok", "cell");
+    else if (ev === "tip") { if (data.alliance === this.core.alliance) this.toast("HIVE TIP! +20. Верхняя ячейка теперь с другой стороны", "ok", "cell"); }
+    else if (ev === "collect") this.toast(`В роботе ${this.core.held.length}/${CAPACITY}` + (data && data.flower ? ` (из цветка ${data.flower})` : ""), "", "held");
+    else if (ev === "flower") this.toast(data.ok ? `Элемент в цветке ${data.flower}` : "Цветки открыты для очков только в последние 60 секунд", data.ok ? "ok" : "bad");
+    else if (ev === "endgame") this.toast("Минута до конца: цветки открыты, весь NECTAR на поле", "ok");
   }
 
   afterRun() {
@@ -320,7 +331,9 @@ class FtcSim {
     this.hudTime.textContent = ph ? `${ph} ${this.hubTimer.textContent}` : "";
     this.hudTime.hidden = !ph;
     const hasGame = c.has("intake") || c.has("launcher");
-    this.hudScore.textContent = `Очки ${c.total}` + (hasGame ? ` · Пыльца ${c.held}/${CAPACITY}` : "");
+    const al = ALLIANCES[c.alliance].name;
+    this.hudScore.textContent = `${al}: ${c.total} оч.` + (hasGame ? ` · в роботе ${c.held.length}/${CAPACITY}` : "");
+    this.hudScore.style.color = ALLIANCES[c.alliance].color;
     this.hudPose.textContent = `x ${c.pose.x.toFixed(1)}  y ${c.pose.y.toFixed(1)}  курс ${c.heading.toFixed(1)}°`;
   }
 
@@ -329,16 +342,17 @@ class FtcSim {
     const pd = this.presetData, box = this.taskBox;
     box.innerHTML = "";
     box.append(h("h4", {}, pd.title || "Свободная тренировка"));
-    for (const line of (pd.task || "Поле учебной игры «Сбор пыльцы»: соберите пыльцу захватом, забросьте в улей с 24-84 дюймов (3 очка), в конце встаньте в зону PARK (5 очков). Пишите свою программу на вкладке «Код».").split("\n")) box.append(h("p", {}, line));
+    for (const line of (pd.task || "Поле FIRST Tech Challenge BIOBUZZ 2026-2027. Заберите POLLEN из цветков и садов, забрасывайте в верхнюю ячейку своего улья, переворачивайте улей (HIVE TIP, 20 очков), к концу встаньте в свою LOADING ZONE. Пишите программу на вкладке «Код».").split("\n")) box.append(h("p", {}, line));
     this.checkList = h("ul", { class: "ftc-checklist" });
     this.doneEl = h("div", { class: "ftc-done", hidden: true }, "Задание выполнено! Отметьте урок как пройденный.");
     if (pd.checks && pd.checks.length) box.append(h("p", { class: "ftc-muted" }, "Проверка идет во время работы программы. Каждый запуск INIT начинает проверку заново."), this.checkList, this.doneEl);
-    box.append(h("details", { class: "ftc-rules" }, h("summary", {}, "Учебная игра «Сбор пыльцы»: правила симулятора"),
+    box.append(h("details", { class: "ftc-rules" }, h("summary", {}, "Поле BIOBUZZ в симуляторе: что как устроено"),
       h("ul", {},
-        h("li", {}, "Поле 144 x 144 дюйма (6 x 6 плиток), пилоты стоят у нижней стены. Курс 0 - робот смотрит от пилотов, поворот налево дает положительный угол IMU."),
-        h("li", {}, "Захват (intake) с мощностью больше 0,3 затягивает пыльцу перед роботом, в роботе помещается 4. Обратное вращение выбрасывает."),
-        h("li", {}, "Пусковая установка: маховик launcher разгоняется около секунды; когда он раскручен и заслонка gate открыта (больше 0,5), вылетает пыльца каждые 0,4 с. Попадание, если до центра улья 24-84 дюйма и робот смотрит на улей с ошибкой до 8°."),
-        h("li", {}, "Очки: попадание в улей 3, выезд со старта в AUTO 3, робот в зоне PARK в конце 5. Это упрощенная учебная игра, не официальные правила BIOBUZZ."),
+        h("li", {}, "Поле, улей, цветки, сады (GARDEN), зоны загрузки (LOADING ZONE) и расстановка элементов взяты из официальной CAD-модели поля FIRST и Competition Manual (разделы 9 и 10). Красный альянс слева от зрителей, синий справа."),
+        h("li", {}, "Улей каждого альянса: две ячейки, верхняя открыта для броска. В начале в верхней ячейке 3 NECTAR. Когда в ней набирается " + TIP_AT + " элементов, улей переворачивается (HIVE TIP, 20 очков), содержимое высыпается, а бросать теперь нужно в ячейку с другой стороны. Порог " + TIP_AT + " - упрощение симулятора: на настоящем поле улей переворачивает вес."),
+        h("li", {}, "Бросок: маховик launcher раскручен, заслонка gate открыта (больше 0,5). Попадание, если до центра верхней ячейки по полу " + LAUNCH_MIN + "-" + LAUNCH_MAX + " дюймов и промах вбок не больше 8 дюймов (ширина ячейки 20). Пока маховик крутится, видна линия прицела."),
+        h("li", {}, "Захват берет POLLEN и NECTAR своего цвета, в роботе помещается 4. Перед цветком захват вынимает POLLEN через нижнее окно. Подъемник выше 2200 тиков достает до верха цветка (21,5 дюйма): реверс захвата кладет элемент в цветок, очки за цветки - только в последние 60 секунд."),
+        h("li", {}, "Очки по мануалу: LEAVE 3 и PARK 5 в AUTO, PARK 5 в конце, HIVE TIP 20, элемент в верхней ячейке в конце 2, элемент в своем цветке 2, нижний NECTAR в цветке 5, элемент в своем саду 1. Соперников и партнера по альянсу в симуляторе нет."),
         h("li", {}, "Мотор: 537,7 тика на оборот, колесо 104 мм, около 41,8 тика на дюйм, максимум около 60 дюймов в секунду."))));
     this.renderChecks();
   }
@@ -371,6 +385,10 @@ class FtcSim {
         ...Object.entries(DRIVES).map(([id, d]) => h("label", { class: "ftc-choice" + (robot.drive === id ? " on" : "") },
           h("input", { type: "radio", name: "drive-" + this.storageKey, checked: robot.drive === id, disabled: locked, onchange: () => upd((rb) => { rb.drive = id; }) }),
           h("span", {}, h("b", {}, d.title), h("small", {}, id === "mecanum" ? "4 мотора, едет в любую сторону" : "2 мотора, просто и сильно толкает")))),
+        this.presetName === "ftc-sandbox" ? h("div", { class: "ftc-label" }, "Альянс") : null,
+        this.presetName === "ftc-sandbox" ? h("div", { class: "ftc-row2" }, ...["red", "blue"].map((a) => h("label", { class: "ftc-choice" + ((robot.alliance || "red") === a ? " on" : "") },
+          h("input", { type: "radio", name: "al-" + this.storageKey, checked: (robot.alliance || "red") === a, disabled: locked, onchange: () => upd((rb) => { rb.alliance = a; }) }),
+          h("span", {}, h("b", {}, ALLIANCES[a].name))))) : null,
         h("div", { class: "ftc-label" }, `Рама: ${String(robot.size).replace(".", ",")} дюйма (${(robot.size * 2.54).toFixed(1).replace(".", ",")} см)`),
         h("input", { type: "range", class: "ftc-range", min: 14, max: 20, step: 0.5, value: robot.size, disabled: locked, onchange: (e) => upd((rb) => { rb.size = +e.target.value; }) }))));
     box.append(h("div", { class: "ftc-label" }, "Механизмы и датчики"));
@@ -423,29 +441,36 @@ class FtcSim {
   draw() {
     const cv = this.canvas, ctx = cv.getContext("2d"), W = cv.width;
     if (!W) return;
-    const c = this.core, s = W / 144;
+    const c = this.core, SPAN = 164, s = W / SPAN;
+    VIEW_ROT = this.view === "driver" ? (c.alliance === "red" ? Math.PI / 2 : -Math.PI / 2) : 0;
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = "#cfd5dc"; ctx.fillRect(0, 0, W, W);
+    ctx.fillStyle = "#e2e8f0"; ctx.fillRect(0, 0, W, W);
     ctx.setTransform(s, 0, 0, -s, W / 2, W / 2); // мировые координаты: дюймы, y вверх
-    // плитки
-    for (let i = 0; i < 6; i++) for (let j = 0; j < 6; j++) {
-      ctx.fillStyle = (i + j) % 2 ? "#c7cdd5" : "#cdd3da";
-      ctx.fillRect(-72 + i * 24 + 0.15, -72 + j * 24 + 0.15, 23.7, 23.7);
+    ctx.rotate(VIEW_ROT);
+    // зоны альянсов за стенами и лотки NECTAR
+    for (const a of ["red", "blue"]) {
+      const A = ALLIANCES[a], sx = Math.sign(A.wallX);
+      ctx.fillStyle = a === "red" ? "rgba(220,38,38,.12)" : "rgba(37,99,235,.12)";
+      ctx.fillRect(sx > 0 ? 73 : -82, -47.9, 9, 95.8);
+      const T = TRAY[a];
+      ctx.fillStyle = "#f8fafc"; ctx.strokeStyle = A.color; ctx.lineWidth = 0.4;
+      ctx.fillRect(T.x0, T.y0, T.x1 - T.x0, T.y1 - T.y0); ctx.strokeRect(T.x0, T.y0, T.x1 - T.x0, T.y1 - T.y0);
+      for (let k = 0; k < c.trays[a]; k++) nectar(ctx, (T.x0 + T.x1) / 2, T.y0 + 2.2 + k * 2.9, NECTAR_R * 0.8, a);
     }
-    // PARK
-    ctx.save();
-    ctx.beginPath(); ctx.rect(PARK.x0, PARK.y0, PARK.x1 - PARK.x0, PARK.y1 - PARK.y0); ctx.clip();
-    ctx.fillStyle = "rgba(250,204,21,.18)"; ctx.fillRect(PARK.x0, PARK.y0, 40, 40);
-    ctx.strokeStyle = "rgba(202,138,4,.55)"; ctx.lineWidth = 1.2;
-    for (let k = -40; k < 40; k += 4) { ctx.beginPath(); ctx.moveTo(PARK.x0 + k, PARK.y0); ctx.lineTo(PARK.x0 + k + 30, PARK.y0 + 30); ctx.stroke(); }
-    ctx.restore();
-    ctx.strokeStyle = "#ca8a04"; ctx.lineWidth = 0.8; ctx.strokeRect(PARK.x0, PARK.y0, PARK.x1 - PARK.x0, PARK.y1 - PARK.y0);
-    text(ctx, "PARK", (PARK.x0 + PARK.x1) / 2, PARK.y1 - 5, 4.2, "#a16207", "bold");
-    // дальность пуска
-    if (c.has("launcher")) {
-      ctx.setLineDash([2, 2]); ctx.strokeStyle = "rgba(234,88,12,.35)"; ctx.lineWidth = 0.5;
-      for (const rr of [HIT_MIN, HIT_MAX]) { ctx.beginPath(); ctx.arc(HIVE.x, HIVE.y, rr, 0, Math.PI * 2); ctx.stroke(); }
-      ctx.setLineDash([]);
+    // плитки 6 x 6
+    for (let i = 0; i < 6; i++) for (let j = 0; j < 6; j++) {
+      ctx.fillStyle = (i + j) % 2 ? "#c9ced6" : "#d1d6dd";
+      ctx.fillRect(-72 + i * 24 + 0.12, -72 + j * 24 + 0.12, 23.76, 23.76);
+    }
+    // LOADING ZONE и GARDEN: лента альянса
+    for (const a of ["red", "blue"]) {
+      const A = ALLIANCES[a], Z = LOADING[a], G = GARDEN[a];
+      ctx.fillStyle = a === "red" ? "rgba(220,38,38,.10)" : "rgba(37,99,235,.10)";
+      ctx.fillRect(Z.x0, Z.y0, Z.x1 - Z.x0, Z.y1 - Z.y0);
+      ctx.strokeStyle = A.color; ctx.lineWidth = 1; ctx.strokeRect(Z.x0 + 0.5, Z.y0 + 0.5, Z.x1 - Z.x0 - 1, Z.y1 - Z.y0 - 1);
+      text(ctx, "LOADING", (Z.x0 + Z.x1) / 2, (Z.y0 + Z.y1) / 2, 2.4, A.color, "bold");
+      ctx.fillStyle = A.color; ctx.globalAlpha = 0.85; ctx.fillRect(G.x0, G.y0, G.x1 - G.x0, G.y1 - G.y0); ctx.globalAlpha = 1;
+      text(ctx, "GARDEN", (G.x0 + G.x1) / 2, G.y0 > 0 ? G.y0 - 3 : G.y1 + 3, 2.4, A.color, "bold");
     }
     // старт
     const sp = c.startPose;
@@ -457,29 +482,34 @@ class FtcSim {
     const seen = zoneCheck >= 0 && c.checkState[zoneCheck] && c.checkState[zoneCheck].seen;
     (c.preset.marks || []).forEach((m, k) => {
       const ok = seen && seen.has(k);
-      ctx.fillStyle = ok ? "rgba(22,163,74,.25)" : "rgba(37,99,235,.15)"; ctx.strokeStyle = ok ? "#16a34a" : "#2563eb"; ctx.lineWidth = 0.6;
+      ctx.fillStyle = ok ? "rgba(22,163,74,.25)" : "rgba(124,58,237,.14)"; ctx.strokeStyle = ok ? "#16a34a" : "#7c3aed"; ctx.lineWidth = 0.6;
       ctx.beginPath(); ctx.arc(m.x, m.y, Math.max(m.r, 2.5), 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(m.x - 1.5, m.y); ctx.lineTo(m.x + 1.5, m.y); ctx.moveTo(m.x, m.y - 1.5); ctx.lineTo(m.x, m.y + 1.5); ctx.stroke();
-      text(ctx, m.label, m.x, m.y + Math.max(m.r, 2.5) + 2.5, 3.6, ok ? "#15803d" : "#1d4ed8", "bold");
+      text(ctx, m.label, m.x, m.y + Math.max(m.r, 2.5) + 2.5, 3.4, ok ? "#15803d" : "#6d28d9", "bold");
     });
     // след
     if (c.trail.length > 1) {
       ctx.strokeStyle = "rgba(8,145,178,.65)"; ctx.lineWidth = 0.6; ctx.setLineDash([1.2, 1.2]);
       ctx.beginPath(); c.trail.forEach((p, i) => (i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y))); ctx.lineTo(c.pose.x, c.pose.y); ctx.stroke(); ctx.setLineDash([]);
     }
-    // улей
-    drawHive(ctx);
-    // пыльца
-    for (const b of c.pollen) if (b.state === "field") ball(ctx, b.x, b.y, 2.5);
+    // элементы на полу
+    for (const b of c.items) if (b.state === "field") (b.kind === "nectar" ? nectar(ctx, b.x, b.y, NECTAR_R, b.color) : ball(ctx, b.x, b.y, POLLEN_R + 0.15));
+    // цветки
+    FLOWERS.forEach((f, i) => drawFlower(ctx, f, c.flowerStock[i], c.flowerScored[i], c.flowersOpen()));
+    // робот (под ульем: улей выше робота)
+    drawRobot(ctx, c, c.pose, false);
+    // улей и рама
+    drawHiveStructure(ctx, c);
     // прицел
     const L = c.motors.launcher;
     if (L && Math.abs(L.vel) > 0.15) {
-      const dx = HIVE.x - c.pose.x, dy = HIVE.y - c.pose.y, dist = Math.hypot(dx, dy);
-      const fx = -Math.sin(c.pose.h), fy = Math.cos(c.pose.h);
-      const err = Math.abs(Math.atan2(fx * dy - fy * dx, fx * dx + fy * dy)) * 180 / Math.PI;
-      const good = dist >= HIT_MIN && dist <= HIT_MAX && err <= 8;
-      ctx.strokeStyle = good ? "rgba(22,163,74,.9)" : "rgba(220,38,38,.6)"; ctx.lineWidth = 0.5; ctx.setLineDash([2, 1.5]);
-      ctx.beginPath(); ctx.moveTo(c.pose.x, c.pose.y); ctx.lineTo(c.pose.x + fx * 90, c.pose.y + fy * 90); ctx.stroke(); ctx.setLineDash([]);
+      const aim = c.aim(), fx = -Math.sin(c.pose.h), fy = Math.cos(c.pose.h);
+      ctx.strokeStyle = aim.hit ? "rgba(22,163,74,.95)" : "rgba(220,38,38,.65)"; ctx.lineWidth = 0.5; ctx.setLineDash([2, 1.5]);
+      const len = Math.min(110, Math.max(20, aim.dist));
+      ctx.beginPath(); ctx.moveTo(c.pose.x, c.pose.y); ctx.lineTo(c.pose.x + fx * len, c.pose.y + fy * len); ctx.stroke();
+      ctx.setLineDash([1, 2]); ctx.strokeStyle = "rgba(234,88,12,.4)";
+      for (const r of [LAUNCH_MIN, LAUNCH_MAX]) { ctx.beginPath(); ctx.arc(aim.target.x, aim.target.y, r, 0, Math.PI * 2); ctx.stroke(); }
+      ctx.setLineDash([]);
     }
     // датчик расстояния
     if (c.has("distance")) {
@@ -487,26 +517,23 @@ class FtcSim {
       ctx.strokeStyle = "rgba(220,38,38,.55)"; ctx.lineWidth = 0.35;
       ctx.beginPath(); ctx.moveTo(c.pose.x + fx * o, c.pose.y + fy * o); ctx.lineTo(c.pose.x + fx * (o + d), c.pose.y + fy * (o + d)); ctx.stroke();
     }
-    // робот
-    drawRobot(ctx, c, c.pose, false);
-    // летящая пыльца
+    // летящие элементы
     for (const f of c.flying) {
-      const k = Math.min(1, f.t / f.dur);
       if (f.done) continue;
-      const x = f.x0 + (f.x1 - f.x0) * k, y = f.y0 + (f.y1 - f.y0) * k;
-      ball(ctx, x, y, 2.5 + Math.sin(k * Math.PI) * 2.2);
+      const k = Math.min(1, f.t / f.dur), x = f.x0 + (f.x1 - f.x0) * k, y = f.y0 + (f.y1 - f.y0) * k, r = 1.6 + Math.sin(k * Math.PI) * 2;
+      if (f.item.kind === "nectar") nectar(ctx, x, y, r * 1.2, f.item.color); else ball(ctx, x, y, r);
     }
-    // стены
-    ctx.strokeStyle = "#334155"; ctx.lineWidth = 1.6; ctx.strokeRect(-72.8, -72.8, 145.6, 145.6);
+    // стены поля
+    ctx.strokeStyle = "#334155"; ctx.lineWidth = 1.4; ctx.strokeRect(-72.7, -72.7, 145.4, 145.4);
+    // подпись зрителей
+    if (this.view !== "driver") text(ctx, "ЗРИТЕЛИ", 0, -76, 2.8, "#64748b", "bold");
     ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = "rgba(15,23,42,.55)"; ctx.font = `${Math.round(10 * s / 3.4)}px Inter, system-ui, sans-serif`; ctx.textAlign = "center";
-    ctx.textAlign = "left"; ctx.fillText("▼ Пилоты", 6 * s, W - 4 * s / 3.4);
     if (this.preview && !this.tabs.robot.pane.hidden && ["init", "run"].includes(c.phase)) this.drawPreview();
   }
 }
 
 function text(ctx, str, x, y, size, color, weight = "") {
-  ctx.save(); ctx.translate(x, y); ctx.scale(1, -1);
+  ctx.save(); ctx.translate(x, y); ctx.rotate(-VIEW_ROT); ctx.scale(1, -1);
   ctx.fillStyle = color; ctx.font = `${weight} ${size}px Inter, system-ui, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
   ctx.fillText(str, 0, 0); ctx.restore();
 }
@@ -515,23 +542,57 @@ function ball(ctx, x, y, r) {
   const g = ctx.createRadialGradient(x - r * 0.35, y + r * 0.35, r * 0.1, x, y, r);
   g.addColorStop(0, "#fef9c3"); g.addColorStop(0.6, "#facc15"); g.addColorStop(1, "#ca8a04");
   ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = "rgba(161,98,7,.8)"; ctx.lineWidth = 0.25; ctx.stroke();
+  ctx.strokeStyle = "rgba(161,98,7,.8)"; ctx.lineWidth = 0.2; ctx.stroke();
 }
 
-function hex(ctx, x, y, r) { ctx.beginPath(); for (let i = 0; i < 6; i++) { const a = Math.PI / 6 + i * Math.PI / 3; ctx[i ? "lineTo" : "moveTo"](x + r * Math.cos(a), y + r * Math.sin(a)); } ctx.closePath(); }
+function nectar(ctx, x, y, r, color) {
+  const red = color === "red";
+  const g = ctx.createRadialGradient(x - r * 0.35, y + r * 0.35, r * 0.1, x, y, r);
+  g.addColorStop(0, red ? "#fecaca" : "#bfdbfe"); g.addColorStop(0.55, red ? "#ef4444" : "#3b82f6"); g.addColorStop(1, red ? "#991b1b" : "#1e3a8a");
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+}
 
-function drawHive(ctx) {
-  ctx.fillStyle = "rgba(0,0,0,.12)"; hex(ctx, HIVE.x + 0.8, HIVE.y - 0.8, HIVE.r + 0.6); ctx.fill();
-  ctx.fillStyle = "#f59e0b"; hex(ctx, HIVE.x, HIVE.y, HIVE.r + 0.6); ctx.fill();
-  ctx.strokeStyle = "#b45309"; ctx.lineWidth = 0.6; ctx.stroke();
-  const cell = 2.4;
-  for (let q = -3; q <= 3; q++) for (let rr = -3; rr <= 3; rr++) {
-    const x = HIVE.x + cell * Math.sqrt(3) * (q + rr / 2), y = HIVE.y + cell * 1.5 * rr;
-    if (Math.hypot(x - HIVE.x, y - HIVE.y) > HIVE.r - 2) continue;
-    ctx.fillStyle = (q + rr) % 2 ? "#fbbf24" : "#fcd34d"; hex(ctx, x, y, cell * 0.92); ctx.fill();
-    ctx.strokeStyle = "rgba(180,83,9,.5)"; ctx.lineWidth = 0.25; ctx.stroke();
+function drawFlower(ctx, f, stock, scored, open) {
+  const R = flowerRect(f);
+  ctx.fillStyle = "rgba(255,255,255,.75)"; ctx.strokeStyle = "#16a34a"; ctx.lineWidth = 0.5;
+  ctx.fillRect(R.x0, R.y0, R.x1 - R.x0, R.y1 - R.y0); ctx.strokeRect(R.x0, R.y0, R.x1 - R.x0, R.y1 - R.y0);
+  // верхнее кольцо с отверстием 4 дюйма
+  const cx = (R.x0 + R.x1) / 2, cy = (R.y0 + R.y1) / 2;
+  ctx.beginPath(); ctx.arc(cx, cy, 3.1, 0, Math.PI * 2); ctx.fillStyle = open ? "#bbf7d0" : "#dcfce7"; ctx.fill(); ctx.strokeStyle = "#15803d"; ctx.lineWidth = 0.6; ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx, cy, 2, 0, Math.PI * 2); ctx.fillStyle = "#14532d"; ctx.fill();
+  stock.forEach((_, k) => ball(ctx, cx - 1.6 + (k % 2) * 3.2, cy - 1.6 + Math.floor(k / 2) * 3.2, 1.05));
+  scored.slice(-3).forEach((e, k) => (e === "pollen" ? ball(ctx, cx - 2 + k * 2, cy, 0.9) : nectar(ctx, cx - 2 + k * 2, cy, 1.1, e)));
+  const lx = f.wall === "red" ? R.x1 + 3 : f.wall === "blue" ? R.x0 - 3 : cx, ly = f.wall === "back" ? R.y0 - 3 : f.wall === "aud" ? R.y1 + 3 : cy;
+  text(ctx, "F" + f.id + (scored.length ? ` ${scored.length}` : ""), lx, ly, 2.6, "#15803d", "bold");
+}
+
+function drawHiveStructure(ctx, c) {
+  // ноги A-образной рамы (вид сверху: от опор к верхним углам у оси поворота) и перекладина
+  ctx.strokeStyle = "#475569"; ctx.lineWidth = 1.3; ctx.lineCap = "round";
+  for (const sx of [-1, 1]) for (const sy of [-1, 1]) { ctx.beginPath(); ctx.moveTo(sx * FRAME.halfX, sy * FRAME.halfY); ctx.lineTo(sx * 12.3, 0); ctx.stroke(); }
+  ctx.fillStyle = "#334155";
+  for (const sx of [-1, 1]) for (const sy of [-1, 1]) ctx.fillRect(sx * FRAME.halfX - 1, sy * FRAME.halfY - 1, 2, 2);
+  // ульи
+  for (const a of ["red", "blue"]) {
+    const H = HIVES[a], A = ALLIANCES[a], cell = c.cells[a], up = cell.upSide;
+    for (const side of ["aud", "back"]) {
+      const isUp = side === up, sy = side === "aud" ? -1 : 1, yr = isUp ? CELL.upY : CELL.downY;
+      const y0 = sy > 0 ? yr[0] : -yr[1], y1 = sy > 0 ? yr[1] : -yr[0];
+      ctx.globalAlpha = isUp ? 0.82 : 0.45;
+      ctx.fillStyle = A.color; rr(ctx, H.x0, y0, H.x1 - H.x0, y1 - y0, 1.2); ctx.fill();
+      ctx.globalAlpha = 1;
+      if (isUp) {
+        ctx.fillStyle = "rgba(255,255,255,.72)"; rr(ctx, H.x0 + 1.6, y0 + 1.6, H.x1 - H.x0 - 3.2, y1 - y0 - 3.2, 0.8); ctx.fill();
+        cell.up.forEach((e, k) => {
+          const x = H.x0 + 3.5 + (k % 5) * 3.6, y = (sy > 0 ? y0 + 4 : y1 - 4) + sy * Math.floor(k / 5) * 3.6;
+          if (e === "pollen") ball(ctx, x, y, POLLEN_R); else nectar(ctx, x, y, NECTAR_R * 0.9, e);
+        });
+        text(ctx, `▲ ${cell.up.length}/${TIP_AT}`, (H.x0 + H.x1) / 2, sy > 0 ? y1 - 3.2 : y0 + 3.2, 2.6, A.color, "bold");
+      }
+    }
   }
-  text(ctx, "УЛЕЙ", HIVE.x, HIVE.y - HIVE.r - 3, 3.6, "#92400e", "bold");
+  ctx.strokeStyle = "#1e293b"; ctx.lineWidth = 1.1; ctx.beginPath(); ctx.moveTo(-12.3, 0); ctx.lineTo(12.3, 0); ctx.stroke();
+  ctx.lineCap = "butt";
 }
 
 function rr(ctx, x, y, w, hh, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + hh, r); ctx.arcTo(x + w, y + hh, x, y + hh, r); ctx.arcTo(x, y + hh, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
@@ -587,7 +648,8 @@ function drawRobot(ctx, c, pose, preview) {
   if (has("intake") || has("launcher")) {
     for (let k = 0; k < CAPACITY; k++) {
       const x = -3.6 + k * 2.4, y = hs - 4.2;
-      if (k < c.held) ball(ctx, x, y, 1.05); else { ctx.strokeStyle = "rgba(255,255,255,.35)"; ctx.lineWidth = 0.2; ctx.beginPath(); ctx.arc(x, y, 1.05, 0, Math.PI * 2); ctx.stroke(); }
+      const e = c.held[k];
+      if (e) (e.kind === "nectar" ? nectar(ctx, x, y, 1.15, e.color) : ball(ctx, x, y, 1.05)); else { ctx.strokeStyle = "rgba(255,255,255,.35)"; ctx.lineWidth = 0.2; ctx.beginPath(); ctx.arc(x, y, 1.05, 0, Math.PI * 2); ctx.stroke(); }
     }
   }
   if (has("launcher")) {

@@ -1,6 +1,6 @@
 {
- "title": "Механизмы на геймпаде: захват и пуск",
- "task": "Допишите управление механизмами: захват (правый бампер - E, выброс - K), маховик (правый триггер - C) и заслонку (A - J). Робот начинает без пыльцы.\nСоберите хотя бы 3 пыльцы у боковой стены, встаньте лицом к улью на расстоянии 24-84 дюйма и забросьте 2 в улей.",
+ "title": "Механизмы на геймпаде: захват и бросок",
+ "task": "Допишите управление механизмами: захват (правый бампер - E, выброс - K), маховик (правый триггер - C) и заслонку (A - J). Робот начинает без POLLEN и стоит перед цветком у красной стены.\nЗаберите POLLEN через нижнее окно цветка, развернитесь к красному улью и забросьте 2 в верхнюю ячейку.",
  "robot": {
   "drive": "mecanum",
   "size": 18,
@@ -8,12 +8,13 @@
    "intake",
    "launcher"
   ],
-  "names": {}
+  "names": {},
+  "alliance": "red"
  },
  "start": {
-  "x": 0,
-  "y": -60,
-  "h": 0
+  "x": -45,
+  "y": -23.4,
+  "h": 90
  },
  "preload": 0,
  "code": "package org.firstinspires.ftc.teamcode;\n\nimport com.qualcomm.robotcore.eventloop.opmode.TeleOp;\nimport com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;\nimport com.qualcomm.robotcore.hardware.DcMotor;\nimport com.qualcomm.robotcore.hardware.DcMotorEx;\nimport com.qualcomm.robotcore.hardware.Servo;\n\n@TeleOp(name = \"TeleOp Механизмы\")\npublic class TeleOpMechanisms extends LinearOpMode {\n    @Override\n    public void runOpMode() {\n        DcMotor fl = hardwareMap.get(DcMotor.class, \"frontLeft\");\n        DcMotor fr = hardwareMap.get(DcMotor.class, \"frontRight\");\n        DcMotor bl = hardwareMap.get(DcMotor.class, \"backLeft\");\n        DcMotor br = hardwareMap.get(DcMotor.class, \"backRight\");\n        DcMotor intake = hardwareMap.get(DcMotor.class, \"intake\");\n        DcMotorEx launcher = hardwareMap.get(DcMotorEx.class, \"launcher\");\n        Servo gate = hardwareMap.get(Servo.class, \"gate\");\n\n        fl.setDirection(DcMotor.Direction.REVERSE);\n        bl.setDirection(DcMotor.Direction.REVERSE);\n        gate.setPosition(0);\n\n        waitForStart();\n\n        while (opModeIsActive()) {\n            double y = -gamepad1.left_stick_y;\n            double x = gamepad1.left_stick_x;\n            double r = gamepad1.right_stick_x;\n            double speed = gamepad1.left_bumper ? 0.4 : 1.0;\n\n            double max = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(r), 1.0);\n            fl.setPower((y + x + r) / max * speed);\n            fr.setPower((y - x - r) / max * speed);\n            bl.setPower((y - x + r) / max * speed);\n            br.setPower((y + x - r) / max * speed);\n\n            // TODO 1. Захват: правый бампер - затянуть (мощность 1), B - выбросить (-1), иначе 0\n            // TODO 2. Маховик: правый триггер нажат больше чем на половину - мощность 1, иначе 0\n            // TODO 3. Заслонка: пока нажата A - setPosition(1), иначе setPosition(0)\n\n            telemetry.addData(\"Пыльца\", \"заберите с поля и забросьте в улей\");\n            telemetry.update();\n        }\n    }\n}\n",
@@ -21,12 +22,13 @@
   {
    "type": "collect",
    "n": 3,
-   "label": "Захват собрал 3 пыльцы"
+   "label": "Захват забрал 3 POLLEN"
   },
   {
    "type": "hits",
    "n": 2,
-   "label": "2 попадания в улей"
+   "label": "2 элемента в верхней ячейке улья"
   }
- ]
+ ],
+ "alliance": "red"
 }

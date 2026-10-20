@@ -36,7 +36,7 @@
 .ftc-hud-time, .ftc-hud-score, .ftc-hud-pose { position: absolute; font: 700 13px/1 Inter, system-ui, sans-serif; padding: 6px 9px; border-radius: 8px; pointer-events: none; }
 .ftc-hud-time { left: 10px; top: 10px; background: rgba(15,23,42,.85); color: #fff; font-variant-numeric: tabular-nums; }
 .ftc-hud-score { right: 10px; top: 10px; background: rgba(255,255,255,.9); color: #9a3412; }
-.ftc-hud-pose { left: 10px; top: 44px; background: rgba(255,255,255,.75); color: #334155; font-weight: 600; font-size: 11px; font-variant-numeric: tabular-nums; }
+.ftc-hud-pose { right: 10px; bottom: 10px; background: rgba(255,255,255,.75); color: #334155; font-weight: 600; font-size: 11px; font-variant-numeric: tabular-nums; }
 .ftc-toasts { position: absolute; left: 50%; top: 46px; transform: translateX(-50%); display: flex; flex-direction: column; gap: 6px; align-items: center; pointer-events: none; width: 90%; }
 .ftc-toast { background: rgba(15,23,42,.88); color: #fff; padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; animation: ftc-fade 2.2s forwards; text-align: center; }
 .ftc-toast.ok { background: rgba(22,163,74,.95); }
@@ -128,3 +128,4 @@
   .ftc-code { min-height: 340px; }
   .ftc-modules { grid-template-columns: 1fr; }
 }
+.ftc-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }

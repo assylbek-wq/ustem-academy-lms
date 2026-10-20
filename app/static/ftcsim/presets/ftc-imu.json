@@ -5,14 +5,14 @@
   "drive": "mecanum",
   "size": 18,
   "modules": [],
-  "names": {}
+  "names": {},
+  "alliance": "red"
  },
  "start": {
-  "x": -36,
-  "y": -36,
+  "x": -40,
+  "y": -42,
   "h": 0
  },
- "pollen": "none",
  "code": "package org.firstinspires.ftc.teamcode;\n\nimport com.qualcomm.robotcore.eventloop.opmode.Autonomous;\nimport com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;\nimport com.qualcomm.robotcore.hardware.DcMotor;\nimport com.qualcomm.hardware.rev.RevHubOrientationOnRobot;\nimport com.qualcomm.robotcore.hardware.IMU;\nimport com.qualcomm.robotcore.util.Range;\nimport org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;\n\n@Autonomous(name = \"Поворот на 90\")\npublic class Turn90 extends LinearOpMode {\n    @Override\n    public void runOpMode() {\n        DcMotor fl = hardwareMap.get(DcMotor.class, \"frontLeft\");\n        DcMotor fr = hardwareMap.get(DcMotor.class, \"frontRight\");\n        DcMotor bl = hardwareMap.get(DcMotor.class, \"backLeft\");\n        DcMotor br = hardwareMap.get(DcMotor.class, \"backRight\");\n        fl.setDirection(DcMotor.Direction.REVERSE);\n        bl.setDirection(DcMotor.Direction.REVERSE);\n\n        IMU imu = hardwareMap.get(IMU.class, \"imu\");\n        imu.initialize(new IMU.Parameters(new RevHubOrientationOnRobot(\n                RevHubOrientationOnRobot.LogoFacingDirection.UP,\n                RevHubOrientationOnRobot.UsbFacingDirection.FORWARD)));\n\n        waitForStart();\n        imu.resetYaw();\n\n        // Поворот налево «по времени» - угол получается каждый раз разный\n        double turn = -0.4;\n        fl.setPower(turn);\n        fr.setPower(-turn);\n        bl.setPower(turn);\n        br.setPower(-turn);\n        sleep(700);\n        fl.setPower(0);\n        fr.setPower(0);\n        bl.setPower(0);\n        br.setPower(0);\n\n        telemetry.addData(\"Угол\", imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES));\n        telemetry.update();\n        sleep(1000);\n    }\n}\n",
  "checks": [
   {
@@ -26,5 +26,6 @@
    "tol": 2,
    "label": "Итоговый угол 90 ± 2 градуса"
   }
- ]
+ ],
+ "alliance": "red"
 }

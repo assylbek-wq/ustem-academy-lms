@@ -1,17 +1,17 @@
-// Ядро симулятора FTC без DOM: устройства FTC SDK, физика шасси, учебная игра «Сбор пыльцы» и проверки заданий.
+// Ядро симулятора FTC без DOM: устройства FTC SDK, физика шасси, поле и подсчет очков BIOBUZZ, проверки заданий.
 // Время симуляции идет шагами dt; код ученика (async) просыпается на шагах, поэтому результат воспроизводим.
 import { transpile, JavaError } from "./java.js";
+import { HALF, ALLIANCES, FRAME, FRAME_LEGS, HIVES, CELL, TIP_AT, FLOWERS, flowerRect, LOADING, GARDEN, POLLEN_R, NECTAR_R,
+  setupElements, cellCenter, otherSide, SCORE, MATCH } from "./field.js";
+export * from "./field.js";
 
-export const HALF = 72;                       // поле 144 x 144 дюйма, начало координат в центре
 export const VMAX = 60;                       // дюйм/с при мощности 1
 export const TPR = 537.7;                     // тиков на оборот выходного вала
 export const WHEEL_D = 104 / 25.4;            // колесо 104 мм в дюймах
 export const TPI = TPR / (Math.PI * WHEEL_D); // ~41,8 тика на дюйм
 export const TPS = VMAX * TPI;                // тиков в секунду на полной мощности
-export const HIVE = { x: 0, y: 0, r: 10 };
-export const PARK = { x0: 44, y0: -72, x1: 72, y1: -44 };
 export const CAPACITY = 4;
-export const HIT_MIN = 24, HIT_MAX = 84, HIT_DEG = 8;
+export const LAUNCH_MIN = 30, LAUNCH_MAX = 96; // дальность броска в верхнюю ячейку, дюймы по полу
 const STOP = { stop: true };
 
 export const DRIVES = {
@@ -19,14 +19,14 @@ export const DRIVES = {
   tank: { title: "Танковое", motors: [["leftDrive", -1], ["rightDrive", 1]] },
 };
 export const MODULES = {
-  intake: { title: "Захват-ролик (intake)", text: "Затягивает пыльцу с поля, держит до 4 штук", motors: ["intake"], servos: [] },
-  launcher: { title: "Пусковая установка", text: "Маховик и заслонка: выстрел в улей с 24-84 дюймов", motors: ["launcher"], servos: ["gate"] },
-  lift: { title: "Подъемник на слайдах", text: "Мотор с энкодером, упоры 0 и 3000 тиков", motors: ["lift"], servos: [] },
+  intake: { title: "Захват-ролик (intake)", text: "Затягивает POLLEN и свой NECTAR с поля и из окна цветка, держит до 4", motors: ["intake"], servos: [] },
+  launcher: { title: "Пусковая установка", text: "Маховик и заслонка: бросок в верхнюю ячейку своего улья", motors: ["launcher"], servos: ["gate"] },
+  lift: { title: "Подъемник на слайдах", text: "Мотор с энкодером, 0-3000 тиков; выше 2200 достает до верха цветка", motors: ["lift"], servos: [] },
   claw: { title: "Клешня", text: "Сервопривод: 0 открыта, 1 закрыта", motors: [], servos: ["claw"] },
   distance: { title: "Датчик расстояния", text: "Спереди по центру, до 200 см", motors: [], servos: [], sensors: [["distance", "DistanceSensor"]] },
   arm: { title: "Неподвижная длинная рука", text: "Торчит вперед на 5 дюймов и не складывается", motors: [], servos: [], ext: 5 },
 };
-export const DEFAULT_ROBOT = { drive: "mecanum", size: 18, modules: ["intake", "launcher"], names: {} };
+export const DEFAULT_ROBOT = { drive: "mecanum", size: 18, modules: ["intake", "launcher"], names: {}, alliance: "red" };
 
 export function deviceList(robot) {
   const list = [];
@@ -194,7 +194,9 @@ export class Core {
   setRobot(robot) { this.robot = JSON.parse(JSON.stringify(robot)); this.reset(); }
 
   reset() {
-    const st = this.preset.start || { x: 0, y: -60, h: 0 };
+    let st = this.preset.start || { x: -63, y: -10.8, h: -90 };
+    // поле симметрично поворотом на 180: старт синего робота - зеркало старта красного
+    if ((this.robot.alliance || "red") !== (this.preset.alliance || "red")) st = { x: -st.x, y: -st.y, h: (st.h || 0) + 180 };
     this.pose = { x: st.x, y: st.y, h: (st.h || 0) * Math.PI / 180 };
     this.startPose = { ...this.pose };
     this.vel = { f: 0, r: 0, w: 0 };
@@ -213,11 +215,22 @@ export class Core {
       else if (d.type === "DistanceSensor") dev = this.makeDistance();
       this.devices.set(d.name, { type: d.type, role: d.role, api: dev.api || dev });
     }
-    // Игра
-    this.pollen = (this.preset.pollen === "none" ? [] : defaultPollen()).map((p, i) => ({ id: i, ...p }));
-    this.held = this.has("intake") || this.has("launcher") ? (this.preset.preload ?? 4) : 0;
-    this.flying = []; this.cool = 0; this.ejectCool = 0;
-    this.score = { leave: 0, hive: 0, park: 0 }; this.hits = 0; this.collected = 0; this.shots = 0;
+    // Игра BIOBUZZ
+    this.alliance = this.robot.alliance || this.preset.alliance || "red";
+    this.opp = this.alliance === "red" ? "blue" : "red";
+    const el = setupElements();
+    const pre = this.preset;
+    this.items = (pre.elements === "none" ? [] : el.field).map((b, i) => ({ id: i, state: "field", ...b }));
+    this.flowerStock = pre.elements === "none" ? FLOWERS.map(() => []) : el.flowerStock;
+    this.flowerScored = FLOWERS.map(() => []);
+    this.cells = el.cells; this.trays = el.trays;
+    this.held = [];
+    const preload = this.has("intake") || this.has("launcher") ? (pre.preload ?? 4) : 0;
+    for (let k = 0; k < preload; k++) this.held.push({ kind: "pollen" });
+    this.flying = []; this.cool = 0; this.ejectCool = 0; this.pullCool = 0;
+    this.score = { leave: 0, park: 0, tip: 0, cell: 0, flower: 0, bottom: 0, garden: 0 };
+    this.tips = 0; this.hits = 0; this.collected = 0; this.shots = 0; this.inFlower = 0;
+    this.endgameDone = false; this.autoScored = false;
     this.trail = [{ x: this.pose.x, y: this.pose.y }]; this.trailT = 0;
     this.checkState = (this.preset.checks || []).map(() => ({ ok: false }));
     this.code = "";
@@ -229,7 +242,7 @@ export class Core {
 
   makeImu() {
     const core = this;
-    let offset = 0;
+    let offset = core.startPose ? core.startPose.h : 0;
     const yaw = () => { let a = (core.pose.h - offset) * 180 / Math.PI; a = ((a + 180) % 360 + 360) % 360 - 180; return a; };
     const angles = () => ({
       getYaw: (u) => (u === "RADIANS" ? yaw() * Math.PI / 180 : yaw()), getPitch: () => 0, getRoll: () => 0,
@@ -263,9 +276,9 @@ export class Core {
     let best = Infinity;
     if (fx > 1e-6) best = Math.min(best, (HALF - ox) / fx); if (fx < -1e-6) best = Math.min(best, (-HALF - ox) / fx);
     if (fy > 1e-6) best = Math.min(best, (HALF - oy) / fy); if (fy < -1e-6) best = Math.min(best, (-HALF - oy) / fy);
-    // улей
-    const dx = ox - HIVE.x, dy = oy - HIVE.y, b = dx * fx + dy * fy, c = dx * dx + dy * dy - HIVE.r * HIVE.r, disc = b * b - c;
-    if (disc >= 0) { const t = -b - Math.sqrt(disc); if (t > 0) best = Math.min(best, t); }
+    // цветки (прямоугольники у стен) и ноги рамы улья
+    for (const f of FLOWERS) best = Math.min(best, rayRect(ox, oy, fx, fy, flowerRect(f)));
+    for (const L of FRAME_LEGS) best = Math.min(best, rayRect(ox, oy, fx, fy, { x0: Math.min(L.x0, L.x1) - L.r, x1: Math.max(L.x0, L.x1) + L.r, y0: Math.min(L.y0, L.y1) - L.r, y1: Math.max(L.y0, L.y1) + L.r }));
     return Math.max(0, best);
   }
 
@@ -379,7 +392,7 @@ export class Core {
   start() {
     if (this.phase !== "init") return;
     this.phase = "run"; this.tStart = this.t;
-    this.limit = this.preset.limit || (this.kind === "auto" ? 30 : 0);
+    this.limit = this.preset.limit || (this.kind === "auto" ? MATCH.auto : 0);
     this.emit("phase");
   }
 
@@ -398,7 +411,7 @@ export class Core {
     for (const m of Object.values(this.motors)) { m.power = 0; if (m.mode === "RUN_TO_POSITION") m.mode = "RUN_WITHOUT_ENCODER"; }
     this.phase = how;
     if (how === "done" && !this.endReason) this.endReason = "Программа завершилась";
-    if (wasRun) { this.scorePark(); this.evalEnd(); }
+    if (wasRun) { this.scoreEnd(); this.evalEnd(); }
     const ws = this.waiters; this.waiters = [];
     for (const w of ws) w.reject(STOP);
     this.emit("phase");
@@ -422,6 +435,11 @@ export class Core {
     if (this.phase === "run") {
       this.trailT += dt;
       if (this.trailT > 0.1) { this.trailT = 0; this.trail.push({ x: this.pose.x, y: this.pose.y }); if (this.trail.length > 900) this.trail.shift(); }
+      if (this.kind !== "auto" && !this.endgameDone && this.flowersOpen()) {
+        this.endgameDone = true;
+        for (const a of ["red", "blue"]) while (this.trays[a] > 0) this.enterNectar(a);
+        this.emit("endgame");
+      }
       if (this.limit && this.t - this.tStart >= this.limit - 1e-9) this.stop(this.kind === "auto" ? "30 секунд AUTO закончились" : "Время матча закончилось");
       this.evalLive();
     }
@@ -447,9 +465,11 @@ export class Core {
     // стены
     const half = this.size / 2, ext = half * (Math.abs(Math.cos(p.h)) + Math.abs(Math.sin(p.h)));
     p.x = Math.max(-HALF + ext, Math.min(HALF - ext, p.x)); p.y = Math.max(-HALF + ext, Math.min(HALF - ext, p.y));
-    // улей
-    const dx = p.x - HIVE.x, dy = p.y - HIVE.y, d = Math.hypot(dx, dy), minD = HIVE.r + half * 0.95;
-    if (d < minD) { const k = d < 1e-6 ? 1 : minD / d; p.x = HIVE.x + dx * k; p.y = HIVE.y + (d < 1e-6 ? minD : dy * k); }
+    // цветки и ноги рамы улья: робот как круг
+    const R = half * 0.92;
+    for (const f of FLOWERS) pushOut(p, R, flowerRect(f));
+    for (const L of FRAME_LEGS) pushSeg(p, R + L.r, L);
+    p.x = Math.max(-HALF + ext, Math.min(HALF - ext, p.x)); p.y = Math.max(-HALF + ext, Math.min(HALF - ext, p.y));
   }
 
   local(x, y) {
@@ -463,65 +483,153 @@ export class Core {
 
   game(dt) {
     const half = this.size / 2;
-    const intake = this.motors.intake;
-    // пыльца на поле: забор и толкание корпусом
-    for (const b of this.pollen) {
+    const intake = this.motors.intake, lift = this.motors.lift;
+    const run = this.phase === "run";
+    // элементы на поле: забор захватом и толкание корпусом
+    for (const b of this.items) {
       if (b.state !== "field") continue;
+      const r = b.kind === "nectar" ? NECTAR_R : POLLEN_R;
       const l = this.local(b.x, b.y);
-      if (intake && intake.vel > 0.3 && this.held < CAPACITY && l.f > half - 2 && l.f < half + 5 && Math.abs(l.r) < half - 2) {
-        b.state = "held"; this.held++; this.collected++; this.emit("collect"); continue;
+      const mine = b.kind === "pollen" || b.color === this.alliance;
+      if (intake && intake.vel > 0.3 && mine && this.held.length < CAPACITY && l.f > half - 2 && l.f < half + 5 && Math.abs(l.r) < half - 1) {
+        b.state = "held"; this.held.push({ kind: b.kind, color: b.color }); this.collected++; this.emit("collect", b); continue;
       }
-      if (Math.abs(l.f) < half + 2.5 && Math.abs(l.r) < half + 2.5) {
-        // выталкиваем по ближайшей оси
-        const pf = half + 2.5 - Math.abs(l.f), pr = half + 2.5 - Math.abs(l.r);
-        const nl = pf < pr ? { f: Math.sign(l.f || 1) * (half + 2.5), r: l.r } : { f: l.f, r: Math.sign(l.r || 1) * (half + 2.5) };
+      const m = half + r + 0.6;
+      if (Math.abs(l.f) < m && Math.abs(l.r) < m) {
+        const pf = m - Math.abs(l.f), pr = m - Math.abs(l.r);
+        const nl = pf < pr ? { f: Math.sign(l.f || 1) * m, r: l.r } : { f: l.f, r: Math.sign(l.r || 1) * m };
         const w = this.world(nl.f, nl.r);
-        b.x = Math.max(-HALF + 2.5, Math.min(HALF - 2.5, w.x)); b.y = Math.max(-HALF + 2.5, Math.min(HALF - 2.5, w.y));
+        b.x = Math.max(-HALF + r, Math.min(HALF - r, w.x)); b.y = Math.max(-HALF + r, Math.min(HALF - r, w.y));
+        for (const f of FLOWERS) { const q = { x: b.x, y: b.y }; pushOut(q, r, flowerRect(f)); b.x = q.x; b.y = q.y; }
       }
     }
-    // выброс назад реверсом захвата
-    this.ejectCool -= dt;
-    if (intake && intake.vel < -0.3 && this.held > 0 && this.ejectCool <= 0) {
-      this.ejectCool = 0.35; this.held--;
-      const w = this.world(half + 6, 0);
-      this.dropBall(w.x, w.y);
+    // цветок перед роботом: окно выемки внизу, верхнее отверстие на высоте 21,5 дюйма
+    const fi = this.flowerAhead();
+    this.pullCool -= dt;
+    if (fi >= 0 && intake && intake.vel > 0.3 && this.held.length < CAPACITY && this.flowerStock[fi].length && this.pullCool <= 0) {
+      this.pullCool = 0.4;
+      this.held.push({ kind: this.flowerStock[fi].shift() }); this.collected++; this.emit("collect", { kind: "pollen", flower: FLOWERS[fi].id });
     }
-    // пуск
+    // выброс реверсом захвата: в цветок (если поднят подъемник) или на пол
+    this.ejectCool -= dt;
+    if (intake && intake.vel < -0.3 && this.held.length && this.ejectCool <= 0) {
+      this.ejectCool = 0.35;
+      const e = this.held.shift();
+      if (fi >= 0 && lift && lift.pos >= 2200) {
+        if (this.flowersOpen() || !run) { this.flowerScored[fi].push(e.kind === "nectar" ? e.color : "pollen"); this.inFlower++; this.emit("flower", { flower: FLOWERS[fi].id, ok: true }); }
+        else { const w = this.world(half + 4, 0); this.dropItem(e, w.x, w.y); this.emit("flower", { flower: FLOWERS[fi].id, ok: false }); }
+      } else { const w = this.world(half + 6, 0); this.dropItem(e, w.x, w.y); }
+    }
+    // бросок в верхнюю ячейку своего улья
     this.cool -= dt;
     const L = this.motors.launcher, gate = this.servos.gate;
-    if (L && gate && this.phase === "run" && gate.pos > 0.5 && L.vel > 0.8 && this.held > 0 && this.cool <= 0) {
-      this.cool = 0.4; this.held--; this.shots++;
-      const p = this.pose, dx = HIVE.x - p.x, dy = HIVE.y - p.y, dist = Math.hypot(dx, dy);
-      const fx = -Math.sin(p.h), fy = Math.cos(p.h);
-      const err = Math.abs(Math.atan2(fx * dy - fy * dx, fx * dx + fy * dy)) * 180 / Math.PI;
-      const hit = dist >= HIT_MIN && dist <= HIT_MAX && err <= HIT_DEG;
-      const land = hit ? { x: HIVE.x, y: HIVE.y } : this.world(Math.min(70, 30 + 40 * L.vel), 0);
-      this.flying.push({ x0: p.x, y0: p.y, x1: land.x, y1: land.y, t: 0, dur: 0.5, hit, dist, err });
-      this.emit("shot", { hit, dist, err });
+    if (L && gate && run && gate.pos > 0.5 && L.vel > 0.8 && this.held.length && this.cool <= 0) {
+      this.cool = 0.4; this.shots++;
+      const e = this.held.shift();
+      const aim = this.aim();
+      const land = aim.hit ? aim.target : this.world(Math.min(80, 30 + 45 * L.vel), 0);
+      this.flying.push({ x0: this.pose.x, y0: this.pose.y, x1: land.x, y1: land.y, t: 0, dur: 0.55, hit: aim.hit, item: e, side: this.cells[this.alliance].upSide });
+      this.emit("shot", aim);
     }
     for (const f of this.flying) {
       f.t += dt;
       if (f.t >= f.dur && !f.done) {
         f.done = true;
-        if (f.hit) { this.hits++; this.score.hive += 3; this.emit("score"); }
-        else this.dropBall(f.x1, f.y1);
+        const c = this.cells[this.alliance];
+        if (f.hit && f.side === c.upSide) { c.up.push(f.item.kind === "nectar" ? f.item.color : "pollen"); this.hits++; this.emit("cell"); if (c.up.length >= TIP_AT) this.tip(this.alliance); }
+        else this.dropItem(f.item, f.x1 + (f.hit ? 6 : 0), f.y1);
       }
     }
     this.flying = this.flying.filter((f) => !f.done || f.t < f.dur + 0.4);
-    // LEAVE в AUTO
-    if (this.phase === "run" && this.kind === "auto" && !this.score.leave && Math.hypot(this.pose.x - this.startPose.x, this.pose.y - this.startPose.y) > 12) this.score.leave = 3;
   }
 
-  dropBall(x, y) {
-    x = Math.max(-HALF + 3, Math.min(HALF - 3, x)); y = Math.max(-HALF + 3, Math.min(HALF - 3, y));
-    const d = Math.hypot(x - HIVE.x, y - HIVE.y);
-    if (d < HIVE.r + 3) { const k = (HIVE.r + 3) / Math.max(d, 1e-6); x = HIVE.x + (x - HIVE.x) * k; y = HIVE.y + (d < 1e-6 ? HIVE.r + 3 : (y - HIVE.y) * k); }
-    this.pollen.push({ id: this.pollen.length, x, y, state: "field" });
+  // Ошибка прицела: дальность по полу до центра верхней ячейки и промах вбок на этой дальности
+  aim() {
+    const c = this.cells[this.alliance], target = cellCenter(this.alliance, c.upSide, true);
+    const p = this.pose, dx = target.x - p.x, dy = target.y - p.y, dist = Math.hypot(dx, dy);
+    const fx = -Math.sin(p.h), fy = Math.cos(p.h);
+    const ang = Math.atan2(fx * dy - fy * dx, fx * dx + fy * dy);
+    const err = Math.abs(ang) * 180 / Math.PI, miss = Math.abs(Math.sin(ang)) * dist;
+    const hit = dist >= LAUNCH_MIN && dist <= LAUNCH_MAX && err < 45 && miss <= CELL.halfW - 2;
+    return { hit, dist, err, miss, target };
   }
 
-  inPark() { const p = this.pose; return p.x >= PARK.x0 && p.x <= PARK.x1 && p.y >= PARK.y0 && p.y <= PARK.y1; }
-  scorePark() { this.score.park = this.inPark() ? 5 : 0; }
-  get total() { return this.score.leave + this.score.hive + this.score.park; }
+  // HIVE TIP: верхняя ячейка становится нижней, ее элементы высыпаются, человек альянса вводит один NECTAR
+  tip(a) {
+    const c = this.cells[a], h = HIVES[a];
+    const spillSide = c.upSide, sy = spillSide === "aud" ? -1 : 1;
+    c.up.forEach((e, k) => this.dropItem(e === "pollen" ? { kind: "pollen" } : { kind: "nectar", color: e }, h.cx - 6 + (k % 4) * 4, sy * (27 + Math.floor(k / 4) * 3.5)));
+    c.up = [];
+    c.upSide = otherSide(spillSide);
+    if (a === this.alliance) { this.tips++; this.score.tip += SCORE.tip; }
+    if (this.trays[a] > 0) this.enterNectar(a);
+    this.emit("tip", { alliance: a });
+  }
+
+  enterNectar(a) {
+    if (this.trays[a] <= 0) return;
+    const z = LOADING[a], k = 5 - this.trays[a];
+    this.trays[a]--;
+    this.items.push({ id: this.items.length, kind: "nectar", color: a, state: "field",
+      x: (z.x0 + z.x1) / 2 + (a === "red" ? -2 : 2), y: z.y0 + 3 + k * 4.2 });
+  }
+
+  flowersOpen() {
+    if (this.tStart == null) return false;
+    const rt = this.t - this.tStart;
+    if (this.kind === "auto") return false;
+    return rt >= MATCH.teleop - MATCH.flowerOpen;
+  }
+
+  // Индекс цветка прямо перед захватом робота или -1
+  flowerAhead() {
+    const half = this.size / 2;
+    for (let i = 0; i < FLOWERS.length; i++) {
+      const R = flowerRect(FLOWERS[i]);
+      const cx = Math.max(R.x0, Math.min(R.x1, this.pose.x)), cy = Math.max(R.y0, Math.min(R.y1, this.pose.y));
+      const l = this.local(cx, cy);
+      if (l.f > half - 1 && l.f < half + 4 && Math.abs(l.r) < 6) return i;
+    }
+    return -1;
+  }
+
+  dropItem(e, x, y) {
+    const r = e.kind === "nectar" ? NECTAR_R : POLLEN_R;
+    const q = { x: Math.max(-HALF + r, Math.min(HALF - r, x)), y: Math.max(-HALF + r, Math.min(HALF - r, y)) };
+    for (const f of FLOWERS) pushOut(q, r, flowerRect(f));
+    this.items.push({ id: this.items.length, kind: e.kind, color: e.color, state: "field", x: q.x, y: q.y });
+  }
+
+  // Части робота в зоне: углы и середины сторон
+  footprint() {
+    const half = this.size / 2, pts = [];
+    for (const f of [-half, 0, half]) for (const r of [-half, 0, half]) pts.push(this.world(f, r));
+    return pts;
+  }
+  inZone(z) { return this.footprint().some((q) => q.x >= z.x0 && q.x <= z.x1 && q.y >= z.y0 && q.y <= z.y1); }
+  inPark() { return this.inZone(LOADING[this.alliance]); }
+  touchingWall() {
+    const p = this.pose, half = this.size / 2, ext = half * (Math.abs(Math.cos(p.h)) + Math.abs(Math.sin(p.h)));
+    return Math.abs(p.x) + ext >= HALF - 0.5 || Math.abs(p.y) + ext >= HALF - 0.5;
+  }
+
+  // Итог: AUTO - LEAVE, PARK, TIP; TELEOP - PARK, ячейка, цветки, сад (раздел 10 мануала)
+  scoreEnd() {
+    const s = this.score, me = this.alliance;
+    s.park = this.inPark() ? SCORE.park : 0;
+    if (this.kind === "auto") { s.leave = this.touchingWall() ? 0 : SCORE.leave; return; }
+    s.cell = this.cells[me].up.length * SCORE.cell;
+    s.flower = 0; s.bottom = 0;
+    this.flowerScored.forEach((list) => {
+      const nect = list.filter((x) => x !== "pollen");
+      if (nect.length && nect[nect.length - 1] === me) s.flower += list.length * SCORE.flower;
+      if (nect.length && nect[0] === me) s.bottom += SCORE.bottomNectar;
+    });
+    const g = GARDEN[me];
+    s.garden = this.items.filter((b) => b.state === "field" && circleRect(b.x, b.y, b.kind === "nectar" ? NECTAR_R : POLLEN_R, g)).length * SCORE.garden;
+  }
+
+  get total() { const s = this.score; return s.leave + s.park + s.tip + s.cell + s.flower + s.bottom + s.garden; }
   get heading() { let a = this.pose.h * 180 / Math.PI; return ((a + 180) % 360 + 360) % 360 - 180; }
 
   // ─────────────── Проверки ───────────────
@@ -553,6 +661,8 @@ export class Core {
       } else if (c.type === "telemetry") s.ok = this.telemetryShown.some((l) => l.includes(c.text));
       else if (c.type === "collect") s.ok = this.collected >= c.n;
       else if (c.type === "hits") s.ok = this.hits >= c.n && (!c.within || rt <= c.within);
+      else if (c.type === "tips") s.ok = this.tips >= c.n;
+      else if (c.type === "flower") s.ok = this.inFlower >= c.n;
       else if (c.type === "score") s.ok = this.total >= c.n;
     });
     this.evalStatic();
@@ -565,6 +675,7 @@ export class Core {
       if (c.type === "pose_end") s.ok = Math.hypot(this.pose.x - c.x, this.pose.y - c.y) <= c.tol;
       else if (c.type === "heading_end") s.ok = Math.abs(angDiff(this.heading * Math.PI / 180, c.deg * Math.PI / 180)) * 180 / Math.PI <= c.tol;
       else if (c.type === "park") s.ok = this.inPark();
+      else if (c.type === "leave") s.ok = !this.touchingWall();
       else if (c.type === "finished") s.ok = this.phase === "done" || this.endReason === "Программа завершилась";
       else if (c.type === "score") s.ok = this.total >= c.n;
     });
@@ -577,11 +688,38 @@ export class Core {
 const angDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
 const localOf = (ref, x, y) => { const dx = x - ref.x, dy = y - ref.y; return { f: dx * -Math.sin(ref.h) + dy * Math.cos(ref.h), r: dx * Math.cos(ref.h) + dy * Math.sin(ref.h) }; };
 
-export function defaultPollen() {
-  const out = [];
-  for (const y of [-30, -12, 6, 24]) { out.push({ x: -56, y, state: "field" }); out.push({ x: 56, y, state: "field" }); }
-  for (const x of [-30, -10, 10, 30]) out.push({ x, y: 50, state: "field" });
-  return out;
+function pushOut(p, r, R) {
+  const cx = Math.max(R.x0, Math.min(R.x1, p.x)), cy = Math.max(R.y0, Math.min(R.y1, p.y));
+  const dx = p.x - cx, dy = p.y - cy, d = Math.hypot(dx, dy);
+  if (d >= r) return;
+  if (d < 1e-6) { // центр внутри прямоугольника: выталкиваем к ближайшей стороне
+    const opts = [[p.x - R.x0, -1, 0], [R.x1 - p.x, 1, 0], [p.y - R.y0, 0, -1], [R.y1 - p.y, 0, 1]].sort((a, b) => a[0] - b[0])[0];
+    p.x += opts[1] * (opts[0] + r); p.y += opts[2] * (opts[0] + r); return;
+  }
+  p.x = cx + dx / d * r; p.y = cy + dy / d * r;
+}
+
+function pushSeg(p, r, L) {
+  const vx = L.x1 - L.x0, vy = L.y1 - L.y0, t = Math.max(0, Math.min(1, ((p.x - L.x0) * vx + (p.y - L.y0) * vy) / (vx * vx + vy * vy)));
+  const cx = L.x0 + vx * t, cy = L.y0 + vy * t, dx = p.x - cx, dy = p.y - cy, d = Math.hypot(dx, dy);
+  if (d >= r || d < 1e-6) return;
+  p.x = cx + dx / d * r; p.y = cy + dy / d * r;
+}
+
+function circleRect(x, y, r, R) {
+  const cx = Math.max(R.x0, Math.min(R.x1, x)), cy = Math.max(R.y0, Math.min(R.y1, y));
+  return Math.hypot(x - cx, y - cy) < r;
+}
+
+function rayRect(ox, oy, fx, fy, R) {
+  let t0 = 0, t1 = Infinity;
+  for (const [o, f, a, b] of [[ox, fx, R.x0, R.x1], [oy, fy, R.y0, R.y1]]) {
+    if (Math.abs(f) < 1e-9) { if (o < a || o > b) return Infinity; continue; }
+    let ta = (a - o) / f, tb = (b - o) / f; if (ta > tb) [ta, tb] = [tb, ta];
+    t0 = Math.max(t0, ta); t1 = Math.min(t1, tb);
+    if (t0 > t1) return Infinity;
+  }
+  return t0;
 }
 
 function errLine(e) {

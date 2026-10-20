@@ -7,13 +7,15 @@
    "intake",
    "launcher"
   ],
-  "names": {}
+  "names": {},
+  "alliance": "red"
  },
  "start": {
-  "x": 0,
-  "y": -60,
-  "h": 0
+  "x": -63,
+  "y": -10.8,
+  "h": -90
  },
  "code": "package org.firstinspires.ftc.teamcode;\n\nimport com.qualcomm.robotcore.eventloop.opmode.TeleOp;\nimport com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;\nimport com.qualcomm.robotcore.hardware.DcMotor;\nimport com.qualcomm.robotcore.hardware.DcMotorEx;\nimport com.qualcomm.robotcore.hardware.Servo;\n\n@TeleOp(name = \"TeleOp Main\")\npublic class TeleOpMain extends LinearOpMode {\n    @Override\n    public void runOpMode() {\n        DcMotor fl = hardwareMap.get(DcMotor.class, \"frontLeft\");\n        DcMotor fr = hardwareMap.get(DcMotor.class, \"frontRight\");\n        DcMotor bl = hardwareMap.get(DcMotor.class, \"backLeft\");\n        DcMotor br = hardwareMap.get(DcMotor.class, \"backRight\");\n        DcMotor intake = hardwareMap.get(DcMotor.class, \"intake\");\n        DcMotorEx launcher = hardwareMap.get(DcMotorEx.class, \"launcher\");\n        Servo gate = hardwareMap.get(Servo.class, \"gate\");\n\n        fl.setDirection(DcMotor.Direction.REVERSE);\n        bl.setDirection(DcMotor.Direction.REVERSE);\n        gate.setPosition(0);\n\n        waitForStart();\n\n        while (opModeIsActive()) {\n            double y = -gamepad1.left_stick_y;\n            double x = gamepad1.left_stick_x;\n            double r = gamepad1.right_stick_x;\n            double speed = gamepad1.left_bumper ? 0.4 : 1.0;\n\n            double max = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(r), 1.0);\n            fl.setPower((y + x + r) / max * speed);\n            fr.setPower((y - x - r) / max * speed);\n            bl.setPower((y - x + r) / max * speed);\n            br.setPower((y + x - r) / max * speed);\n\n            // Захват: правый бампер - затянуть, B - выбросить\n            if (gamepad1.right_bumper) {\n                intake.setPower(1);\n            } else if (gamepad1.b) {\n                intake.setPower(-1);\n            } else {\n                intake.setPower(0);\n            }\n\n            // Маховик раскручивается, пока нажат правый триггер\n            launcher.setPower(gamepad1.right_trigger > 0.5 ? 1 : 0);\n\n            // Заслонка открыта, пока нажата A\n            gate.setPosition(gamepad1.a ? 1 : 0);\n\n            telemetry.addData(\"Маховик\", \"%.0f тиков/с\", launcher.getVelocity());\n            telemetry.addData(\"Заслонка\", gate.getPosition());\n            telemetry.update();\n        }\n    }\n}\n",
- "checks": []
+ "checks": [],
+ "alliance": "red"
 }

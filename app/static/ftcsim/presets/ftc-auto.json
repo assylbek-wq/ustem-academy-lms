@@ -1,6 +1,6 @@
 {
- "title": "Автономный режим: заброс и парковка",
- "task": "Робот стоит лицом к улью в 60 дюймах и везет 4 пыльцы. За 30 секунд AUTO: раскрутите маховик, откройте заслонку, забросьте пыльцу, затем припаркуйтесь.\nЗона PARK - правый нижний угол поля (желтая штриховка).",
+ "title": "AUTO: HIVE TIP, LEAVE и PARK",
+ "task": "Робот касается красной стены и смотрит на красный улей, в нем 4 POLLEN. В верхней ячейке уже 3 NECTAR: еще 3 элемента перевернут улей (HIVE TIP, 20 очков).\nЗа 30 секунд: забросьте POLLEN, затем уезжайте от стены (LEAVE, 3 очка) и встаньте хотя бы частично в красную LOADING ZONE (PARK, 5 очков).",
  "robot": {
   "drive": "mecanum",
   "size": 18,
@@ -8,28 +8,33 @@
    "intake",
    "launcher"
   ],
-  "names": {}
+  "names": {},
+  "alliance": "red"
  },
  "start": {
-  "x": 0,
-  "y": -60,
-  "h": 0
+  "x": -63,
+  "y": -10.8,
+  "h": -90
  },
- "code": "package org.firstinspires.ftc.teamcode;\n\nimport com.qualcomm.robotcore.eventloop.opmode.Autonomous;\nimport com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;\nimport com.qualcomm.robotcore.hardware.DcMotor;\nimport com.qualcomm.robotcore.hardware.Servo;\n\n@Autonomous(name = \"Auto Пыльца\")\npublic class AutoPollen extends LinearOpMode {\n    DcMotor fl, fr, bl, br, launcher;\n    Servo gate;\n\n    @Override\n    public void runOpMode() {\n        fl = hardwareMap.get(DcMotor.class, \"frontLeft\");\n        fr = hardwareMap.get(DcMotor.class, \"frontRight\");\n        bl = hardwareMap.get(DcMotor.class, \"backLeft\");\n        br = hardwareMap.get(DcMotor.class, \"backRight\");\n        launcher = hardwareMap.get(DcMotor.class, \"launcher\");\n        gate = hardwareMap.get(Servo.class, \"gate\");\n        fl.setDirection(DcMotor.Direction.REVERSE);\n        bl.setDirection(DcMotor.Direction.REVERSE);\n        gate.setPosition(0);\n\n        waitForStart();\n\n        // TODO 1. Раскрутите маховик, откройте заслонку и забросьте 4 пыльцы в улей\n        // TODO 2. Закройте заслонку и припаркуйтесь в зоне PARK (правый нижний угол)\n\n        strafe(0.5, 1000);  // пока только сдвиг вправо\n    }\n\n    // Езда вбок: мощность вправо (минус - влево) и время в мс\n    void strafe(double power, long ms) {\n        fl.setPower(power);\n        fr.setPower(-power);\n        bl.setPower(-power);\n        br.setPower(power);\n        sleep(ms);\n        stopDrive();\n    }\n\n    void stopDrive() {\n        fl.setPower(0);\n        fr.setPower(0);\n        bl.setPower(0);\n        br.setPower(0);\n    }\n}\n",
+ "code": "package org.firstinspires.ftc.teamcode;\n\nimport com.qualcomm.robotcore.eventloop.opmode.Autonomous;\nimport com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;\nimport com.qualcomm.robotcore.hardware.DcMotor;\nimport com.qualcomm.robotcore.hardware.Servo;\n\n@Autonomous(name = \"Auto Red Hive\")\npublic class AutoRedHive extends LinearOpMode {\n    DcMotor fl, fr, bl, br, launcher;\n    Servo gate;\n\n    @Override\n    public void runOpMode() {\n        fl = hardwareMap.get(DcMotor.class, \"frontLeft\");\n        fr = hardwareMap.get(DcMotor.class, \"frontRight\");\n        bl = hardwareMap.get(DcMotor.class, \"backLeft\");\n        br = hardwareMap.get(DcMotor.class, \"backRight\");\n        launcher = hardwareMap.get(DcMotor.class, \"launcher\");\n        gate = hardwareMap.get(Servo.class, \"gate\");\n        fl.setDirection(DcMotor.Direction.REVERSE);\n        bl.setDirection(DcMotor.Direction.REVERSE);\n        gate.setPosition(0);\n\n        waitForStart();\n\n        // TODO 1. Раскрутите маховик, откройте заслонку и забросьте POLLEN в верхнюю ячейку красного улья\n        // TODO 2. Закройте заслонку, уезжайте от стены и встаньте частично в красную LOADING ZONE\n\n        strafe(-0.5, 600);  // пока только немного влево\n    }\n\n    // Езда вбок: мощность вправо (минус - влево) и время в мс\n    void strafe(double power, long ms) {\n        fl.setPower(power);\n        fr.setPower(-power);\n        bl.setPower(-power);\n        br.setPower(power);\n        sleep(ms);\n        stopDrive();\n    }\n\n    // Езда вперед (минус - назад) на время в мс\n    void forward(double power, long ms) {\n        fl.setPower(power);\n        fr.setPower(power);\n        bl.setPower(power);\n        br.setPower(power);\n        sleep(ms);\n        stopDrive();\n    }\n\n    void stopDrive() {\n        fl.setPower(0);\n        fr.setPower(0);\n        bl.setPower(0);\n        br.setPower(0);\n    }\n}\n",
  "checks": [
   {
-   "type": "hits",
-   "n": 3,
-   "within": 30,
-   "label": "Не меньше 3 попаданий в улей"
+   "type": "tips",
+   "n": 1,
+   "label": "HIVE TIP красного улья"
+  },
+  {
+   "type": "leave",
+   "label": "LEAVE: в конце AUTO робот не касается стены"
   },
   {
    "type": "park",
-   "label": "Робот в зоне PARK в конце AUTO"
+   "label": "PARK: робот хотя бы частично в красной LOADING ZONE"
   },
   {
    "type": "finished",
    "label": "Программа завершилась сама за 30 секунд"
   }
- ]
+ ],
+ "alliance": "red"
 }
