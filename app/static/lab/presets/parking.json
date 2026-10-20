@@ -1,0 +1,182 @@
+{
+ "title": "Проект: парктроник",
+ "task": "Датчик HC-SR04 (TRIG 7, ECHO 6), пищалка на пине 2 и светодиод на пине 13.\nСделайте парктроник: если препятствие ближе 20 см - пищалка звучит и светодиод горит, если дальше - тишина. Для плюса: чем ближе, тем чаще пищит.\nВо время симуляции двигайте расстояние в «Свойствах» датчика туда и обратно через отметку 20 см: проверка смотрит обе ситуации.",
+ "parts": [
+  {
+   "id": "uno1",
+   "type": "uno",
+   "x": 0,
+   "y": 0
+  },
+  {
+   "id": "bb1",
+   "type": "breadboard",
+   "x": 0,
+   "y": -360
+  },
+  {
+   "id": "led1",
+   "type": "led",
+   "x": 180,
+   "y": -285,
+   "rot": 0,
+   "props": {
+    "color": "red"
+   }
+  },
+  {
+   "id": "r12",
+   "type": "resistor",
+   "x": 195,
+   "y": -240,
+   "rot": 90,
+   "props": {
+    "r": 220
+   }
+  },
+  {
+   "id": "us1",
+   "type": "sonar",
+   "x": 285,
+   "y": -180,
+   "rot": 0,
+   "props": {
+    "dist": 80
+   }
+  },
+  {
+   "id": "bz1",
+   "type": "buzzer",
+   "x": 375,
+   "y": -180,
+   "rot": 0,
+   "props": {}
+  }
+ ],
+ "wires": [
+  {
+   "id": "w1",
+   "a": "uno1.GND.1",
+   "b": "bb1.bn12",
+   "pts": [],
+   "color": "#111827"
+  },
+  {
+   "id": "w2",
+   "a": "uno1.5V",
+   "b": "bb1.bp1",
+   "pts": [
+    {
+     "x": 195,
+     "y": 322.5
+    },
+    {
+     "x": -18.0,
+     "y": 322.5
+    },
+    {
+     "x": -18.0,
+     "y": -105
+    }
+   ],
+   "color": "#dc2626"
+  },
+  {
+   "id": "w3",
+   "a": "bb1.bn30",
+   "b": "bb1.tn30",
+   "pts": [
+    {
+     "x": 450,
+     "y": -72.0
+    },
+    {
+     "x": 480,
+     "y": -72.0
+    },
+    {
+     "x": 480,
+     "y": -330
+    }
+   ],
+   "color": "#111827"
+  },
+  {
+   "id": "w4",
+   "a": "uno1.13",
+   "b": "bb1.j13",
+   "pts": [],
+   "color": "#f59e0b"
+  },
+  {
+   "id": "w5",
+   "a": "bb1.a12",
+   "b": "bb1.tn12",
+   "pts": [],
+   "color": "#111827"
+  },
+  {
+   "id": "w6",
+   "a": "bb1.j19",
+   "b": "bb1.bp19",
+   "pts": [],
+   "color": "#dc2626"
+  },
+  {
+   "id": "w7",
+   "a": "bb1.j22",
+   "b": "bb1.bn22",
+   "pts": [],
+   "color": "#111827"
+  },
+  {
+   "id": "w8",
+   "a": "uno1.7",
+   "b": "bb1.j20",
+   "pts": [],
+   "color": "#2563eb"
+  },
+  {
+   "id": "w9",
+   "a": "uno1.6",
+   "b": "bb1.j21",
+   "pts": [],
+   "color": "#a855f7"
+  },
+  {
+   "id": "w10",
+   "a": "uno1.2",
+   "b": "bb1.j25",
+   "pts": [],
+   "color": "#f59e0b"
+  },
+  {
+   "id": "w11",
+   "a": "bb1.j27",
+   "b": "bb1.bn27",
+   "pts": [],
+   "color": "#111827"
+  }
+ ],
+ "code": "const int TRIG = 7;\nconst int ECHO = 6;\nconst int BUZZ = 2;\nconst int LED = 13;\n\nlong readCm() {\n  digitalWrite(TRIG, LOW);\n  delayMicroseconds(2);\n  digitalWrite(TRIG, HIGH);\n  delayMicroseconds(10);\n  digitalWrite(TRIG, LOW);\n  return pulseIn(ECHO, HIGH) / 58;\n}\n\nvoid setup() {\n  pinMode(TRIG, OUTPUT);\n  pinMode(ECHO, INPUT);\n  pinMode(LED, OUTPUT);\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  long cm = readCm();\n  Serial.println(cm);\n  // ваша логика парктроника\n  delay(100);\n}\n",
+ "checks": [
+  {
+   "type": "follow",
+   "part": "bz1",
+   "src": "us1",
+   "prop": "dist",
+   "lt": 20,
+   "settle": 0.6,
+   "label": "Ближе 20 см пищалка звучит, дальше молчит"
+  },
+  {
+   "type": "follow",
+   "part": "led1",
+   "src": "us1",
+   "prop": "dist",
+   "lt": 20,
+   "settle": 0.6,
+   "label": "Ближе 20 см светодиод горит, дальше не горит"
+  }
+ ]
+}

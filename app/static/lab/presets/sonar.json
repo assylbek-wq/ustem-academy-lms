@@ -1,0 +1,115 @@
+{
+ "title": "Ультразвуковой датчик расстояния",
+ "task": "HC-SR04: TRIG на пине 7, ECHO на пине 6, питание 5V и GND.\nКод уже запускает замер и измеряет длину ответного импульса pulseIn. Переведите микросекунды в сантиметры (звук проходит 1 см туда и обратно примерно за 58 мкс) и выводите расстояние в Serial.\nМеняйте расстояние до препятствия в «Свойствах» датчика: число в Serial должно совпадать.",
+ "parts": [
+  {
+   "id": "uno1",
+   "type": "uno",
+   "x": 0,
+   "y": 0
+  },
+  {
+   "id": "bb1",
+   "type": "breadboard",
+   "x": 0,
+   "y": -360
+  },
+  {
+   "id": "us1",
+   "type": "sonar",
+   "x": 285,
+   "y": -180,
+   "rot": 0,
+   "props": {
+    "dist": 50
+   }
+  }
+ ],
+ "wires": [
+  {
+   "id": "w1",
+   "a": "uno1.GND.1",
+   "b": "bb1.bn12",
+   "pts": [],
+   "color": "#111827"
+  },
+  {
+   "id": "w2",
+   "a": "uno1.5V",
+   "b": "bb1.bp1",
+   "pts": [
+    {
+     "x": 195,
+     "y": 322.5
+    },
+    {
+     "x": -18.0,
+     "y": 322.5
+    },
+    {
+     "x": -18.0,
+     "y": -105
+    }
+   ],
+   "color": "#dc2626"
+  },
+  {
+   "id": "w3",
+   "a": "bb1.bn30",
+   "b": "bb1.tn30",
+   "pts": [
+    {
+     "x": 450,
+     "y": -72.0
+    },
+    {
+     "x": 480,
+     "y": -72.0
+    },
+    {
+     "x": 480,
+     "y": -330
+    }
+   ],
+   "color": "#111827"
+  },
+  {
+   "id": "w4",
+   "a": "bb1.j19",
+   "b": "bb1.bp19",
+   "pts": [],
+   "color": "#dc2626"
+  },
+  {
+   "id": "w5",
+   "a": "bb1.j22",
+   "b": "bb1.bn22",
+   "pts": [],
+   "color": "#111827"
+  },
+  {
+   "id": "w6",
+   "a": "uno1.7",
+   "b": "bb1.j20",
+   "pts": [],
+   "color": "#2563eb"
+  },
+  {
+   "id": "w7",
+   "a": "uno1.6",
+   "b": "bb1.j21",
+   "pts": [],
+   "color": "#a855f7"
+  }
+ ],
+ "code": "const int TRIG = 7;\nconst int ECHO = 6;\n\nvoid setup() {\n  pinMode(TRIG, OUTPUT);\n  pinMode(ECHO, INPUT);\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  digitalWrite(TRIG, LOW);\n  delayMicroseconds(2);\n  digitalWrite(TRIG, HIGH);\n  delayMicroseconds(10);\n  digitalWrite(TRIG, LOW);\n\n  long duration = pulseIn(ECHO, HIGH);   // длина импульса в микросекундах\n  // long cm = ...\n  Serial.println(duration);\n  delay(200);\n}\n",
+ "checks": [
+  {
+   "type": "serial_num",
+   "part": "us1",
+   "prop": "dist",
+   "tol": 2,
+   "label": "Serial показывает расстояние в сантиметрах (точность 2 см)"
+  }
+ ]
+}

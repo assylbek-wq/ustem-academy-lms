@@ -1,0 +1,161 @@
+{
+ "title": "Два светодиода без delay",
+ "task": "Красный светодиод на пине 13 должен мигать с периодом 1 секунда, зеленый на пине 12 - с периодом 0,4 секунды. Одновременно!\nС delay так не получится: пока программа ждет один светодиод, второй стоит. Используйте millis(): у каждого светодиода своя переменная «когда переключали в последний раз».",
+ "parts": [
+  {
+   "id": "uno1",
+   "type": "uno",
+   "x": 0,
+   "y": 0
+  },
+  {
+   "id": "bb1",
+   "type": "breadboard",
+   "x": 0,
+   "y": -360
+  },
+  {
+   "id": "slow",
+   "type": "led",
+   "x": 180,
+   "y": -285,
+   "rot": 0,
+   "props": {
+    "color": "red"
+   }
+  },
+  {
+   "id": "r12",
+   "type": "resistor",
+   "x": 195,
+   "y": -240,
+   "rot": 90,
+   "props": {
+    "r": 220
+   }
+  },
+  {
+   "id": "fast",
+   "type": "led",
+   "x": 225,
+   "y": -285,
+   "rot": 0,
+   "props": {
+    "color": "green"
+   }
+  },
+  {
+   "id": "r15",
+   "type": "resistor",
+   "x": 240,
+   "y": -240,
+   "rot": 90,
+   "props": {
+    "r": 220
+   }
+  }
+ ],
+ "wires": [
+  {
+   "id": "w1",
+   "a": "uno1.GND.1",
+   "b": "bb1.bn12",
+   "pts": [],
+   "color": "#111827"
+  },
+  {
+   "id": "w2",
+   "a": "uno1.5V",
+   "b": "bb1.bp1",
+   "pts": [
+    {
+     "x": 195,
+     "y": 322.5
+    },
+    {
+     "x": -18.0,
+     "y": 322.5
+    },
+    {
+     "x": -18.0,
+     "y": -105
+    }
+   ],
+   "color": "#dc2626"
+  },
+  {
+   "id": "w3",
+   "a": "bb1.bn30",
+   "b": "bb1.tn30",
+   "pts": [
+    {
+     "x": 450,
+     "y": -72.0
+    },
+    {
+     "x": 480,
+     "y": -72.0
+    },
+    {
+     "x": 480,
+     "y": -330
+    }
+   ],
+   "color": "#111827"
+  },
+  {
+   "id": "w4",
+   "a": "uno1.13",
+   "b": "bb1.j13",
+   "pts": [],
+   "color": "#f59e0b"
+  },
+  {
+   "id": "w5",
+   "a": "bb1.a12",
+   "b": "bb1.tn12",
+   "pts": [],
+   "color": "#111827"
+  },
+  {
+   "id": "w6",
+   "a": "uno1.12",
+   "b": "bb1.j16",
+   "pts": [
+    {
+     "x": 210,
+     "y": -30
+    },
+    {
+     "x": 240,
+     "y": -30
+    }
+   ],
+   "color": "#f59e0b"
+  },
+  {
+   "id": "w7",
+   "a": "bb1.a15",
+   "b": "bb1.tn15",
+   "pts": [],
+   "color": "#111827"
+  }
+ ],
+ "code": "const int SLOW = 13;\nconst int FAST = 12;\n\nunsigned long lastSlow = 0;\nbool slowOn = false;\n\nvoid setup() {\n  pinMode(SLOW, OUTPUT);\n  pinMode(FAST, OUTPUT);\n}\n\nvoid loop() {\n  if (millis() - lastSlow >= 500) {\n    lastSlow = millis();\n    slowOn = !slowOn;\n    digitalWrite(SLOW, slowOn);\n  }\n  // добавьте такой же блок для FAST с полупериодом 200 мс\n}\n",
+ "checks": [
+  {
+   "type": "blink",
+   "part": "slow",
+   "min_ms": 900,
+   "max_ms": 1100,
+   "label": "Красный: период 1 секунда"
+  },
+  {
+   "type": "blink",
+   "part": "fast",
+   "min_ms": 350,
+   "max_ms": 450,
+   "label": "Зеленый: период 0,4 секунды"
+  }
+ ]
+}

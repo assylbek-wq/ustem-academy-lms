@@ -1,0 +1,91 @@
+/* Лаборатория USTEM: макетная плата и Arduino */
+.lab { --lab-line: #e2e8f0; --lab-ink: #0f172a; --lab-muted: #64748b; --lab-brand: #0e7490;
+  border: 1px solid var(--lab-line); border-radius: 14px; background: #fff; overflow: hidden; margin: 1rem 0;
+  font: 14px/1.4 Inter, system-ui, sans-serif; color: var(--lab-ink); outline: none; }
+.lab.lab-full { position: fixed; inset: 0; z-index: 60; margin: 0; border-radius: 0; display: flex; flex-direction: column; }
+.lab-toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px; border-bottom: 1px solid var(--lab-line); background: #f8fafc; }
+.lab-btn { display: inline-flex; align-items: center; gap: 4px; border: 1px solid #cbd5e1; background: #fff; color: var(--lab-ink);
+  border-radius: 8px; padding: 5px 10px; font-size: 13px; font-weight: 600; cursor: pointer; line-height: 1.2; }
+.lab-btn:hover { background: #f1f5f9; }
+.lab-btn.danger { color: #b91c1c; border-color: #fecaca; }
+.lab-run { background: #16a34a; color: #fff; border-color: #15803d; }
+.lab-run:hover { background: #15803d; }
+.lab-run.on { background: #dc2626; border-color: #b91c1c; }
+.lab-sep { width: 1px; height: 22px; background: var(--lab-line); margin: 0 2px; }
+.lab-add { position: relative; }
+.lab-palette { display: none; position: absolute; top: 110%; left: 0; z-index: 20; background: #fff; border: 1px solid var(--lab-line);
+  border-radius: 12px; box-shadow: 0 12px 30px rgba(15,23,42,.15); padding: 10px; width: min(520px, 86vw); grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.lab-palette.open { display: grid; }
+.lab-pgtitle { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--lab-muted); margin-bottom: 4px; }
+.lab-pbtn { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 4px 6px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.lab-pbtn:hover { background: #ecfeff; color: var(--lab-brand); }
+.lab-body { display: grid; grid-template-columns: minmax(0, 1fr) 380px; min-height: 520px; }
+.lab-full .lab-body { flex: 1; min-height: 0; }
+.lab-canvas { position: relative; background: #f1f5f9; background-image: radial-gradient(#cbd5e1 1px, transparent 1px); background-size: 15px 15px; min-height: 420px; }
+.lab-svg { width: 100%; height: 100%; min-height: 420px; display: block; touch-action: none; user-select: none; cursor: grab; }
+.lab-status { position: absolute; left: 10px; bottom: 8px; font-size: 12px; color: var(--lab-muted); background: rgba(255,255,255,.85); padding: 2px 8px; border-radius: 6px; pointer-events: none; }
+.lab-status:empty { display: none; }
+.lab-status.ok { color: #15803d; } .lab-status.err { color: #b91c1c; } .lab-status.busy { color: #b45309; }
+.lab-part { cursor: move; }
+.lab-part.selected > g:first-child { filter: drop-shadow(0 0 3px #06b6d4) drop-shadow(0 0 2px #06b6d4); }
+.lab-pin { fill: transparent; stroke: transparent; cursor: crosshair; }
+.lab-pin:hover { fill: rgba(6,182,212,.35); stroke: #0891b2; }
+.lab-pin.hole:hover { fill: rgba(6,182,212,.6); }
+.running .lab-press { cursor: pointer; }
+.lab-wire { fill: none; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.lab-wire.selected { stroke-width: 4.5; filter: drop-shadow(0 0 2px #06b6d4); }
+.lab-wire.temp { stroke: #0891b2; stroke-dasharray: 5 4; }
+.lab-wire-hit { fill: none; stroke: transparent; stroke-width: 12; cursor: pointer; }
+.lab-side { border-left: 1px solid var(--lab-line); display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.lab-tabbar { display: flex; border-bottom: 1px solid var(--lab-line); }
+.lab-tab { flex: 1; border: 0; background: none; padding: 9px 4px; font-size: 13px; font-weight: 600; color: var(--lab-muted); cursor: pointer; border-bottom: 2px solid transparent; }
+.lab-tab.active { color: var(--lab-brand); border-bottom-color: var(--lab-brand); }
+.lab-pane { flex: 1; min-height: 0; overflow: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.lab-code { flex: 1; min-height: 260px; border: 1px solid var(--lab-line); border-radius: 8px; overflow: hidden; }
+.lab-code .cm-editor { height: 100%; font-size: 13px; }
+.lab-code .cm-scroller { font-family: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace; }
+.lab-out, .lab-serial { margin: 0; font: 12px/1.45 ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; word-break: break-word; }
+.lab-out { color: #15803d; min-height: 1.4em; max-height: 160px; overflow: auto; }
+.lab-out.err { color: #b91c1c; background: #fef2f2; padding: 6px; border-radius: 6px; }
+.lab-serial { flex: 1; min-height: 240px; background: #0f172a; color: #a7f3d0; padding: 8px; border-radius: 8px; overflow: auto; }
+.lab-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.lab-input { flex: 1; min-width: 0; border: 1px solid #cbd5e1; border-radius: 8px; padding: 5px 8px; font-size: 13px; background: #fff; }
+.lab-field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--lab-muted); }
+.lab-range { width: 100%; }
+.lab-props h4, .lab-checks h4 { margin: 0; font-size: 15px; }
+.lab-muted { color: var(--lab-muted); margin: 0; font-size: 13px; }
+.lab-swatches { display: flex; gap: 6px; }
+.lab-swatch { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #cbd5e1; cursor: pointer; }
+.lab-task p { margin: 0 0 6px; }
+.lab-checklist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.lab-checklist li { padding: 6px 8px 6px 30px; border-radius: 8px; background: #f8fafc; position: relative; font-size: 13px; }
+.lab-checklist li::before { content: ""; position: absolute; left: 9px; top: 9px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #cbd5e1; }
+.lab-checklist li.ok { background: #f0fdf4; color: #166534; }
+.lab-checklist li.ok::before { border-color: #16a34a; background: #16a34a; }
+.lab-done { background: #dcfce7; color: #166534; font-weight: 700; padding: 10px; border-radius: 10px; }
+@media (max-width: 900px) {
+  .lab-body { grid-template-columns: 1fr; }
+  .lab-side { border-left: 0; border-top: 1px solid var(--lab-line); }
+  .lab-canvas, .lab-svg { min-height: 60vh; }
+}
+.lab [hidden] { display: none !important; }
+.lab-body { height: min(78vh, 760px); }
+.lab-full .lab-body { height: auto; }
+@media (max-width: 900px) { .lab-body { height: auto; } .lab-side { height: 70vh; } }
+/* В узкой колонке урока: холст сверху, панель снизу */
+.lab { container-type: inline-size; }
+@container (max-width: 860px) {
+  .lab-body { grid-template-columns: 1fr; height: auto; }
+  .lab-canvas, .lab-svg { min-height: 0; height: 460px; }
+  .lab-side { border-left: 0; border-top: 1px solid var(--lab-line); height: 440px; }
+}
+.prose-content .lab ul, .prose-content .lab li { list-style: none; margin: 0; padding-left: 0; }
+.prose-content .lab .lab-checklist li { padding-left: 30px; }
+.prose-content .lab p { margin: 0 0 6px; }
+.prose-content .lab h4 { margin: 0 0 6px; }
+.prose-content .lab .lab-checklist li::marker { content: none; }
+/* Подсветка соединенных выводов, график Serial */
+.lab-pin.hl { fill: rgba(34,197,94,.55); stroke: #16a34a; }
+.lab-pin.hole.hl { fill: rgba(34,197,94,.75); }
+.lab-plot { width: 100%; height: auto; border-radius: 8px; background: #0f172a; }
+.lab-btn.on { background: #ecfeff; border-color: #0891b2; color: #0e7490; }

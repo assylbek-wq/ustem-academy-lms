@@ -26,3 +26,9 @@ USTEM Academy - LMS для подготовки учителей. Flask + SQLAlc
   недостающие курсы загружаются сами (`ensure_all`). Обновить уроки уже загруженного курса, сохранив потоки и
   прогресс: `flask --app wsgi load-course canopy-2026 --update` (уроки сопоставляются по русскому названию внутри уровня).
   Полностью пересоздать (прогресс теряется): `--replace`.
+- Лаборатория (схемы + Arduino Uno): исходники `assets/lab/` (avr8js, CodeMirror), сборка `bash deploy/build-lab.sh`
+  -> `app/static/js/lab.js` (в гите). Задания: `python3 assets/lab/presets.py` -> `app/static/lab/presets/*.json`.
+  В уроке блок `<div class="lab-preset-ИМЯ"></div>`. Скетчи компилирует сервер (`services/arduino.py`, avr-gcc
+  в Dockerfile, ядро Arduino в `vendor/arduino-avr`), выполняются они в браузере.
+  Сквозная проверка всех заданий в браузере: сервер с `SEED_DEMO=1`, затем
+  `python3 tests/e2e/lab_solutions.py http://localhost:5080` (эталоны) и с `--negative` (стартовый код не проходит).

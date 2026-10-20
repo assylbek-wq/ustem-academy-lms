@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_header with context %}
+{% block title %}{{ t('lab.title') }}{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ static_v('css/lab.css') }}">{% endblock %}
+{% block content %}
+{{ page_header(t('lab.title'), t('lab.subtitle'), icon='🔌') }}
+<div class="lab-embed{% if preset %} lab-preset-{{ preset }}{% endif %}"></div>
+<p class="help mt-3">{{ t('lab.help') }}</p>
+{% endblock %}
+{% block scripts %}<script src="{{ static_v('js/lab.js') }}" defer></script>{% endblock %}

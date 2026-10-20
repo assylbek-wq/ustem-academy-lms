@@ -1,0 +1,13 @@
+{
+  "name": "ustem-lab",
+  "private": true,
+  "description": "Лаборатория USTEM Academy: сборка bash deploy/build-lab.sh -> app/static/js/lab.js",
+  "dependencies": {
+    "@codemirror/commands": "^6.8.0",
+    "@codemirror/lang-cpp": "^6.0.2",
+    "@codemirror/view": "^6.36.0",
+    "avr8js": "0.20.1",
+    "codemirror": "^6.0.1"
+  },
+  "devDependencies": { "esbuild": "^0.24.0" }
+}

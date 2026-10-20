@@ -240,7 +240,8 @@ def ensure_all() -> list[str]:
     return created
 
 
-from . import canopy_2026, ftc_start_2026  # noqa: E402
+from . import arduino_basics, canopy_2026, ftc_start_2026  # noqa: E402
 
 register(canopy_2026)
 register(ftc_start_2026)
+register(arduino_basics)

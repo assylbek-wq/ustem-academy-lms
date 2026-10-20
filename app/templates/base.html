@@ -41,6 +41,7 @@
       <div class="nav-section">{{ t('nav.learning') }}</div>
       <a href="{{ url_for('learn.home') }}" class="sidebar-link {% if cur_path == "/my" or cur_path.startswith('/my/cohort') %}sidebar-link-active{% endif %}">{{ ic('book') }} <span>{{ t('nav.my') }}</span></a>
       <a href="{{ url_for('learn.catalog') }}" class="sidebar-link {% if cur_path.startswith('/catalog') %}sidebar-link-active{% endif %}">{{ ic('layers') }} <span>{{ t('nav.catalog') }}</span></a>
+      <a href="{{ url_for('lab.index') }}" class="sidebar-link {% if cur_path.startswith('/lab') %}sidebar-link-active{% endif %}">{{ ic('cpu') }} <span>{{ t('nav.lab') }}</span></a>
       <a href="{{ url_for('learn.certificates') }}" class="sidebar-link {% if cur_path.startswith('/my/certificates') %}sidebar-link-active{% endif %}">{{ ic('award') }} <span>{{ t('nav.certificates') }}</span></a>
       <a href="{{ url_for('learn.portfolio') }}" class="sidebar-link {% if cur_path.startswith('/my/portfolio') %}sidebar-link-active{% endif %}">{{ ic('folder') }} <span>{{ t('nav.portfolio') }}</span></a>
 

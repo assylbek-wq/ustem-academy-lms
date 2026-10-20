@@ -16,6 +16,8 @@ class AppTestCase(unittest.TestCase):
     csrf_off = True
 
     def setUp(self):
+        from app.blueprints import auth as _auth
+        _auth._attempts.clear()  # лимит входов общий для процесса: тесты не должны влиять друг на друга
         self.upload_dir = tempfile.mkdtemp(prefix="academy-test-")
         self.app = create_app(TestConfig, UPLOAD_DIR=self.upload_dir, TESTING_NO_CSRF=self.csrf_off,
                               CHUNK_BYTES=1024)

@@ -26,8 +26,8 @@ def create_app(config: type = Config, **overrides) -> Flask:
             and app.config["SECRET_KEY"] == "dev-secret-change-me"):
         raise RuntimeError("Задайте SECRET_KEY в окружении для продакшена")
 
-    from .blueprints import admin, api, auth, cohorts, learn, public, reports, review, studio
-    for bp in (public.bp, auth.bp, learn.bp, review.bp, cohorts.bp, studio.bp, admin.bp, reports.bp, api.bp):
+    from .blueprints import admin, api, auth, cohorts, lab, learn, public, reports, review, studio
+    for bp in (public.bp, auth.bp, learn.bp, lab.bp, review.bp, cohorts.bp, studio.bp, admin.bp, reports.bp, api.bp):
         app.register_blueprint(bp)
 
     @app.before_request
@@ -138,7 +138,7 @@ def _static_v(app):
 
 DIR_ICONS = {
     "base": "🧭", "fll-future": "🧱", "ftc": "🔧", "battle-bots": "🤖", "physical-ai": "🦾", "drones": "🚁",
-    "wso": "🚀", "future-race": "🏎️", "fll-challenge": "🏆", "fll-explore": "🔍", "ai-teacher": "✨", "first-season": "🌿", "other": "📘",
+    "wso": "🚀", "future-race": "🏎️", "fll-challenge": "🏆", "fll-explore": "🔍", "ai-teacher": "✨", "first-season": "🌿", "electronics": "🔌", "other": "📘",
 }
 
 MONTHS = {
