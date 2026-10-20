@@ -1,0 +1,47 @@
+{
+ "title": "Гироскоп: поворот и прямая",
+ "task": "У этого робота правое колесо на 3% больше левого: без гироскопа он уходит в сторону.\nПоверните направо на 90° функцией turn и проедьте 100 см прямо функцией straight_cm (код в уроке). В конце робот должен смотреть вправо (±2°) и уйти от прямой не больше чем на 30 мм.",
+ "mode": "python",
+ "start": {
+  "x": 500,
+  "y": 600,
+  "h": 0
+ },
+ "drift": 0.03,
+ "marks": [
+  {
+   "x": 1500,
+   "y": 600,
+   "r": 20,
+   "label": "финиш"
+  }
+ ],
+ "python": "from hub import port, motion_sensor, light_matrix, sound, button\nimport motor, motor_pair, color_sensor, runloop\n\nWHEEL_MM = 56\nDEG_PER_CM = 360 / (3.1416 * WHEEL_MM / 10)\nPAIR = motor_pair.PAIR_1\n\n\ndef yaw():\n    return -motion_sensor.tilt_angles()[0] / 10   # направо - плюс, как в приложении\n\n\nasync def drive_cm(cm, speed=500):\n    await motor_pair.move_for_degrees(PAIR, int(cm * DEG_PER_CM), 0, velocity=speed,\n                                      acceleration=1500, deceleration=1500)\n\n\nasync def main():\n    motor_pair.pair(PAIR, port.A, port.B)\n    await motor_pair.move_for_degrees(PAIR, 185, 100, velocity=300)  # поворот «на глаз»\n    await drive_cm(100)\n\n\nrunloop.run(main())\n",
+ "checks": [
+  {
+   "type": "code_has",
+   "re": "tilt_angles",
+   "label": "Код использует гироскоп"
+  },
+  {
+   "type": "heading_end",
+   "deg": -90,
+   "tol": 2,
+   "label": "Робот смотрит вправо (±2°)"
+  },
+  {
+   "type": "axis_end",
+   "axis": "y",
+   "value": 600,
+   "tol": 30,
+   "label": "Отклонение от прямой не больше 30 мм"
+  },
+  {
+   "type": "axis_end",
+   "axis": "x",
+   "value": 1500,
+   "tol": 40,
+   "label": "Проехал 100 см (±40 мм)"
+  }
+ ]
+}

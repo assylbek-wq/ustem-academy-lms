@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_header with context %}
+{% block title %}{{ t('spikesim.title') }}{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ static_v('css/spikesim.css') }}">{% endblock %}
+{% block content %}
+{{ page_header(t('spikesim.title'), t('spikesim.subtitle'), icon='🧱') }}
+<div class="spike-sim-{{ preset }}"></div>
+<p class="help mt-3">{{ t('spikesim.help') }}</p>
+{% endblock %}
+{% block scripts %}<script src="{{ static_v('js/spikesim.js') }}" defer></script>{% endblock %}

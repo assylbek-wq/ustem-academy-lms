@@ -38,3 +38,10 @@ USTEM Academy - LMS для подготовки учителей. Flask + SQLAlc
   `bash deploy/build-lab.sh` -> `app/static/js/ftcsim.js`. Задания: `python3 assets/lab/ftc_presets.py` ->
   `app/static/ftcsim/presets/*.json`. В уроке блок `<div class="ftc-sim-ИМЯ"></div>` (задание `ftc-ИМЯ`),
   песочница `/lab/ftc`. Сквозная проверка: `python3 tests/e2e/ftc_solutions.py http://localhost:5080` и `--negative`.
+- Симулятор SPIKE Prime (блоки Blockly + Python, настоящий MicroPython WASM с API SPIKE 3, тренировочный мат FLL):
+  исходники `assets/lab/spike/` (`mat.js` - поле, `physics.js` - робот и проверки, `pyapi.js` - модули hub/motor/...,
+  `runner.js` + `worker.js` - запуск в Web Worker, `blocks.js` - блоки и генератор Python, `ui.js` - интерфейс),
+  сборка `bash deploy/build-lab.sh` -> `app/static/js/spikesim.js`, `spikeworker.js`, `app/static/spikesim/micropython.*`.
+  Задания: `python3 assets/lab/spike_presets.py` -> `app/static/spikesim/presets/*.json`. В уроке блок
+  `<div class="spike-sim-ИМЯ"></div>` (задание `spike-ИМЯ`), песочница `/lab/spike`. Сквозная проверка:
+  `python3 tests/e2e/spike_solutions.py http://localhost:5080` и `--negative`.

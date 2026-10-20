@@ -1,0 +1,65 @@
+{
+ "title": "Свободная тренировка",
+ "mode": "blocks",
+ "start": {
+  "x": 190,
+  "y": 220,
+  "h": -90
+ },
+ "box": {
+  "x": 1300,
+  "y": 220
+ },
+ "lever": {
+  "x": 900,
+  "y": 760
+ },
+ "blocks": {
+  "blocks": {
+   "languageVersion": 0,
+   "blocks": [
+    {
+     "type": "spike_start",
+     "x": 30,
+     "y": 30,
+     "next": {
+      "block": {
+       "type": "spike_write",
+       "inputs": {
+        "TEXT": {
+         "shadow": {
+          "type": "text",
+          "fields": {
+           "TEXT": "Hi"
+          }
+         }
+        }
+       },
+       "next": {
+        "block": {
+         "type": "spike_move_for",
+         "fields": {
+          "DIR": "1",
+          "UNIT": "cm"
+         },
+         "inputs": {
+          "N": {
+           "shadow": {
+            "type": "math_number",
+            "fields": {
+             "NUM": 30
+            }
+           }
+          }
+         }
+        }
+       }
+      }
+     }
+    }
+   ]
+  }
+ },
+ "python": "from hub import port, motion_sensor, light_matrix, sound, button\nimport motor, motor_pair, color_sensor, runloop\n\nWHEEL_MM = 56\nDEG_PER_CM = 360 / (3.1416 * WHEEL_MM / 10)\nPAIR = motor_pair.PAIR_1\n\n\nasync def drive_cm(cm, speed=500):\n    await motor_pair.move_for_degrees(PAIR, int(cm * DEG_PER_CM), 0, velocity=speed,\n                                      acceleration=1500, deceleration=1500)\n\n\nasync def main():\n    motor_pair.pair(PAIR, port.A, port.B)\n    await light_matrix.write(\"Hi\")\n    await drive_cm(30)\n\n\nrunloop.run(main())\n",
+ "checks": []
+}

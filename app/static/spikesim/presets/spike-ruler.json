@@ -1,0 +1,33 @@
+{
+ "title": "Ровно 50 см по линейке",
+ "task": "Ось колес робота стоит на стартовой линии линейки. Программа едет «по времени» и промахивается.\nПерепишите ее на градусы колес: функция drive_cm из урока, DEG_PER_CM для колеса 56 мм. Центр робота должен остановиться на отметке 50 см с точностью 5 мм.",
+ "mode": "python",
+ "start": {
+  "x": 450,
+  "y": 200,
+  "h": -90
+ },
+ "marks": [
+  {
+   "x": 950,
+   "y": 200,
+   "r": 18,
+   "label": "50 см"
+  }
+ ],
+ "python": "from hub import port, motion_sensor, light_matrix, sound, button\nimport motor, motor_pair, color_sensor, runloop\n\nWHEEL_MM = 56\nDEG_PER_CM = 360 / (3.1416 * WHEEL_MM / 10)\nPAIR = motor_pair.PAIR_1\n\n\nasync def main():\n    motor_pair.pair(PAIR, port.A, port.B)\n    # «По времени»: результат зависит от заряда и трения\n    await motor_pair.move_for_time(PAIR, 2000, 0, velocity=500)\n\n\nrunloop.run(main())\n",
+ "checks": [
+  {
+   "type": "code_has",
+   "re": "DEG_PER_CM|move_for_degrees",
+   "label": "Путь задан в градусах колес"
+  },
+  {
+   "type": "axis_end",
+   "axis": "x",
+   "value": 950,
+   "tol": 5,
+   "label": "Робот остановился на отметке 50 см (±5 мм)"
+  }
+ ]
+}

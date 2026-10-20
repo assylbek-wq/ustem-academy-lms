@@ -1,0 +1,30 @@
+{
+ "title": "Выравнивание по линии двумя датчиками",
+ "task": "Робот стоит наискосок перед черной линией. Подъезд одним датчиком оставляет его кривым.\nВыровняйтесь двумя датчиками (E и F): каждое колесо едет к краю линии по своему датчику (функция square_on_line из урока). В конце робот должен стоять ровно поперек линии (±2,5°).",
+ "mode": "python",
+ "start": {
+  "x": 1000,
+  "y": 230,
+  "h": 14
+ },
+ "python": "from hub import port, motion_sensor, light_matrix, sound, button\nimport motor, motor_pair, color_sensor, runloop\n\nWHEEL_MM = 56\nDEG_PER_CM = 360 / (3.1416 * WHEEL_MM / 10)\nPAIR = motor_pair.PAIR_1\nBLACK = 25\n\n\nasync def main():\n    motor_pair.pair(PAIR, port.A, port.B)\n    motor_pair.move(PAIR, 0, velocity=200)\n    await runloop.until(lambda: color_sensor.reflection(port.E) < BLACK)\n    motor_pair.stop(PAIR)\n\n\nrunloop.run(main())\n",
+ "checks": [
+  {
+   "type": "heading_end",
+   "deg": 0,
+   "tol": 2.5,
+   "label": "Робот стоит ровно поперек линии (±2,5°)"
+  },
+  {
+   "type": "zone",
+   "end": true,
+   "zone": {
+    "x0": 900,
+    "y0": 290,
+    "x1": 1150,
+    "y1": 350
+   },
+   "label": "Датчики у линии"
+  }
+ ]
+}

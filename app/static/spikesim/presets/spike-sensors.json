@@ -1,0 +1,29 @@
+{
+ "title": "Датчик цвета: найти красный квадрат",
+ "task": "Робот смотрит на красный квадрат. Программа печатает отражение датчика E, но не останавливается.\nСделайте так, чтобы робот ехал, пока датчик E не увидит красный (color_sensor.color(port.E) == color.RED), и остановился. Отражение продолжайте выводить в консоль.",
+ "mode": "python",
+ "start": {
+  "x": 553,
+  "y": 620,
+  "h": 0
+ },
+ "python": "from hub import port, motion_sensor, light_matrix, sound, button\nimport motor, motor_pair, color_sensor, runloop, color\n\nWHEEL_MM = 56\nDEG_PER_CM = 360 / (3.1416 * WHEEL_MM / 10)\nPAIR = motor_pair.PAIR_1\n\n\nasync def main():\n    motor_pair.pair(PAIR, port.A, port.B)\n    motor_pair.move(PAIR, 0, velocity=250)\n    for i in range(6):\n        print(\"отражение\", color_sensor.reflection(port.E))\n        await runloop.sleep_ms(200)\n    # TODO: ехать, пока датчик E не увидит красный, потом остановиться\n\n\nrunloop.run(main())\n",
+ "checks": [
+  {
+   "type": "print_nums",
+   "n": 5,
+   "label": "В консоли не меньше 5 значений отражения"
+  },
+  {
+   "type": "sensor_on",
+   "port": "E",
+   "zone": {
+    "x0": 450,
+    "y0": 960,
+    "x1": 600,
+    "y1": 1110
+   },
+   "label": "Робот остановился, датчик E над красным квадратом"
+  }
+ ]
+}

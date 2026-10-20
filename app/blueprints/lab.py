@@ -13,6 +13,7 @@ from ..services import arduino
 
 bp = Blueprint("lab", __name__)
 PRESET_DIR = Path(__file__).resolve().parents[1] / "static" / "lab" / "presets"
+SPIKE_DIR = Path(__file__).resolve().parents[1] / "static" / "spikesim" / "presets"
 FTC_DIR = Path(__file__).resolve().parents[1] / "static" / "ftcsim" / "presets"
 _hits: dict[int, deque] = defaultdict(deque)
 
@@ -44,6 +45,15 @@ def ftc():
     if not re.fullmatch(r"ftc-[a-z0-9-]{1,40}", preset or "") or not (FTC_DIR / f"{preset}.json").exists():
         preset = "ftc-sandbox"
     return render_template("lab/ftc.html", preset=preset.removeprefix("ftc-"))
+
+
+@bp.route("/lab/spike")
+@login_required
+def spike():
+    preset = request.args.get("preset", "")
+    if not re.fullmatch(r"spike-[a-z0-9-]{1,40}", preset or "") or not (SPIKE_DIR / f"{preset}.json").exists():
+        preset = "spike-sandbox"
+    return render_template("lab/spike.html", preset=preset.removeprefix("spike-"))
 
 
 @bp.route("/lab/compile", methods=["POST"])

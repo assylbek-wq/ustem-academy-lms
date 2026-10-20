@@ -1,0 +1,30 @@
+{
+ "title": "Езда по линии до финиша",
+ "task": "Датчик E стоит на верхнем краю кривой черной линии. Проедьте по краю линии до зеленого финиша и остановитесь.\nПодсказка: P-регулятор из урока (руль = (отражение - цель) x k) в цикле, пока датчик E не увидит зеленый. Робот не должен сходить с линии дальше 35 мм.",
+ "mode": "python",
+ "start": {
+  "x": 375,
+  "y": 622,
+  "h": -90
+ },
+ "trackLine": "E",
+ "python": "from hub import port, motion_sensor, light_matrix, sound, button\nimport motor, motor_pair, color_sensor, runloop, color\n\nWHEEL_MM = 56\nDEG_PER_CM = 360 / (3.1416 * WHEEL_MM / 10)\nPAIR = motor_pair.PAIR_1\n\n\nasync def main():\n    motor_pair.pair(PAIR, port.A, port.B)\n    # Пока робот едет прямо и теряет линию\n    await motor_pair.move_for_degrees(PAIR, int(150 * DEG_PER_CM), 0, velocity=300)\n\n\nrunloop.run(main())\n",
+ "checks": [
+  {
+   "type": "line_track",
+   "max": 35,
+   "label": "Датчик E держался у линии (не дальше 35 мм)"
+  },
+  {
+   "type": "sensor_on",
+   "port": "E",
+   "zone": {
+    "x0": 1850,
+    "y0": 800,
+    "x1": 2010,
+    "y1": 960
+   },
+   "label": "Остановился на зеленом финише"
+  }
+ ]
+}

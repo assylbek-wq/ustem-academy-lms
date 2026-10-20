@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import mimetypes
 import os
 from datetime import date, datetime
 
@@ -9,6 +10,10 @@ from flask import Flask, g, request, session
 from markupsafe import Markup
 
 from .config import Config
+
+# MicroPython для симулятора SPIKE: браузер требует правильные типы для WebAssembly и ES-модулей
+mimetypes.add_type("application/wasm", ".wasm")
+mimetypes.add_type("text/javascript", ".mjs")
 from .core import check_csrf, csrf_token, fmt_seconds, human_size, loc, render_markdown, video_embed
 from .i18n import LOCALES, LOCALE_NAMES, t
 from .models import Notification, User, db, local_today

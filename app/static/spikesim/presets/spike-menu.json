@@ -1,0 +1,40 @@
+{
+ "title": "Одна программа, два запуска",
+ "task": "Сделайте программу с меню: левая кнопка хаба выбирает запуск, правая запускает, номер на матрице.\nЗапуск 1: дотолкать ящик в серую зону и вернуться домой. Запуск 2: доехать до рычага и опустить его рукой на моторе C (90 градусов). Шаблон меню - в уроке «Одна программа на весь матч».",
+ "mode": "python",
+ "start": {
+  "x": 190,
+  "y": 220,
+  "h": -90
+ },
+ "box": {
+  "x": 1300,
+  "y": 220
+ },
+ "lever": {
+  "x": 900,
+  "y": 760
+ },
+ "python": "from hub import port, motion_sensor, light_matrix, sound, button\nimport motor, motor_pair, color_sensor, runloop\n\nWHEEL_MM = 56\nDEG_PER_CM = 360 / (3.1416 * WHEEL_MM / 10)\nPAIR = motor_pair.PAIR_1\n\n\ndef yaw():\n    return -motion_sensor.tilt_angles()[0] / 10   # направо - плюс, как в приложении\n\n\nasync def drive_cm(cm, speed=500):\n    await motor_pair.move_for_degrees(PAIR, int(cm * DEG_PER_CM), 0, velocity=speed,\n                                      acceleration=1500, deceleration=1500)\n\n\nasync def turn(angle, max_speed=400):\n    motion_sensor.reset_yaw(0)\n    await runloop.sleep_ms(50)\n    while abs(angle - yaw()) > 1:\n        error = angle - yaw()\n        speed = int(min(max_speed, max(80, abs(error) * 6)))\n        if error > 0:\n            motor_pair.move_tank(PAIR, speed, -speed)\n        else:\n            motor_pair.move_tank(PAIR, -speed, speed)\n        await runloop.sleep_ms(10)\n    motor_pair.stop(PAIR)\n\n\nasync def main():\n    motor_pair.pair(PAIR, port.A, port.B)\n    await drive_cm(30)\n    # TODO: запуски run_1 и run_2 и меню на кнопках хаба\n\n\nrunloop.run(main())\n",
+ "checks": [
+  {
+   "type": "code_has",
+   "re": "button\\.pressed",
+   "label": "Запуск выбирается кнопками хаба"
+  },
+  {
+   "type": "box_zone",
+   "zone": {
+    "x0": 1600,
+    "y0": 120,
+    "x1": 1850,
+    "y1": 320
+   },
+   "label": "Ящик в серой зоне"
+  },
+  {
+   "type": "lever",
+   "label": "Рычаг опущен"
+  }
+ ]
+}
