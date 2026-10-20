@@ -1,0 +1,38 @@
+{
+ "title": "Конструктор: робот для практики",
+ "task": "Соберите робота для учебной игры: шасси mecanum, захват-ролик и пусковая установка. Робот должен пройти осмотр: старт в кубе 18 дюймов, не больше 8 моторов и 8 сервоприводов.\nСейчас собран танк с рамой 19 дюймов и длинной рукой: он осмотр не пройдет. Все меняется на вкладке «Робот».",
+ "robot": {
+  "drive": "tank",
+  "size": 19,
+  "modules": [
+   "arm"
+  ],
+  "names": {}
+ },
+ "start": {
+  "x": 0,
+  "y": -60,
+  "h": 0
+ },
+ "code": "package org.firstinspires.ftc.teamcode;\n\nimport com.qualcomm.robotcore.eventloop.opmode.TeleOp;\nimport com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;\nimport com.qualcomm.robotcore.hardware.DcMotor;\n\n@TeleOp(name = \"TeleOp Mecanum\")\npublic class TeleOpMecanum extends LinearOpMode {\n    @Override\n    public void runOpMode() {\n        DcMotor fl = hardwareMap.get(DcMotor.class, \"frontLeft\");\n        DcMotor fr = hardwareMap.get(DcMotor.class, \"frontRight\");\n        DcMotor bl = hardwareMap.get(DcMotor.class, \"backLeft\");\n        DcMotor br = hardwareMap.get(DcMotor.class, \"backRight\");\n\n        fl.setDirection(DcMotor.Direction.REVERSE);\n        bl.setDirection(DcMotor.Direction.REVERSE);\n        for (DcMotor m : new DcMotor[]{fl, fr, bl, br}) {\n            m.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);\n        }\n\n        telemetry.addLine(\"Готов. Нажмите START\");\n        telemetry.update();\n        waitForStart();\n\n        while (opModeIsActive()) {\n            double y = -gamepad1.left_stick_y;  // вперед (стик вверх дает минус)\n            double x = gamepad1.left_stick_x;   // вбок\n            double r = gamepad1.right_stick_x;  // поворот\n            double speed = gamepad1.left_bumper ? 0.4 : 1.0;  // медленный режим\n\n            double max = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(r), 1.0);\n            fl.setPower((y + x + r) / max * speed);\n            fr.setPower((y - x - r) / max * speed);\n            bl.setPower((y - x + r) / max * speed);\n            br.setPower((y + x - r) / max * speed);\n\n            telemetry.addData(\"y / x / r\", \"%.2f / %.2f / %.2f\", y, x, r);\n            telemetry.update();\n        }\n    }\n}\n",
+ "tab": "robot",
+ "checks": [
+  {
+   "type": "builder_has",
+   "drive": "mecanum",
+   "label": "Шасси mecanum"
+  },
+  {
+   "type": "builder_has",
+   "modules": [
+    "intake",
+    "launcher"
+   ],
+   "label": "Есть захват-ролик и пусковая установка"
+  },
+  {
+   "type": "inspection",
+   "label": "Робот проходит осмотр"
+  }
+ ]
+}

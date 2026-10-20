@@ -8,6 +8,8 @@ Competition Manual, бесплатный курс FIRST Skill Builders и пуб
 from __future__ import annotations
 
 from . import ml, ru
+from .ftc_start_2026_sim import (L_SIM_AUTO, L_SIM_BUILDER, L_SIM_CONFIG, L_SIM_ENCODER, L_SIM_FIRST, L_SIM_IMU,
+                                 L_SIM_MATCH, L_SIM_MECANUM, L_SIM_MECH, SIM_QUIZ)
 
 SLUG = "ftc-start-2026"
 IMG_DIR = "/static/course/ftc-start-2026/"
@@ -735,6 +737,7 @@ L4_QUIZ = [
       "preselectTeleOp выбирает TeleOp после автономного периода и экономит время пилотам."),
     q("Какой датчик поможет не взять NECTAR соперника?", ["Касания", "Цвета", "IMU", "Энкодер"], [1],
       "NECTAR красный и синий, датчик цвета отличит свой цвет."),
+    *SIM_QUIZ,
 ]
 
 L4_ASSIGNMENT = {
@@ -967,6 +970,10 @@ PROGRAM = {
         и того, где брать оборудование. В уроках есть ссылки на официальные материалы FIRST: бесплатный курс
         Skill Builders, Competition Manual и документацию FTC SDK.
 
+        **Практика в симуляторе.** В курс встроен симулятор FTC: конструктор робота, Driver Hub, код на Java и
+        учебное поле. Девять заданий с автопроверкой: от конфигурации и первого TeleOp до энкодеров, IMU,
+        автономного режима и тренировочного матча. Робот для этого не нужен.
+
         **Как проходить:** уровни идут по порядку сезона. В каждом есть тест (проходной балл 80%) и практическое
         задание для вашей команды. После уровня выдается сертификат. Начать можно в любое время.
     """),
@@ -976,7 +983,8 @@ PROGRAM = {
         - Тренеры FLL, которые переводят команду в FTC
     """),
     "equipment": ru("""
-        - Компьютер с браузером, для уровня «Программирование» желательно с Android Studio
+        - Компьютер с браузером: симулятор и все практические задания по коду работают прямо в нем
+        - Для уровня «Программирование» на настоящем роботе желательно Android Studio
         - Для практических заданий: Control Hub, Driver Hub, набор для шасси и механизмов
     """),
     "levels": [
@@ -1013,14 +1021,17 @@ PROGRAM = {
                 - Подключаю и обновляю Control Hub и Driver Hub
                 - Настраиваю конфигурацию робота
                 - Пишу первую программу TeleOp в Blocks или Java
+                - Запускаю программу в симуляторе: INIT, START, telemetry
                 - Нахожу и исправляю типичные неисправности
             """),
             "modules": [
                 {"title": ml("Система управления", "Басқару жүйесі", "Control system"), "lessons": [
                     _text("Control Hub, Driver Hub и конфигурация", "Control Hub, Driver Hub және конфигурация",
                           "Control Hub, Driver Hub and configuration", L2_HUBS, 15),
+                    L_SIM_CONFIG,
                     _text("Blocks, OnBot Java и первая программа", "Blocks, OnBot Java және алғашқы бағдарлама",
                           "Blocks, OnBot Java and the first program", L2_BLOCKS, 12),
+                    L_SIM_FIRST,
                     _text("Робот не работает: поиск неисправностей", "Робот жұмыс істемейді: ақауларды іздеу",
                           "Troubleshooting", L2_TROUBLE, 10),
                     _quiz("Тест: электроника и программа", "Тест: электроника және бағдарлама", "Quiz: electronics and program", L2_QUIZ),
@@ -1040,6 +1051,7 @@ PROGRAM = {
                 {"title": ml("Шасси и механизмы", "Шасси және механизмдер", "Drivetrain and mechanisms"), "lessons": [
                     _text("Шасси: танк, mecanum, swerve", "Шасси: танк, mecanum, swerve", "Drivetrains: tank, mecanum, swerve",
                           L3_DRIVE, 15, video="HQwDTDON5I4"),
+                    L_SIM_BUILDER,
                     _text("Механизмы для BIOBUZZ и прототипирование", "BIOBUZZ механизмдері және прототиптеу",
                           "BIOBUZZ mechanisms and prototyping", L3_MECH, 15),
                     _quiz("Тест: механика", "Тест: механика", "Quiz: mechanics", L3_QUIZ),
@@ -1054,17 +1066,23 @@ PROGRAM = {
                 - Пишу TeleOp для mecanum на Java
                 - Использую энкодеры, IMU и датчики
                 - Строю надежный автономный режим по шагам
+                - Проверяю код в симуляторе до выхода на поле
             """),
             "modules": [
                 {"title": ml("TeleOp и датчики", "TeleOp және датчиктер", "TeleOp and sensors"), "lessons": [
                     _text("TeleOp для mecanum на Java", "Java тілінде mecanum үшін TeleOp", "Mecanum TeleOp in Java",
                           L4_TELEOP, 20),
+                    L_SIM_MECANUM,
+                    L_SIM_MECH,
                     _text("Энкодеры, IMU и датчики", "Энкодерлер, IMU және датчиктер", "Encoders, IMU and sensors",
                           L4_SENSORS, 20),
+                    L_SIM_ENCODER,
+                    L_SIM_IMU,
                 ]},
                 {"title": ml("Автономный режим", "Автономды режим", "Autonomous"), "lessons": [
                     _text("Автономный режим и тренировка пилотов", "Автономды режим және пилоттарды жаттықтыру",
                           "Autonomous and driver practice", L4_AUTO, 15),
+                    L_SIM_AUTO,
                     _quiz("Тест: программирование", "Тест: бағдарламалау", "Quiz: programming", L4_QUIZ),
                 ]},
             ],
@@ -1082,6 +1100,7 @@ PROGRAM = {
                 {"title": ml("Игра и турнир", "Ойын және турнир", "Game and event"), "lessons": [
                     _text("BIOBUZZ: игра и стратегия", "BIOBUZZ: ойын және стратегия", "BIOBUZZ: game and strategy",
                           L5_GAME, 15, video="47X9sYnPijw"),
+                    L_SIM_MATCH,
                     _text("Турнир: осмотр, собеседование, пит", "Турнир: тексеру, сұхбат, пит", "Event: inspection, interview, pit",
                           L5_EVENT, 15),
                     _text("Outreach и будущее команды", "Outreach және команданың болашағы", "Outreach and the team's future",

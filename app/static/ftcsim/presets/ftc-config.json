@@ -1,0 +1,41 @@
+{
+ "title": "Конфигурация: робот не стартует",
+ "task": "Нажмите INIT: программа падает, потому что не находит моторы. Сравните имена в коде и в конфигурации (вкладка «Робот») и исправьте то или другое.\nКогда INIT пройдет, нажмите START: робот должен проехать вперед примерно на 30 дюймов до отметки.",
+ "robot": {
+  "drive": "mecanum",
+  "size": 18,
+  "modules": [],
+  "names": {
+   "frontLeft": "frontleft",
+   "backRight": "back_right"
+  }
+ },
+ "start": {
+  "x": 0,
+  "y": -60,
+  "h": 0
+ },
+ "pollen": "none",
+ "code": "package org.firstinspires.ftc.teamcode;\n\nimport com.qualcomm.robotcore.eventloop.opmode.Autonomous;\nimport com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;\nimport com.qualcomm.robotcore.hardware.DcMotor;\n\n@Autonomous(name = \"Проверка шасси\")\npublic class DriveCheck extends LinearOpMode {\n    @Override\n    public void runOpMode() {\n        DcMotor fl = hardwareMap.get(DcMotor.class, \"frontLeft\");\n        DcMotor fr = hardwareMap.get(DcMotor.class, \"frontRight\");\n        DcMotor bl = hardwareMap.get(DcMotor.class, \"backLeft\");\n        DcMotor br = hardwareMap.get(DcMotor.class, \"backRight\");\n\n        fl.setDirection(DcMotor.Direction.REVERSE);\n        bl.setDirection(DcMotor.Direction.REVERSE);\n\n        telemetry.addLine(\"Моторы найдены. Нажмите START\");\n        telemetry.update();\n        waitForStart();\n\n        // Едем вперед 1 секунду на половине мощности\n        fl.setPower(0.5);\n        fr.setPower(0.5);\n        bl.setPower(0.5);\n        br.setPower(0.5);\n        sleep(1000);\n\n        fl.setPower(0);\n        fr.setPower(0);\n        bl.setPower(0);\n        br.setPower(0);\n    }\n}\n",
+ "marks": [
+  {
+   "x": 0,
+   "y": -30,
+   "r": 5,
+   "label": "Финиш"
+  }
+ ],
+ "checks": [
+  {
+   "type": "init_ok",
+   "label": "INIT проходит без ошибок"
+  },
+  {
+   "type": "pose_end",
+   "x": 0,
+   "y": -30,
+   "tol": 5,
+   "label": "Робот остановился у отметки «Финиш»"
+  }
+ ]
+}

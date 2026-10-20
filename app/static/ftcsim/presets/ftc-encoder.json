@@ -1,0 +1,39 @@
+{
+ "title": "Энкодеры: ровно 48 дюймов",
+ "task": "Программа едет «по времени» и проезжает лишнее. Перепишите ее на энкодерах: посчитайте тики на 48 дюймов (537,7 тика на оборот, колесо 104 мм), используйте RUN_TO_POSITION и isBusy().\nРобот должен остановиться у отметки с точностью 1,5 дюйма.",
+ "robot": {
+  "drive": "mecanum",
+  "size": 18,
+  "modules": [],
+  "names": {}
+ },
+ "start": {
+  "x": -36,
+  "y": -60,
+  "h": 0
+ },
+ "pollen": "none",
+ "code": "package org.firstinspires.ftc.teamcode;\n\nimport com.qualcomm.robotcore.eventloop.opmode.Autonomous;\nimport com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;\nimport com.qualcomm.robotcore.hardware.DcMotor;\n\n@Autonomous(name = \"Ровно 48 дюймов\")\npublic class DriveDistance extends LinearOpMode {\n    @Override\n    public void runOpMode() {\n        DcMotor fl = hardwareMap.get(DcMotor.class, \"frontLeft\");\n        DcMotor fr = hardwareMap.get(DcMotor.class, \"frontRight\");\n        DcMotor bl = hardwareMap.get(DcMotor.class, \"backLeft\");\n        DcMotor br = hardwareMap.get(DcMotor.class, \"backRight\");\n        fl.setDirection(DcMotor.Direction.REVERSE);\n        bl.setDirection(DcMotor.Direction.REVERSE);\n\n        waitForStart();\n\n        // Едем «по времени»: результат зависит от заряда аккумулятора и пола\n        for (DcMotor m : new DcMotor[]{fl, fr, bl, br}) {\n            m.setPower(0.5);\n        }\n        sleep(1800);\n        for (DcMotor m : new DcMotor[]{fl, fr, bl, br}) {\n            m.setPower(0);\n        }\n    }\n}\n",
+ "marks": [
+  {
+   "x": -36,
+   "y": -12,
+   "r": 1.5,
+   "label": "48"
+  }
+ ],
+ "checks": [
+  {
+   "type": "code_has",
+   "re": "RUN_TO_POSITION|getCurrentPosition",
+   "label": "Код использует энкодеры"
+  },
+  {
+   "type": "pose_end",
+   "x": -36,
+   "y": -12,
+   "tol": 1.5,
+   "label": "Робот проехал 48 дюймов (точность 1,5)"
+  }
+ ]
+}
