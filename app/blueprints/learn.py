@@ -254,6 +254,27 @@ def evidence_file(file_id):
     return resp
 
 
+def _can_open_level(level_id: int) -> bool:
+    return bool(g.user.has_role("methodist", "trainer", "mentor") or Enrollment.query.join(Cohort).filter(
+        Enrollment.user_id == g.user.id, Cohort.level_id == level_id, Enrollment.status != "dropped").first())
+
+
+@bp.route("/lesson-video/<int:lesson_id>/<name>")
+@login_required
+def lesson_video(lesson_id, name):
+    """Видео урока, загруженное файлом в Студии. Отдается с поддержкой Range (перемотка)."""
+    lesson = db.session.get(Lesson, lesson_id)
+    if not lesson or name not in storage.lesson_video_names(lesson) or not _can_open_level(lesson.module.level_id):
+        abort(404)
+    path, mime = storage.lesson_video_file(name)
+    if not path.exists():
+        abort(404)
+    resp = send_file(path, mimetype=mime, conditional=True, max_age=3600)
+    resp.headers["Content-Security-Policy"] = "sandbox; default-src 'none'; media-src 'self'"
+    resp.headers["Cache-Control"] = "private, max-age=3600"
+    return resp
+
+
 @bp.route("/materials/<int:material_id>")
 @login_required
 def material(material_id):

@@ -1,6 +1,8 @@
-from flask import render_template, request
+from flask import flash, redirect, render_template, request
 from werkzeug.exceptions import HTTPException
 
+from .core import safe_next
+from .i18n import t
 from .models import db
 
 
@@ -9,6 +11,10 @@ def register_errors(app):
     def http_error(e: HTTPException):
         if request.path.startswith("/api/"):
             return {"ok": False, "error": e.name, "code": e.code}, e.code
+        if e.code == 413 and request.method == "POST":
+            # слишком большой файл в обычной форме: вернуть на ту же страницу с понятным сообщением
+            flash(t("upload.err_too_big"), "error")
+            return redirect(safe_next(request.path, "/"))
         return render_template("error.html", code=e.code), e.code
 
     @app.errorhandler(Exception)

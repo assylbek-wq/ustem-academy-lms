@@ -95,10 +95,11 @@
     const form = box.closest("form");
     const list = $("[data-upload-list]", box);
     const input = $("[data-upload-input]", box);
-    const submit = $("[data-submit]", form);
-    const wait = $("[data-upload-wait]", form);
+    const submit = form && $("[data-submit]", form);
+    const wait = form && $("[data-upload-wait]", form);
+    const attachUrl = box.dataset.attachUrl;  // Студия: готовый файл сразу становится видео урока
     let active = 0;
-    const refresh = () => { submit.disabled = active > 0; if (wait) wait.hidden = active === 0; };
+    const refresh = () => { if (submit) submit.disabled = active > 0; if (wait) wait.hidden = active === 0; };
 
     const add = (file) => {
       const li = document.createElement("li");
@@ -148,6 +149,13 @@
           st.textContent = T.done || "OK";
           bar.classList.replace("bg-brand-500", "bg-accent-500");
           store.del(key);
+          if (attachUrl) {
+            const lang = $("[data-upload-lang]", box);
+            await api(attachUrl, { json: { file_id: fileId, lang: lang ? lang.value : "all" } });
+            active = 0;  // не спрашивать «покинуть страницу?» при перезагрузке
+            window.location.reload();
+            return;
+          }
           const hidden = document.createElement("input");
           hidden.type = "hidden"; hidden.name = "file_id"; hidden.value = fileId;
           li.appendChild(hidden);
@@ -165,11 +173,17 @@
       });
       run();
     };
-    input.addEventListener("change", () => { Array.from(input.files).forEach(add); input.value = ""; });
+    const pick = (files) => {
+      files = Array.from(files || []);
+      if (box.hasAttribute("data-single")) { if (active > 0) return; files = files.slice(0, 1); list.innerHTML = ""; }
+      files.forEach(add);
+    };
+    input.addEventListener("change", () => { pick(input.files); input.value = ""; });
     ["dragover", "dragenter"].forEach((ev) => box.addEventListener(ev, (e) => { e.preventDefault(); box.classList.add("border-brand-400", "bg-brand-50"); }));
     ["dragleave", "drop"].forEach((ev) => box.addEventListener(ev, (e) => { e.preventDefault(); box.classList.remove("border-brand-400", "bg-brand-50"); }));
-    box.addEventListener("drop", (e) => Array.from(e.dataTransfer.files || []).forEach(add));
-    form.addEventListener("submit", (e) => { if (active > 0) e.preventDefault(); });
+    box.addEventListener("drop", (e) => pick(e.dataTransfer.files));
+    if (form) form.addEventListener("submit", (e) => { if (active > 0) e.preventDefault(); });
+    if (attachUrl) window.addEventListener("beforeunload", (e) => { if (active > 0) { e.preventDefault(); e.returnValue = ""; } });
   });
 
   // ─── Видео с комментариями по таймкодам ─────────────────────────────

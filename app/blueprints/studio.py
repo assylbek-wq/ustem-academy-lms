@@ -7,7 +7,7 @@ from flask import Blueprint, abort, flash, g, jsonify, redirect, render_template
 
 from ..core import audit, ml_from_form, ml_list_from_form, render_markdown, role_required
 from ..i18n import LOCALES, t
-from ..models import (DIRECTIONS, EVIDENCE_KINDS, LESSON_KINDS, Assignment, Cohort, Evidence, Lesson,
+from ..models import (DIRECTIONS, EVIDENCE_KINDS, LESSON_KINDS, Assignment, Cohort, Evidence, EvidenceFile, Lesson,
                       LessonMaterial, LessonProgress, Level, Module, Program, QuizQuestion, RubricCriterion, db,
                       utcnow)
 from ..services import selfpaced, storage
@@ -226,7 +226,9 @@ def lesson(lesson_id):
         if action == "meta":
             lesson.title = ml_from_form("title")
             lesson.body = ml_from_form("body")
+            before = storage.lesson_video_names(lesson)
             lesson.video_url = ml_from_form("video_url")
+            storage.delete_lesson_videos(before - storage.lesson_video_names(lesson))
             if request.form.get("kind") in LESSON_KINDS:
                 lesson.kind = request.form["kind"]
             lesson.duration_min = max(1, min(600, request.form.get("duration_min", type=int) or 10))
@@ -264,6 +266,12 @@ def lesson(lesson_id):
             q = get_or_404(QuizQuestion, request.form.get("question_id", type=int))
             if q.lesson_id == lesson.id:
                 db.session.delete(q)
+        elif action == "remove_video":
+            names = storage.lesson_video_names(lesson)
+            lesson.video_url = {l: v for l, v in (lesson.video_url or {}).items()
+                                if not storage.LESSON_VIDEO_RE.match(v or "")}
+            storage.delete_lesson_videos(names)
+            flash(t("studio.video_removed"), "success")
         elif action == "upload_material":
             fs = request.files.get("material")
             if fs and fs.filename:
@@ -286,7 +294,36 @@ def lesson(lesson_id):
         db.session.commit()
         anchor = f"#q{request.form.get('question_id')}" if action == "save_question" else ""
         return redirect(url_for("studio.lesson", lesson_id=lesson.id) + anchor)
-    return render_template("studio/lesson.html", lesson=lesson, lv=lv, p=lv.program, lesson_kinds=LESSON_KINDS)
+    uploaded = {l: v for l, v in (lesson.video_url or {}).items() if storage.LESSON_VIDEO_RE.match(v or "")}
+    uploaded_src = uploaded.get(g.locale) or next(iter(uploaded.values()), None)
+    return render_template("studio/lesson.html", lesson=lesson, lv=lv, p=lv.program, lesson_kinds=LESSON_KINDS,
+                           uploaded_src=uploaded_src, uploaded_langs=[l.upper() for l in LOCALES if l in uploaded])
+
+
+@bp.post("/lessons/<int:lesson_id>/video")
+@role_required("methodist")
+def lesson_video_attach(lesson_id):
+    """Видео, загруженное частями через /api/uploads, становится видео урока (для выбранного языка или всех)."""
+    lesson = get_or_404(Lesson, lesson_id)
+    data = request.get_json(silent=True) or {}
+    f = db.session.get(EvidenceFile, int(data.get("file_id") or 0))
+    if not f or f.owner_id != g.user.id or f.evidence_id or f.kind != "video":
+        return {"ok": False, "error": t("studio.video_not_video")}, 400
+    lang = data.get("lang")
+    langs = [lang] if lang in LOCALES else list(LOCALES)
+    before = storage.lesson_video_names(lesson)
+    url = storage.attach_lesson_video(f, lesson.id)
+    video = dict(lesson.video_url or {})
+    for l in langs:
+        video[l] = url
+    lesson.video_url = video
+    if lesson.kind == "text":
+        lesson.kind = "video"
+    storage.delete_lesson_videos(before - storage.lesson_video_names(lesson))
+    audit("lesson.video_uploaded", "lesson", lesson.id)
+    db.session.commit()
+    flash(t("studio.video_attached"), "success")
+    return {"ok": True, "url": url}
 
 
 @bp.route("/lessons/<int:lesson_id>/preview")
