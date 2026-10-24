@@ -41,3 +41,39 @@ class FtcKitsTest(AppTestCase):
         page = self.client.get(f"/studio/lessons/{lesson.id}/preview").get_data(as_text=True)
         self.assertIn('id="kit-slides"', page)
         self.assertIn("kit.css", page)
+
+
+class KitEditorTest(AppTestCase):
+    def test_methodist_edits_kit_and_update_keeps_it(self):
+        from app.content import load, update
+        from app.services import kits
+        p = Program.query.filter_by(slug="ftc-start-2026").first() or load("ftc-start-2026")
+        db.session.commit()
+        lesson = Lesson.query.filter(Lesson.kit.isnot(None)).join(Lesson.module).filter_by(level_id=p.levels[0].id).first()
+        form = kits.to_form(lesson.kit["ru"])
+        self.assertIn(" | ", form["plan"])
+        self.login("methodist@academy.demo")
+        page = self.client.get(f"/studio/lessons/{lesson.id}").get_data(as_text=True)
+        self.assertIn('id="kit-edit"', page)
+        form.update(action="kit", kit_lang="ru", goal="Новая цель", plan="20 | Разминка | Игра\n25 | Сборка | Пары собирают",
+                    slides="Тема\nЦель занятия\n\nИтог\nДомашнее задание")
+        r = self.client.post(f"/studio/lessons/{lesson.id}", data=form)
+        self.assertEqual(r.status_code, 302)
+        db.session.refresh(lesson)
+        k = lesson.kit["ru"]
+        self.assertEqual((k["goal"], k["minutes"], len(k["slides"])), ("Новая цель", 45, 2))
+        self.assertTrue(lesson.kit["_edited"])
+        update("ftc-start-2026")
+        db.session.commit()
+        db.session.refresh(lesson)
+        self.assertEqual(lesson.kit["ru"]["goal"], "Новая цель")  # правка методиста не затерта
+        # казахская версия и удаление
+        self.client.post(f"/studio/lessons/{lesson.id}", data={"action": "kit", "kit_lang": "kk", "goal": "Мақсат",
+                                                              "plan": "10 | Кіріспе | Әңгіме"})
+        db.session.refresh(lesson)
+        self.assertEqual(lesson.kit["kk"]["minutes"], 10)
+        self.client.post(f"/studio/lessons/{lesson.id}", data={"action": "kit", "kit_lang": "kk"})
+        db.session.refresh(lesson)
+        self.assertNotIn("kk", lesson.kit)
+        r = self.client.post(f"/studio/lessons/{lesson.id}", data={"action": "kit", "kit_lang": "ru", "goal": "x", "plan": "плохая строка"})
+        self.assertEqual(r.status_code, 302)

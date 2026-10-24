@@ -15,11 +15,16 @@ for _name in ("level12", "level34", "level45"):
         pass
 
 
-def attach(program: dict) -> dict:
+def attach_kits(program: dict, kits: dict) -> dict:
+    """Положить уроки под ключ в уроки программы (по русскому названию урока)."""
     for lv in program["levels"]:
         for mod in lv["modules"]:
             for les in mod["lessons"]:
-                kit = KITS.get(les["title"]["ru"])
+                kit = kits.get(les["title"]["ru"])
                 if kit:
                     les["kit"] = {"ru": kit}
     return program
+
+
+def attach(program: dict) -> dict:
+    return attach_kits(program, KITS)

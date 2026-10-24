@@ -10,7 +10,7 @@ from ..i18n import LOCALES, t
 from ..models import (DIRECTIONS, EVIDENCE_KINDS, LESSON_KINDS, Assignment, Cohort, Evidence, EvidenceFile, Lesson,
                       LessonMaterial, LessonProgress, Level, Module, Program, QuizQuestion, RubricCriterion, db,
                       utcnow)
-from ..services import selfpaced, storage
+from ..services import kits, selfpaced, storage
 
 bp = Blueprint("studio", __name__, url_prefix="/studio")
 
@@ -266,6 +266,22 @@ def lesson(lesson_id):
             q = get_or_404(QuizQuestion, request.form.get("question_id", type=int))
             if q.lesson_id == lesson.id:
                 db.session.delete(q)
+        elif action == "kit":
+            lang = request.form.get("kit_lang") if request.form.get("kit_lang") in LOCALES else "ru"
+            kit_data, bad = kits.from_form(request.form)
+            data = {k: v for k, v in (lesson.kit or {}).items()}
+            if kit_data:
+                data[lang] = kit_data
+            else:
+                data.pop(lang, None)
+            data = {k: v for k, v in data.items() if k != "_edited"}
+            lesson.kit = {**data, "_edited": True} if any(k in LOCALES for k in data) else None
+            if bad:
+                flash(t("kit.err_plan", lines="; ".join(bad[:3])), "error")
+            else:
+                flash(t("studio.saved"), "success")
+            db.session.commit()
+            return redirect(url_for("studio.lesson", lesson_id=lesson.id, kit_lang=lang) + "#kit-edit")
         elif action == "remove_video":
             names = storage.lesson_video_names(lesson)
             lesson.video_url = {l: v for l, v in (lesson.video_url or {}).items()
@@ -294,10 +310,13 @@ def lesson(lesson_id):
         db.session.commit()
         anchor = f"#q{request.form.get('question_id')}" if action == "save_question" else ""
         return redirect(url_for("studio.lesson", lesson_id=lesson.id) + anchor)
+    kit_lang = request.args.get("kit_lang") if request.args.get("kit_lang") in LOCALES else "ru"
     uploaded = {l: v for l, v in (lesson.video_url or {}).items() if storage.LESSON_VIDEO_RE.match(v or "")}
     uploaded_src = uploaded.get(g.locale) or next(iter(uploaded.values()), None)
     return render_template("studio/lesson.html", lesson=lesson, lv=lv, p=lv.program, lesson_kinds=LESSON_KINDS,
-                           uploaded_src=uploaded_src, uploaded_langs=[l.upper() for l in LOCALES if l in uploaded])
+                           uploaded_src=uploaded_src, uploaded_langs=[l.upper() for l in LOCALES if l in uploaded],
+                           kit_lang=kit_lang, kit_form=kits.to_form((lesson.kit or {}).get(kit_lang)),
+                           kit_langs=[l for l in LOCALES if (lesson.kit or {}).get(l)])
 
 
 @bp.post("/lessons/<int:lesson_id>/video")

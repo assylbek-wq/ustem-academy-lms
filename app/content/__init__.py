@@ -180,7 +180,8 @@ def _update_level_content(level: Level, lv_spec: dict) -> None:
             lesson.module_id, lesson.position, lesson.kind = m.id, li, les["kind"]
             lesson.title, lesson.body = les["title"], les.get("body", {})
             lesson.video_url, lesson.duration_min = les.get("video", {}), les.get("minutes", 10)
-            lesson.kit = les.get("kit")
+            if not (lesson.kit or {}).get("_edited"):  # план, исправленный методистом в Студии, не затираем
+                lesson.kit = les.get("kit")
             db.session.flush()
             kept_ids.add(lesson.id)
             QuizQuestion.query.filter_by(lesson_id=lesson.id).delete()

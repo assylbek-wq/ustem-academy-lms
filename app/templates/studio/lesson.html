@@ -103,6 +103,55 @@
     <form method="post" class="text-right">{{ csrf() }}<button name="action" value="delete" class="text-sm text-rose-600 hover:underline" data-confirm="{{ t('studio.confirm_delete_lesson') }}">{{ t('studio.delete_lesson') }}</button></form>
   </div>
 </div>
+
+{# ─── Урок под ключ: план занятия с учениками ─── #}
+{% set f = kit_form %}
+<details class="card mt-6" id="kit-edit" {% if kit_langs or request.args.get('kit_lang') %}open{% endif %}>
+  <summary class="p-5 cursor-pointer flex flex-wrap items-center gap-3">
+    <span class="font-semibold">{{ t('kit.edit_title') }}</span>
+    <span class="text-sm text-slate-500">{{ t('kit.edit_hint') }}</span>
+    {% if kit_langs %}<span class="ml-auto text-xs text-slate-500">{{ kit_langs|join(', ')|upper }}</span>{% endif %}
+  </summary>
+  <div class="px-5 pb-5">
+    <div class="flex flex-wrap gap-2 mb-4 text-sm">
+      {% for l in locales %}
+        <a href="{{ url_for('studio.lesson', lesson_id=lesson.id, kit_lang=l) }}#kit-edit"
+           class="px-3 py-1 rounded-md {% if l == kit_lang %}bg-slate-800 text-white{% else %}bg-slate-100 hover:bg-slate-200{% endif %}">{{ l|upper }}{% if l in kit_langs %} ✓{% endif %}</a>
+      {% endfor %}
+      <a href="{{ url_for('studio.lesson_preview', lesson_id=lesson.id) }}" target="_blank" class="ml-auto text-brand-700 hover:underline">{{ t('studio.preview') }}</a>
+    </div>
+    <form method="post" class="space-y-4">
+      {{ csrf() }}<input type="hidden" name="action" value="kit"><input type="hidden" name="kit_lang" value="{{ kit_lang }}">
+      <div class="grid sm:grid-cols-4 gap-3">
+        <div class="sm:col-span-3"><label class="label" for="k-goal">{{ t('kit.f_goal') }}</label><textarea id="k-goal" name="goal" rows="2" class="input">{{ f.goal }}</textarea></div>
+        <div><label class="label" for="k-group">{{ t('kit.group') }}</label><textarea id="k-group" name="group" rows="2" class="input">{{ f.group }}</textarea></div>
+      </div>
+      <div><label class="label" for="k-say">{{ t('kit.say') }}</label><textarea id="k-say" name="say" rows="3" class="input">{{ f.say }}</textarea></div>
+      <div><label class="label" for="k-plan">{{ t('kit.plan') }}</label>
+        <textarea id="k-plan" name="plan" rows="8" class="input font-mono text-[13px]">{{ f.plan }}</textarea>
+        <p class="help">{{ t('kit.f_plan_hint') }}</p></div>
+      <div class="grid md:grid-cols-3 gap-3">
+        <div><label class="label" for="k-prep">{{ t('kit.prep') }}</label><textarea id="k-prep" name="prep" rows="6" class="input">{{ f.prep }}</textarea></div>
+        <div><label class="label" for="k-check">{{ t('kit.check') }}</label><textarea id="k-check" name="check" rows="6" class="input">{{ f.check }}</textarea></div>
+        <div><label class="label" for="k-mis">{{ t('kit.mistakes') }}</label><textarea id="k-mis" name="mistakes" rows="6" class="input">{{ f.mistakes }}</textarea></div>
+      </div>
+      <p class="help -mt-2">{{ t('kit.f_lines_hint') }}</p>
+      <div class="grid sm:grid-cols-3 gap-3">
+        <div><label class="label" for="k-tt">{{ t('kit.task') }}</label><input id="k-tt" name="task_title" value="{{ f.task_title }}" class="input"></div>
+        <div class="sm:col-span-2"><label class="label" for="k-sim">{{ t('kit.f_sim') }}</label><input id="k-sim" name="task_sim" value="{{ f.task_sim }}" class="input" placeholder="spike-line, ftc-auto"></div>
+      </div>
+      <textarea name="task_text" rows="3" class="input" aria-label="{{ t('kit.task') }}">{{ f.task_text }}</textarea>
+      <div><label class="label" for="k-hw">{{ t('kit.homework') }}</label><textarea id="k-hw" name="homework" rows="2" class="input">{{ f.homework }}</textarea></div>
+      <div><label class="label" for="k-sl">{{ t('kit.slides') }}</label>
+        <textarea id="k-sl" name="slides" rows="12" class="input">{{ f.slides }}</textarea>
+        <p class="help">{{ t('kit.f_slides_hint') }}</p></div>
+      <div class="flex items-center gap-3">
+        <button class="btn-primary">{{ t('common.save') }}</button>
+        <span class="help">{{ t('kit.f_empty_hint') }}</span>
+      </div>
+    </form>
+  </div>
+</details>
 {% endblock %}
 {% block scripts %}<script>window.I18N_UP = {{ {
   'uploading': t('upload.uploading'), 'paused': t('upload.paused'), 'done': t('studio.video_saving'),

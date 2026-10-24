@@ -1294,3 +1294,8 @@ PROGRAM = {
         },
     ],
 }
+
+# Уроки под ключ: план занятия с учениками и слайды (app/content/spike_kits)
+from .spike_kits import attach as _attach_kits  # noqa: E402
+
+_attach_kits(PROGRAM)
