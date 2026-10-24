@@ -77,3 +77,19 @@ class KitEditorTest(AppTestCase):
         self.assertNotIn("kk", lesson.kit)
         r = self.client.post(f"/studio/lessons/{lesson.id}", data={"action": "kit", "kit_lang": "ru", "goal": "x", "plan": "плохая строка"})
         self.assertEqual(r.status_code, 302)
+
+
+class SpikeKitsTest(AppTestCase):
+    def test_every_spike_lesson_has_a_kit(self):
+        prog = COURSES["spike-prime-fll"].PROGRAM
+        for lv in prog["levels"]:
+            for m in lv["modules"]:
+                for les in m["lessons"]:
+                    if les["kind"] == "quiz":
+                        continue
+                    k = les["kit"]["ru"]
+                    self.assertEqual(FIELDS - set(k), set(), les["title"]["ru"])
+                    self.assertEqual(sum(p[0] for p in k["plan"]), k["minutes"])
+                    if k["task"].get("sim"):
+                        self.assertTrue(k["task"]["sim"].startswith("spike-"))
+                    self.assertNotRegex(json.dumps(k, ensure_ascii=False), "[ёЁ—–]")
