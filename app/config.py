@@ -49,6 +49,12 @@ class Config:
     # Telegram-уведомления (необязательно)
     TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 
+    # USTEM Connect: путь сезона в геймификации (services/connect.py). Ключ - тот же, что у клиента academy
+    # в CERT_API_KEYS на сервере Connect. CONNECT_API_URL - адрес для запросов сервера (может быть внутренним).
+    CONNECT_URL = os.environ.get("CONNECT_URL", "https://connect.ustem.kz").rstrip("/")
+    CONNECT_API_URL = os.environ.get("CONNECT_API_URL", "").rstrip("/")
+    CONNECT_API_KEY = os.environ.get("CONNECT_API_KEY", "")
+
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = _bool("SESSION_COOKIE_SECURE", False)

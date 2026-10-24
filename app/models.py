@@ -64,6 +64,13 @@ class User(db.Model):
     invite_expires_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=utcnow)
     last_login_at = db.Column(db.DateTime)
+    # Геймификация и связь с USTEM Connect (services/game.py, services/connect.py)
+    region = db.Column(db.String(128))  # для рейтинга; пусто - берется регион команды из Connect
+    leaderboard_hidden = db.Column(db.Boolean, default=False, nullable=False, server_default=db.false())
+    connect_person_id = db.Column(db.String(64), unique=True)
+    connect_linked_at = db.Column(db.DateTime)
+    connect_synced_at = db.Column(db.DateTime)
+    connect_snapshot = db.Column(JSON)
 
     roles = db.relationship("UserRole", back_populates="user", cascade="all, delete-orphan")
 
@@ -506,3 +513,50 @@ class AuditLog(db.Model):
     details = db.Column(JSON, default=dict)
     created_at = db.Column(db.DateTime, default=utcnow, index=True)
     user = db.relationship("User")
+
+
+# ─── Геймификация: опыт, значки, путь сезона ─────────────────────────────
+class XpEvent(db.Model):
+    """Начисление опыта. ref - уникальный ключ факта у пользователя (lesson:12, sim:spike-line, step:fll:approved)."""
+    __tablename__ = "xp_events"
+    __table_args__ = (db.UniqueConstraint("user_id", "ref", name="uq_xp_user_ref"),)
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    ref = db.Column(db.String(120), nullable=False)
+    kind = db.Column(db.String(32), nullable=False)  # lesson | quiz | level | evidence | sim | step | streak
+    xp = db.Column(db.Integer, nullable=False, default=0)
+    title = db.Column(JSON, default=dict)
+    created_at = db.Column(db.DateTime, default=utcnow, index=True)
+
+
+class UserBadge(db.Model):
+    __tablename__ = "user_badges"
+    __table_args__ = (db.UniqueConstraint("user_id", "code", name="uq_badge_user_code"),)
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    code = db.Column(db.String(64), nullable=False)
+    earned_at = db.Column(db.DateTime, default=utcnow)
+
+
+class JourneyMark(db.Model):
+    """Шаг пути сезона, отмеченный самим тренером (купили набор, собрали базу), с фото по желанию."""
+    __tablename__ = "journey_marks"
+    __table_args__ = (db.UniqueConstraint("user_id", "track", "step", name="uq_mark_user_step"),)
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    track = db.Column(db.String(32), nullable=False)
+    step = db.Column(db.String(64), nullable=False)
+    note = db.Column(db.Text)
+    photo_id = db.Column(db.Integer, db.ForeignKey("evidence_files.id", ondelete="SET NULL"))
+    created_at = db.Column(db.DateTime, default=utcnow)
+    photo = db.relationship("EvidenceFile")
+
+
+class SimSolve(db.Model):
+    """Задание симулятора (SPIKE, FTC, Arduino), прошедшее автопроверку."""
+    __tablename__ = "sim_solves"
+    __table_args__ = (db.UniqueConstraint("user_id", "preset", name="uq_sim_user_preset"),)
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    preset = db.Column(db.String(64), nullable=False)
+    solved_at = db.Column(db.DateTime, default=utcnow)

@@ -274,7 +274,7 @@ class FtcSim {
     const c = this.core;
     if (c.phase === "error") { this.codeErr.textContent = c.error; this.codeErr.hidden = false; }
     this.renderChecks();
-    if (c.allOk) this.toast("Задание выполнено!", "ok");
+    if (c.allOk) { this.toast("Задание выполнено!", "ok"); if (window.academySolved) window.academySolved(this.presetName); }
   }
 
   // ─────────────── Цикл ───────────────

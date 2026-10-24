@@ -45,3 +45,9 @@ USTEM Academy - LMS для подготовки учителей. Flask + SQLAlc
   Задания: `python3 assets/lab/spike_presets.py` -> `app/static/spikesim/presets/*.json`. В уроке блок
   `<div class="spike-sim-ИМЯ"></div>` (задание `spike-ИМЯ`), песочница `/lab/spike`. Сквозная проверка:
   `python3 tests/e2e/spike_solutions.py http://localhost:5080` и `--negative`.
+- Геймификация для тренеров: путь сезона FLL Challenge и FTC (`app/game/tracks.py` - этапы и шаги, звания, значки;
+  `services/game.py` - опыт пересчитывается из фактов функцией `refresh`, не начисляйте его вручную), страницы
+  `/journey/<fll|ftc>` и `/leaderboard`. Шаги про команду и турниры засчитывает USTEM Connect (`services/connect.py`:
+  подключение `/connect/start` -> Connect `/link/academy` -> `/connect/callback`, данные `GET /api/v1/academy/journey`,
+  ключ `CONNECT_API_KEY` = ключ academy из `CERT_API_KEYS` Connect). Решенные задания симуляторов приходят
+  в `POST /api/sim/solved` (`window.academySolved` в app.js).

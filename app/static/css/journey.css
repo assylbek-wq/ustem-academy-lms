@@ -1,0 +1,217 @@
+/* Путь сезона: карта на «поле» из плиток, звание и опыт, этап, значки и рейтинг.
+   Поле - как настоящее поле FTC: темные плитки с швами, маршрут робота лентой цвета программы. */
+.jy, .jy-stage, .jy-side, .jy-banner, .jy-mini {
+  --field: #17212b; --seam: #223040; --tape: #3a4a5c; --ink: #eef2f6; --ink-2: #b8c4d0; --ink-3: #7d8b99;
+  --ok: #33c27f; --gold: #f5c044; --display: Unbounded, Inter, system-ui, sans-serif;
+}
+
+/* ─── Поле ─── */
+.jy { position: relative; margin: -8px 0 20px; padding: 22px 22px 8px; border-radius: 18px; color: var(--ink); overflow: hidden;
+  background:
+    radial-gradient(120% 80% at 85% -10%, color-mix(in srgb, var(--acc) 22%, transparent), transparent 60%),
+    linear-gradient(var(--seam) 1px, transparent 1px) 0 0 / 96px 96px,
+    linear-gradient(90deg, var(--seam) 1px, transparent 1px) 0 0 / 96px 96px,
+    var(--field);
+  box-shadow: inset 0 0 0 1px #0e151c, 0 18px 40px -24px rgba(15, 23, 32, .7); }
+.jy::after { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  box-shadow: inset 0 0 0 6px color-mix(in srgb, var(--acc) 35%, #0e151c); opacity: .5; }
+
+.jy-top { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px 24px; align-items: center; }
+.jy-me { display: flex; gap: 16px; align-items: center; min-width: 0; }
+.jy-hex { position: relative; width: 64px; height: 70px; flex: none; display: grid; place-items: center;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: linear-gradient(160deg, var(--acc-glow), var(--acc) 55%, color-mix(in srgb, var(--acc) 60%, #000)); }
+.jy-hex::before { content: ""; position: absolute; inset: 4px; clip-path: inherit; background: #1d2935; }
+.jy-hex span { position: relative; font: 800 26px/1 var(--display); color: var(--ink); }
+.jy-me-text { min-width: 0; flex: 1; max-width: 460px; }
+.jy-rank { font: 700 20px/1.15 var(--display); letter-spacing: -.01em; }
+.jy-bar { height: 10px; margin: 9px 0 7px; border-radius: 6px; background: #0f171f; box-shadow: inset 0 0 0 1px #2c3a49; overflow: hidden; }
+.jy-bar i { display: block; height: 100%; min-width: 6px; border-radius: inherit; background: linear-gradient(90deg, #d99a1e, var(--gold));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--gold) 60%, transparent); }
+.jy-xpline { font-size: 13px; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.jy-num { font: 700 16px/1 var(--display); color: var(--gold); }
+.jy-dim { color: var(--ink-3); font-weight: 400; }
+.jy-stats { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.jy-stat { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: 999px; font-size: 13px; color: var(--ink-2);
+  background: rgba(255, 255, 255, .04); box-shadow: inset 0 0 0 1px #2c3a49; text-decoration: none; }
+a.jy-stat:hover { color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink-3); }
+.jy-gold { color: var(--gold); }
+.jy-flame { width: 16px; height: 16px; color: #4a5866; }
+.jy-flame.on { color: #ff8a3d; filter: drop-shadow(0 0 4px #ff8a3d); }
+.jy-tracks { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; }
+.jy-tracks a { padding: 7px 14px; border-radius: 10px; font-size: 13px; font-weight: 600; color: var(--ink-2); text-decoration: none;
+  box-shadow: inset 0 0 0 1px #2c3a49; }
+.jy-tracks a:hover { color: var(--ink); }
+.jy-tracks a.on { color: #fff; background: var(--c); box-shadow: 0 6px 18px -8px var(--c); }
+
+.jy-head { position: relative; z-index: 1; margin: 20px 0 0; }
+.jy-head h1 { font: 800 clamp(22px, 3.2vw, 34px)/1.1 var(--display); letter-spacing: -.02em; margin: 0; }
+.jy-head p { display: flex; gap: 14px; flex-wrap: wrap; margin: 6px 0 0; color: var(--ink-2); font-size: 14px; }
+
+/* ─── Карта ─── */
+.jy-map { position: relative; z-index: 1; display: block; width: 100%; height: auto; margin-top: 4px; overflow: visible; }
+.jy-map-tall { display: none; max-width: 420px; margin: 8px 0 0; }
+.jy-route { fill: none; stroke: var(--tape); stroke-width: 10; stroke-linecap: round; stroke-dasharray: 2 16; }
+.jy-route-lit { fill: none; stroke: var(--acc); stroke-width: 10; stroke-linecap: round;
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--acc) 70%, transparent));
+  stroke-dasharray: 100; stroke-dashoffset: 0; animation: jy-draw 1.6s cubic-bezier(.5, 0, .2, 1) .15s both; }
+@keyframes jy-draw { from { stroke-dashoffset: 100; } }
+
+.jy-node { cursor: pointer; outline: none; }
+.jy-node .jy-halo { fill: transparent; }
+.jy-node .jy-disc { fill: #1d2935; stroke: #3a4a5c; stroke-width: 2; transition: transform .2s; }
+.jy-node .jy-arc { fill: none; stroke: var(--ok); stroke-width: 4; stroke-linecap: round; }
+.jy-node .jy-ico { color: var(--ink-3); }
+.jy-node text { text-anchor: middle; font-family: Inter, system-ui, sans-serif; }
+.jy-node .jy-n { font: 700 13px var(--display); fill: var(--ink-3); }
+.jy-node .jy-label { font-size: 14px; font-weight: 600; fill: var(--ink-2); }
+.jy-node .jy-count { font-size: 12px; fill: var(--ink-3); }
+.jy-node .jy-side-t { text-anchor: start; }
+.jy-map-tall .jy-label { font-size: 16px; }
+.jy-node.jy-done .jy-disc { fill: var(--ok); stroke: #8ff0bf; }
+.jy-node.jy-done .jy-ico { color: #0d2a1b; }
+.jy-node.jy-done .jy-label { fill: var(--ink); }
+.jy-node.jy-cur .jy-disc { fill: var(--acc); stroke: #fff; stroke-width: 3; }
+.jy-node.jy-cur .jy-ico { color: #fff; }
+.jy-node.jy-cur .jy-halo { fill: color-mix(in srgb, var(--acc) 30%, transparent); animation: jy-pulse 2.4s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+.jy-node.jy-cur .jy-label, .jy-node.jy-cur .jy-n { fill: #fff; }
+.jy-node.final .jy-disc { stroke: var(--gold); stroke-width: 3; }
+.jy-node.final .jy-ico { color: var(--gold); }
+.jy-node.sel .jy-label { text-decoration: underline; text-decoration-color: var(--acc); text-underline-offset: 5px; }
+.jy-node:hover .jy-disc { stroke: #fff; }
+.jy-node:focus-visible .jy-disc { stroke: #fff; stroke-width: 4; }
+@keyframes jy-pulse { 0% { opacity: .9; transform: scale(.8); } 100% { opacity: 0; transform: scale(1.35); } }
+
+/* ─── Баннер Connect ─── */
+.jy-banner { display: flex; align-items: center; gap: 14px; padding: 14px 16px; margin: 0 0 20px; border-radius: 14px;
+  background: #f3f6fa; box-shadow: inset 0 0 0 1px #dfe6ee; color: #2a3744; }
+.jy-banner svg { width: 26px; height: 26px; color: #0085ff; flex: none; }
+.jy-banner p { flex: 1; margin: 0; font-size: 14px; }
+
+/* ─── Этап и боковая колонка ─── */
+.jy-cols { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 24px; align-items: start; }
+.jy-stage { scroll-margin-top: 16px; }
+.jy-stage header { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+.jy-stage-n { width: 46px; height: 46px; flex: none; display: grid; place-items: center; border-radius: 12px; color: #fff;
+  font: 800 20px/1 var(--display); background: var(--acc); }
+.jy-stage h2 { margin: 0; font: 700 22px/1.2 var(--display); letter-spacing: -.015em; color: #24303c; }
+.jy-stage header p { margin: 3px 0 0; color: #6b7785; font-size: 14px; }
+.jy-stage-nav { margin-left: auto; display: flex; gap: 4px; }
+.jy-stage-nav a { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 9px; color: #4a5866; box-shadow: inset 0 0 0 1px #dfe6ee; }
+.jy-stage-nav a:hover { background: #f3f6fa; color: #1d2935; }
+
+.jy-steps { list-style: none; margin: 0; padding: 0; border-top: 1px solid #e8edf2; }
+.jy-step { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 12px; padding: 14px 2px; border-bottom: 1px solid #e8edf2; }
+.jy-dot { width: 22px; height: 22px; margin-top: 1px; border-radius: 50%; box-shadow: inset 0 0 0 2px #c7d1db; display: grid; place-items: center; }
+.jy-step.done .jy-dot { background: var(--ok); box-shadow: none; color: #fff; }
+.jy-dot svg { width: 14px; height: 14px; }
+.jy-step-title { font-weight: 600; color: #1f2a35; }
+.jy-step.done .jy-step-title { color: #5a6774; }
+.jy-step-hint { font-size: 13.5px; color: #6b7785; margin-top: 2px; }
+.jy-step-meta { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 7px; font-size: 12.5px; color: #7d8b99; align-items: center; }
+.jy-step-meta a { color: #0085ff; }
+.jy-src { padding: 2px 8px; border-radius: 6px; font-weight: 600; background: #eef2f6; color: #4a5866; }
+.jy-src-connect { background: #e6f2ff; color: #00529c; }
+.jy-src-sim { background: #f0ecff; color: #5b3fc4; }
+.jy-src-course { background: #fbf3db; color: #8a5f14; }
+.jy-step-side { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.jy-xp { font: 700 14px/1 var(--display); color: #b07d12; }
+.jy-step.done .jy-xp { color: #2f9e67; }
+.jy-mark { margin-top: 10px; }
+.jy-mark summary { list-style: none; display: inline-flex; }
+.jy-mark summary::-webkit-details-marker { display: none; }
+.jy-mark[open] summary { display: none; }
+.jy-mark form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.jy-mark .input { flex: 1 1 240px; }
+.jy-file { display: inline-flex; align-items: center; gap: 6px; padding: 7px 11px; border-radius: 8px; font-size: 13px; cursor: pointer;
+  box-shadow: inset 0 0 0 1px #c7d1db; color: #2a3744; }
+.jy-file:hover { background: #f3f6fa; }
+.jy-file:focus-within { outline: 2px solid #0085ff; outline-offset: 2px; }
+.jy-undo { background: none; border: 0; padding: 0; font-size: 12.5px; color: #7d8b99; text-decoration: underline; cursor: pointer; }
+.jy-undo:hover { color: #c4413c; }
+.jy-sync { display: flex; gap: 12px; align-items: center; justify-content: flex-end; margin-top: 10px; font-size: 12.5px; color: #7d8b99; }
+.jy-sync .jy-undo:hover { color: #0085ff; }
+
+.jy-side { display: flex; flex-direction: column; gap: 26px; }
+.jy-side h2 { display: flex; justify-content: space-between; align-items: baseline; margin: 0 0 10px; font-size: 15px; font-weight: 700; color: #24303c; }
+.jy-side .jy-dim { color: #7d8b99; font-size: 13px; }
+.jy-badges { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.jy-badges li { position: relative; outline: none; }
+.jy-medal { display: block; width: 100%; height: auto; }
+.jy-medal .m-edge { fill: #dfe6ee; }
+.jy-medal .m-face { fill: #f3f6fa; }
+.jy-medal .m-ico { color: #b4c0cc; }
+.jy-badges li.got.t-bronze .m-edge { fill: #c27c3e; } .jy-badges li.got.t-bronze .m-face { fill: #f6e3d0; } .jy-badges li.got.t-bronze .m-ico { color: #8a4d1d; }
+.jy-badges li.got.t-silver .m-edge { fill: #8fa3b6; } .jy-badges li.got.t-silver .m-face { fill: #eef3f8; } .jy-badges li.got.t-silver .m-ico { color: #44586b; }
+.jy-badges li.got.t-gold .m-edge { fill: #e0a420; } .jy-badges li.got.t-gold .m-face { fill: #fff3cf; } .jy-badges li.got.t-gold .m-ico { color: #94640a; }
+.jy-tip { position: absolute; z-index: 5; left: 50%; bottom: calc(100% + 6px); transform: translateX(-50%); width: 190px; padding: 8px 10px;
+  border-radius: 10px; background: #1d2935; color: #d6dee6; font-size: 12.5px; line-height: 1.35; opacity: 0; pointer-events: none;
+  transition: opacity .15s; box-shadow: 0 10px 24px rgba(15, 23, 32, .3); }
+.jy-tip b { display: block; color: #fff; margin-bottom: 2px; }
+.jy-badges li:hover .jy-tip, .jy-badges li:focus .jy-tip { opacity: 1; }
+.jy-badges li:nth-child(5n+1) .jy-tip { left: 0; transform: none; }
+.jy-badges li:nth-child(5n) .jy-tip { left: auto; right: 0; transform: none; }
+
+.jy-board { list-style: none; margin: 0; padding: 0; }
+.jy-board li { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 7px 4px; border-bottom: 1px solid #eef2f6; font-size: 14px; }
+.jy-board li.me { background: #fff8e6; border-radius: 8px; border-color: transparent; }
+.jy-place { font: 700 13px var(--display); color: #7d8b99; }
+.jy-board li:nth-child(1) .jy-place { color: #d4951a; }
+.jy-who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jy-who i { color: #7d8b99; font-style: normal; }
+.jy-pts { font: 700 13px var(--display); color: #24303c; }
+.jy-more { display: inline-block; margin-top: 8px; font-size: 13px; color: #0085ff; }
+.jy-recent { list-style: none; margin: 0; padding: 0; font-size: 13.5px; color: #4a5866; }
+.jy-recent li { display: flex; gap: 8px; padding: 5px 0; }
+.jy-recent li span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jy-recent .jy-gold { font: 700 13px var(--display); color: #b07d12; flex: none; width: 46px; }
+
+@media (max-width: 900px) {
+  .jy-cols { grid-template-columns: minmax(0, 1fr); }
+  .jy-badges { grid-template-columns: repeat(6, 1fr); }
+}
+@media (max-width: 640px) {
+  .jy { margin: -8px -16px 18px; border-radius: 0; padding: 18px 16px 6px; }
+  .jy-top { grid-template-columns: minmax(0, 1fr); }
+  .jy-stats { justify-content: flex-start; }
+  .jy-map-wide { display: none; }
+  .jy-map-tall { display: block; }
+  .jy-step { grid-template-columns: 24px minmax(0, 1fr); }
+  .jy-step-side { grid-column: 2; flex-direction: row; align-items: center; justify-content: space-between; }
+  .jy-badges { grid-template-columns: repeat(5, 1fr); }
+  .jy-banner { flex-wrap: wrap; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jy-route-lit, .jy-node.jy-cur .jy-halo { animation: none; }
+}
+
+/* ─── Виджет на главной ─── */
+.jy-mini { --field: #17212b; --seam: #223040; --ink: #eef2f6; --ink-2: #b8c4d0; --ink-3: #7d8b99; --gold: #f5c044;
+  --display: Unbounded, Inter, system-ui, sans-serif;
+  display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 1.1fr); gap: 18px; align-items: center; margin: 0 0 24px;
+  padding: 16px 18px; border-radius: 16px; color: var(--ink); text-decoration: none;
+  background: linear-gradient(var(--seam) 1px, transparent 1px) 0 0 / 64px 64px,
+    linear-gradient(90deg, var(--seam) 1px, transparent 1px) 0 0 / 64px 64px, var(--field);
+  box-shadow: inset 0 0 0 1px #0e151c, inset 0 0 0 4px color-mix(in srgb, var(--acc) 40%, #0e151c); }
+.jy-mini .jy-rank { font-size: 17px; }
+.jy-mini-next { padding-left: 18px; border-left: 1px solid #2c3a49; font-size: 13px; }
+.jy-mini-step { margin: 3px 0 6px; font-weight: 600; font-size: 14.5px; color: var(--ink); }
+.jy-mini-go { display: inline-flex; align-items: center; gap: 6px; color: var(--acc-glow); font-weight: 600; }
+.jy-mini:hover .jy-mini-go { text-decoration: underline; }
+.jy-mini:focus-visible { outline: 3px solid #0085ff; outline-offset: 3px; }
+@media (max-width: 760px) {
+  .jy-mini { grid-template-columns: auto minmax(0, 1fr); }
+  .jy-mini-next { grid-column: 1 / -1; padding: 12px 0 0; border-left: 0; border-top: 1px solid #2c3a49; }
+}
+
+/* ─── Рейтинг ─── */
+.lb-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.lb-table th { text-align: left; font-weight: 500; color: #7d8b99; padding: 8px 10px; border-bottom: 1px solid #e8edf2; }
+.lb-table td { padding: 10px; border-bottom: 1px solid #eef2f6; }
+.lb-table tr.me td { background: #fff8e6; }
+.lb-table .lb-place { font: 700 15px Unbounded, Inter, sans-serif; color: #7d8b99; width: 56px; }
+.lb-table tr:nth-child(1) .lb-place { color: #d4951a; }
+.lb-table tr:nth-child(2) .lb-place { color: #8fa3b6; }
+.lb-table tr:nth-child(3) .lb-place { color: #c27c3e; }
+.lb-table .lb-xp { font: 700 14px Unbounded, Inter, sans-serif; text-align: right; }
+.lb-table th:last-child { text-align: right; }

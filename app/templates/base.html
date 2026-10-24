@@ -15,7 +15,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="{{ static_v('img/apple-touch-icon.png') }}">
   {% block head %}{% endblock %}
 </head>
-<body class="bg-white text-slate-800 antialiased min-h-screen" data-locale="{{ locale }}">
+<body class="bg-white text-slate-800 antialiased min-h-screen" data-locale="{{ locale }}"{% if user %} data-user="1"{% endif %}>
 {% set cur_path = request.path %}
 {% macro navlink(endpoint, icon, label, prefix, badge=None) -%}
   <a href="{{ url_for(endpoint) }}" class="sidebar-link {% if cur_path.startswith(prefix) %}sidebar-link-active{% endif %}">
@@ -40,6 +40,8 @@
     <nav class="flex-1 px-2 pb-3 space-y-px overflow-y-auto scroll-area">
       <div class="nav-section">{{ t('nav.learning') }}</div>
       <a href="{{ url_for('learn.home') }}" class="sidebar-link {% if cur_path == "/my" or cur_path.startswith('/my/cohort') %}sidebar-link-active{% endif %}">{{ ic('book') }} <span>{{ t('nav.my') }}</span></a>
+      <a href="{{ url_for('game.journey_index') }}" class="sidebar-link {% if cur_path.startswith('/journey') %}sidebar-link-active{% endif %}">{{ ic('map-pin') }} <span>{{ t('nav.journey') }}</span></a>
+      <a href="{{ url_for('game.leaderboard') }}" class="sidebar-link {% if cur_path.startswith('/leaderboard') %}sidebar-link-active{% endif %}">{{ ic('trophy') }} <span>{{ t('nav.leaderboard') }}</span></a>
       <a href="{{ url_for('learn.catalog') }}" class="sidebar-link {% if cur_path.startswith('/catalog') %}sidebar-link-active{% endif %}">{{ ic('layers') }} <span>{{ t('nav.catalog') }}</span></a>
       <a href="{{ url_for('lab.index') }}" class="sidebar-link {% if cur_path.startswith('/lab') and not cur_path.startswith('/lab/ftc') and not cur_path.startswith('/lab/spike') %}sidebar-link-active{% endif %}">{{ ic('cpu') }} <span>{{ t('nav.lab') }}</span></a>
       <a href="{{ url_for('lab.ftc') }}" class="sidebar-link {% if cur_path.startswith('/lab/ftc') %}sidebar-link-active{% endif %}">{{ ic('target') }} <span>{{ t('nav.ftcsim') }}</span></a>
@@ -127,6 +129,7 @@
 </footer>
 {% endif %}
 
+{% if user %}<script>window.I18N_GAME = {{ {'xp': t('game.xp'), 'sim': t('game.pop_sim'), 'badge': t('game.pop_badge')}|tojson }};</script>{% endif %}
 <script src="{{ static_v('js/app.js') }}" defer></script>
 {% block scripts %}{% endblock %}
 </body>

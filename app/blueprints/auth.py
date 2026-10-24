@@ -11,6 +11,8 @@ from ..i18n import LOCALES, t
 from ..models import Cohort, Enrollment, User, db, utcnow
 from ..services.mail import absolute, send_mail
 from ..services.importer import EMAIL_RE
+from ..game.tracks import REGIONS
+from ..services import connect
 
 bp = Blueprint("auth", __name__)
 
@@ -213,6 +215,9 @@ def account():
                 u.locale = lang
                 session["locale"] = lang
             u.portfolio_public = bool(request.form.get("portfolio_public"))
+            region = (request.form.get("region") or "").strip()
+            u.region = region if region in REGIONS else None
+            u.leaderboard_hidden = bool(request.form.get("leaderboard_hidden"))
             db.session.commit()
             flash(t("account.saved"), "success")
         elif action == "password":
@@ -226,7 +231,7 @@ def account():
                 session["pwfp"] = u.password_hash[-12:]
                 flash(t("account.password_changed"), "success")
         return redirect(url_for("auth.account"))
-    return render_template("auth/account.html")
+    return render_template("auth/account.html", regions=REGIONS, connect_on=connect.enabled())
 
 
 @bp.route("/notifications")

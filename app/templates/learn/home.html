@@ -2,6 +2,10 @@
 {% from "_macros.html" import page_header, progress_bar, badge, empty with context %}
 {% from "_icons.html" import ic %}
 {% block title %}{{ t('nav.my') }} - USTEM Academy{% endblock %}
+{% block head %}
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ static_v('css/journey.css') }}">
+{% endblock %}
 {% block content %}
 {{ page_header(t('learn.hello', name=user.full_name.split()[0] if user.full_name else ''), t('learn.hello_sub'), icon='👋') }}
 
@@ -10,6 +14,23 @@
   {% for ep, key in staff_links %}<a href="{{ url_for(ep) }}" class="btn-secondary btn-sm">{{ t(key) }}</a>{% endfor %}
 </div>
 {% endif %}
+
+{% set rk = gs.rank %}
+{% set gst = gjs.stages[gjs.current] %}
+<a href="{{ url_for('game.journey', track=gtr.code) }}" class="jy-mini" style="--acc: {{ gtr.color }}; --acc-glow: {{ gtr.glow }}">
+  <div class="jy-hex" aria-hidden="true"><span>{{ rk.level }}</span></div>
+  <div class="jy-mini-main">
+    <div class="jy-rank">{{ rk.title|loc }}</div>
+    <div class="jy-bar"><i style="width: {{ rk.pct }}%"></i></div>
+    <div class="jy-xpline"><b class="jy-num">{{ gs.xp }}</b> {{ t('game.xp') }}
+      {% if gs.streak %}<span class="jy-dim">{{ t('game.streak', n=gs.streak) }}</span>{% endif %}</div>
+  </div>
+  <div class="jy-mini-next">
+    <div class="jy-dim">{{ t('game.widget_next') }}</div>
+    <div class="jy-mini-step">{{ gst.title|loc }}{% if next_step %}: {{ next_step.title|loc }}{% endif %}</div>
+    <div class="jy-mini-go">{{ t('game.widget_open') }} {{ ic('arrow-right', 'w-4 h-4') }}</div>
+  </div>
+</a>
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
   <div class="lg:col-span-2 space-y-4">

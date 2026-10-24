@@ -287,4 +287,27 @@
     setInterval(flush, 15000);
     flush();
   });
+  // ─── Геймификация: задание симулятора решено -> опыт и значки ───────
+  const G = window.I18N_GAME || {};
+  const pop = (html, kind) => {
+    let box = document.getElementById("xp-pops");
+    if (!box) { box = document.createElement("div"); box.id = "xp-pops"; box.setAttribute("aria-live", "polite"); document.body.appendChild(box); }
+    const el = document.createElement("div");
+    el.className = "xp-pop" + (kind ? " xp-pop-" + kind : "");
+    el.innerHTML = html;
+    box.appendChild(el);
+    setTimeout(() => el.classList.add("out"), 4200);
+    setTimeout(() => el.remove(), 4800);
+  };
+  window.academyPop = pop;
+  const reported = new Set();
+  window.academySolved = async (preset) => {
+    if (!preset || /sandbox/.test(preset) || reported.has(preset) || !document.body.dataset.user) return;
+    reported.add(preset);
+    try {
+      const r = await api("/api/sim/solved", { json: { preset } });
+      if (r.xp) pop(`<b>+${r.xp}</b> ${esc(G.xp || "XP")}<span>${esc(G.sim || "")}</span>`);
+      (r.badges || []).forEach((b) => pop(`<b>${esc(G.badge || "")}</b><span>${esc(b)}</span>`, "badge"));
+    } catch (e) { reported.delete(preset); }
+  };
 })();

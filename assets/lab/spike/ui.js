@@ -261,7 +261,7 @@ class SpikeSim {
     } else if (byUser) this.log("Программа остановлена.", "muted");
     else this.log("Программа завершилась.", "muted");
     this.evalLive();
-    if (this.allOk) this.toast("Задание выполнено!", "ok");
+    if (this.allOk) { this.toast("Задание выполнено!", "ok"); if (window.academySolved) window.academySolved(this.presetName); }
   }
 
   gotoLine(n) {

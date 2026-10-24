@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf with context %}
+{% from "game/_glyphs.html" import glyph_defs, medal %}
+{% block title %}{{ t('game.title') }} - {{ tr.title|loc }}{% endblock %}
+{% block head %}
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ static_v('css/journey.css') }}">
+{% endblock %}
+{% block content %}
+{{ glyph_defs() }}
+{% set rk = s.rank %}
+{% set cur = state.current %}
+{% set stage = state.stages[sel] %}
+
+{# ─── Поле: звание, опыт и карта сезона ─── #}
+<section class="jy" style="--acc: {{ tr.color }}; --acc-glow: {{ tr.glow }}" aria-labelledby="jy-title">
+  <div class="jy-top">
+    <div class="jy-me">
+      <div class="jy-hex" aria-hidden="true"><span>{{ rk.level }}</span></div>
+      <div class="jy-me-text">
+        <div class="jy-rank" id="jy-title">{{ rk.title|loc }}</div>
+        <div class="jy-bar" role="progressbar" aria-valuemin="{{ rk.floor }}" aria-valuemax="{{ rk.next or s.xp }}" aria-valuenow="{{ s.xp }}"
+             aria-label="{{ t('game.xp') }}"><i style="width: {{ rk.pct }}%"></i></div>
+        <div class="jy-xpline">
+          <b class="jy-num">{{ s.xp }}</b> {{ t('game.xp') }}
+          <span class="jy-dim">{% if rk.next %}{{ t('game.to_next', xp=rk.to_next, title=rk.next_title|loc) }}{% else %}{{ t('game.max_rank') }}{% endif %}</span>
+        </div>
+      </div>
+    </div>
+    <div class="jy-stats">
+      <div class="jy-stat" title="{{ t('game.best_streak', n=s.best_streak) }}">
+        <svg class="jy-flame{% if s.streak %} on{% endif %}" viewBox="0 0 24 24" aria-hidden="true"><use href="#g-flame"/></svg>
+        <span>{{ t('game.streak', n=s.streak) }}</span>
+      </div>
+      {% if me_region and board_region %}<a class="jy-stat" href="{{ url_for('game.leaderboard', region=board_region) }}">{{ t('game.place_region', n=me_region, region=board_region) }}</a>{% endif %}
+      {% if me_country %}<a class="jy-stat" href="{{ url_for('game.leaderboard') }}">{{ t('game.place_country', n=me_country) }}</a>{% endif %}
+      {% if s.week %}<span class="jy-stat jy-gold">{{ t('game.week', xp=s.week) }}</span>{% endif %}
+    </div>
+    <nav class="jy-tracks" aria-label="{{ t('game.title') }}">
+      {% for code, x in tracks.items() %}
+        <a href="{{ url_for('game.journey', track=code) }}" class="{% if code == tr.code %}on{% endif %}" style="--c: {{ x.color }}"
+           {% if code == tr.code %}aria-current="page"{% endif %}>{{ x.title|loc }}</a>
+      {% endfor %}
+    </nav>
+  </div>
+
+  <div class="jy-head">
+    <h1>{{ tr.season|loc }}</h1>
+    <p><span>{{ t('game.season_pct', pct=state.pct) }}</span><span>{{ t('game.steps_done', done=state.done, total=state.total) }}</span></p>
+  </div>
+
+  {% for mode in ('wide', 'tall') %}
+  {% set L = geo[mode] %}
+  <svg class="jy-map jy-map-{{ mode }}" viewBox="0 0 {{ L.w }} {{ L.h }}" role="list" aria-label="{{ t('game.title') }}">
+    <path class="jy-route" d="{{ L.path }}"/>
+    <path class="jy-route-lit" d="{{ L.parts[state.reach] }}" pathLength="100"/>
+    {% for st in state.stages %}
+      {% set x, y = L.nodes[loop.index0] %}
+      {% set final = loop.last %}
+      {% set kind = 'done' if st.complete else ('cur' if st.index == cur else 'next') %}
+      <a href="{{ url_for('game.journey', track=tr.code, stage=st.index) }}#stage" role="listitem"
+         class="jy-node jy-{{ kind }}{% if st.index == sel %} sel{% endif %}{% if final %} final{% endif %}"
+         aria-label="{{ t('game.stage', n=loop.index) }}: {{ st.title|loc }}, {{ t('game.steps_done', done=st.done, total=st.total) }}"
+         style="--d: {{ loop.index0 }}">
+        <g transform="translate({{ x }},{{ y }})">
+          {% set r = 38 if final else 30 %}
+          <circle class="jy-halo" r="{{ r + 10 }}"/>
+          <circle class="jy-disc" r="{{ r }}"/>
+          {% if st.total and st.done %}
+            {% set c = 2 * 3.14159 * (r + 4) %}
+            <circle class="jy-arc" r="{{ r + 4 }}" stroke-dasharray="{{ '%.1f'|format(c * st.done / st.total) }} {{ '%.1f'|format(c) }}" transform="rotate(-90)"/>
+          {% endif %}
+          {% if st.complete %}
+            <svg x="-14" y="-14" width="28" height="28" viewBox="0 0 24 24" class="jy-ico"><use href="#g-check"/></svg>
+          {% elif st.index == cur %}
+            <svg x="-17" y="-17" width="34" height="34" viewBox="0 0 24 24" class="jy-ico jy-bot"><use href="#g-robot"/></svg>
+          {% else %}
+            <svg x="-13" y="-13" width="26" height="26" viewBox="0 0 24 24" class="jy-ico"><use href="#g-{{ 'trophy' if final else st.icon }}"/></svg>
+          {% endif %}
+          {% if L.side %}
+          <text class="jy-n jy-side-t" x="{{ r + 18 }}" y="-14">{{ loop.index }}</text>
+          <text class="jy-label jy-side-t" x="{{ r + 18 }}" y="6">{{ st.title|loc }}</text>
+          <text class="jy-count jy-side-t" x="{{ r + 18 }}" y="24">{{ st.done }}/{{ st.total }}</text>
+          {% else %}
+          <text class="jy-n" y="{{ -r - 16 }}">{{ loop.index }}</text>
+          <text class="jy-label" y="{{ r + 24 }}">{{ st.title|loc }}</text>
+          <text class="jy-count" y="{{ r + 41 }}">{{ st.done }}/{{ st.total }}</text>
+          {% endif %}
+        </g>
+      </a>
+    {% endfor %}
+  </svg>
+  {% endfor %}
+</section>
+
+{% if not g.user.connect_person_id %}
+  <div class="jy-banner">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#g-link"/></svg>
+    <p>{{ t('game.connect_banner') }}</p>
+    {% if connect_on %}<a href="{{ url_for('game.connect_start') }}" class="btn-primary">{{ t('game.do_connect') }}</a>{% endif %}
+  </div>
+{% endif %}
+
+<div class="jy-cols">
+  {# ─── Выбранный этап ─── #}
+  <section class="jy-stage" id="stage" style="--acc: {{ tr.color }}">
+    <header>
+      <div class="jy-stage-n">{{ sel + 1 }}</div>
+      <div>
+        <h2>{{ stage.title|loc }}</h2>
+        <p>{% if stage.complete %}{{ t('game.stage_done') }}{% else %}{{ t('game.steps_done', done=stage.done, total=stage.total) }}{% endif %}</p>
+      </div>
+      <nav class="jy-stage-nav">
+        {% if sel > 0 %}<a href="{{ url_for('game.journey', track=tr.code, stage=sel - 1) }}#stage" aria-label="{{ t('common.back') }}">{{ ic('arrow-left') }}</a>{% endif %}
+        {% if sel + 1 < state.stages|length %}<a href="{{ url_for('game.journey', track=tr.code, stage=sel + 1) }}#stage" aria-label="{{ t('common.next') }}">{{ ic('arrow-right') }}</a>{% endif %}
+      </nav>
+    </header>
+    <ol class="jy-steps">
+      {% for step in stage.steps %}
+      <li class="jy-step{% if step.done %} done{% endif %}">
+        <span class="jy-dot" aria-hidden="true">{% if step.done %}<svg viewBox="0 0 24 24"><use href="#g-check"/></svg>{% endif %}</span>
+        <div class="jy-step-main">
+          <div class="jy-step-title">{{ step.title|loc }}</div>
+          {% if step.hint %}<div class="jy-step-hint">{{ step.hint|loc }}</div>{% endif %}
+          <div class="jy-step-meta">
+            <span class="jy-src jy-src-{{ step.kind }}">{{ t('game.src_' ~ step.kind) }}</span>
+            {% if step.done and step.done_at %}<span>{{ t('game.done_on', date=step.done_at|d) }}</span>{% endif %}
+            {% if step.mark and step.mark.photo_id %}<a href="{{ url_for('learn.evidence_file', file_id=step.mark.photo_id) }}" target="_blank" rel="noopener">{{ t('game.photo') }}</a>{% endif %}
+          </div>
+
+          {% if step.kind == 'self' and not step.done %}
+            <details class="jy-mark">
+              <summary class="btn-secondary btn-sm">{{ t('game.mark') }}</summary>
+              <form method="post" action="{{ url_for('game.mark', track=tr.code) }}" enctype="multipart/form-data">
+                {{ csrf() }}<input type="hidden" name="step" value="{{ step.code }}"><input type="hidden" name="stage" value="{{ sel }}">
+                <input name="note" class="input" maxlength="1000" placeholder="{{ t('game.mark_note') }}" aria-label="{{ t('game.mark_note') }}">
+                {% if step.photo %}
+                  <label class="jy-file">{{ ic('upload', 'w-4 h-4') }} <span>{{ t('game.mark_photo') }}</span>
+                    <input type="file" name="photo" accept="image/*,video/*" class="sr-only"></label>
+                {% endif %}
+                <button class="btn-primary btn-sm">{{ t('game.mark_save') }}</button>
+              </form>
+            </details>
+          {% endif %}
+        </div>
+        <div class="jy-step-side">
+          <span class="jy-xp">+{{ step.xp }}</span>
+          {% if not step.done %}
+            {% if step.kind == 'connect' %}
+              {% if not g.user.connect_person_id %}
+                {% if connect_on %}<a class="btn-secondary btn-sm" href="{{ url_for('game.connect_start') }}">{{ t('game.do_connect') }}</a>{% endif %}
+              {% else %}
+                <a class="btn-secondary btn-sm" href="{{ connect_url }}/cabinet" target="_blank" rel="noopener">{{ t('game.open_connect') }}</a>
+              {% endif %}
+            {% elif step.kind == 'sim' %}
+              <a class="btn-secondary btn-sm" href="{{ tr.sim_url }}{{ step.preset }}">{{ t('game.open_sim') }}</a>
+            {% elif step.kind == 'course' %}
+              <a class="btn-secondary btn-sm" href="{{ url_for('public.program', slug=step.course) }}">{{ t('game.open_course') }}</a>
+            {% endif %}
+          {% elif step.kind == 'self' %}
+            <form method="post" action="{{ url_for('game.mark', track=tr.code) }}">
+              {{ csrf() }}<input type="hidden" name="step" value="{{ step.code }}"><input type="hidden" name="stage" value="{{ sel }}">
+              <button name="action" value="undo" class="jy-undo">{{ t('game.undo') }}</button>
+            </form>
+          {% endif %}
+        </div>
+      </li>
+      {% endfor %}
+    </ol>
+    {% if g.user.connect_person_id %}
+      <form method="post" action="{{ url_for('game.connect_sync') }}" class="jy-sync">
+        {{ csrf() }}
+        {% if g.user.connect_synced_at %}<span>{{ t('game.synced', when=g.user.connect_synced_at|dt) }}</span>{% endif %}
+        <button class="jy-undo">{{ t('game.sync') }}</button>
+      </form>
+    {% endif %}
+  </section>
+
+  {# ─── Значки, рейтинг, опыт ─── #}
+  <aside class="jy-side">
+    <section>
+      <h2>{{ t('game.badges') }} <span class="jy-dim">{{ s.badges|length }}/{{ badges|length }}</span></h2>
+      <ul class="jy-badges">
+        {% for b in badges %}
+          <li class="{{ 'got' if b.earned_at else 'no' }} t-{{ b.tier }}" tabindex="0">
+            {{ medal(b.glyph) }}
+            <span class="jy-tip"><b>{{ b.title|loc }}</b>{{ b.desc|loc }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+    <section>
+      <h2>{{ t('game.board') }}{% if board_region %} <span class="jy-dim">{{ board_region }}</span>{% endif %}</h2>
+      {% if top %}
+      <ol class="jy-board">
+        {% for r in top %}
+          <li class="{% if r.user.id == g.user.id %}me{% endif %}">
+            <span class="jy-place">{{ loop.index }}</span>
+            <span class="jy-who">{{ r.user.full_name }}{% if r.user.id == g.user.id %} <i>({{ t('game.you') }})</i>{% endif %}</span>
+            <span class="jy-pts">{{ r.xp }}</span>
+          </li>
+        {% endfor %}
+      </ol>
+      {% else %}<p class="jy-dim">{{ t('game.lb_empty') }}</p>{% endif %}
+      <a class="jy-more" href="{{ url_for('game.leaderboard') }}">{{ t('game.board_full') }}</a>
+    </section>
+    <section>
+      <h2>{{ t('game.recent') }}</h2>
+      {% if s.recent %}
+      <ul class="jy-recent">
+        {% for e in s.recent %}
+          <li><span class="jy-gold">+{{ e.xp }}</span> <span>{{ t('game.kind_' ~ e.kind) }}{% if e.kind != 'sim' and e.title %}: {{ e.title|loc }}{% endif %}</span></li>
+        {% endfor %}
+      </ul>
+      {% else %}<p class="jy-dim">{{ t('game.no_recent') }}</p>{% endif %}
+    </section>
+  </aside>
+</div>
+{% endblock %}

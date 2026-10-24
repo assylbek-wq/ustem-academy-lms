@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_header %}
+{% block title %}{{ t('game.board') }}{% endblock %}
+{% block head %}
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ static_v('css/journey.css') }}">
+{% endblock %}
+{% block content %}
+{% call page_header(t('game.board'), t('game.lb_lead'), url_for('game.journey_index'), t('game.title')) %}
+  <form method="get" class="flex items-center gap-2">
+    <label for="lb-region" class="text-sm text-slate-500">{{ t('game.lb_region') }}</label>
+    <select id="lb-region" name="region" class="input py-1.5 text-sm w-auto" onchange="this.form.submit()">
+      <option value="">{{ t('game.lb_all') }}</option>
+      {% for r in regions %}<option value="{{ r }}" {% if r == region %}selected{% endif %}>{{ r }}</option>{% endfor %}
+    </select>
+    <noscript><button class="btn-secondary btn-sm">OK</button></noscript>
+  </form>
+{% endcall %}
+
+<p class="text-sm text-slate-500 mb-4">
+  {% if g.user.leaderboard_hidden %}{{ t('game.lb_off') }}{% elif me %}{{ t('game.lb_me', n=me.place) }}{% endif %}
+  <a href="{{ url_for('auth.account') }}" class="text-brand-700 hover:underline ml-1">{{ t('game.lb_hidden_hint') }}</a>
+</p>
+
+{% if rows %}
+<div class="overflow-x-auto">
+<table class="lb-table">
+  <thead><tr><th>{{ t('game.lb_place') }}</th><th>{{ t('game.lb_coach') }}</th><th>{{ t('game.lb_region') }}</th><th>{{ t('game.lb_rank') }}</th><th>{{ t('game.lb_xp') }}</th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+    <tr class="{% if r.user.id == g.user.id %}me{% endif %}">
+      <td class="lb-place">{{ r.place }}</td>
+      <td class="font-medium">{{ r.user.full_name }}{% if r.user.organization %}<div class="text-xs text-slate-500 font-normal">{{ r.user.organization }}</div>{% endif %}</td>
+      <td class="text-slate-600">{{ r.region or '' }}</td>
+      <td class="text-slate-600">{{ r.rank.title|loc }}</td>
+      <td class="lb-xp">{{ r.xp }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+  <div class="card p-8 text-center text-slate-500">{{ t('game.lb_empty') }}</div>
+{% endif %}
+{% endblock %}

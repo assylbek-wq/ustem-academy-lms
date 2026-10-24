@@ -101,6 +101,17 @@ body { font-family: 'Inter', ui-sans-serif, -apple-system, 'Segoe UI', sans-seri
   .prop-label { @apply w-36 shrink-0 text-slate-500 flex items-center gap-1.5; }
 }
 
+/* всплывающие «+25 опыта» и значки */
+#xp-pops { position: fixed; right: 16px; bottom: 16px; z-index: 80; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; pointer-events: none; }
+.xp-pop { display: flex; align-items: baseline; gap: 8px; padding: 10px 14px; border-radius: 12px; background: #1b2530; color: #eef2f6;
+  font-size: 14px; box-shadow: 0 10px 30px rgba(17, 24, 39, .28); animation: xp-in .45s cubic-bezier(.2,1.4,.4,1) both; transition: opacity .5s, transform .5s; }
+.xp-pop b { font: 700 18px/1 Unbounded, Inter, sans-serif; color: #f5c044; }
+.xp-pop span { color: #b8c3cf; }
+.xp-pop-badge b { font-size: 14px; color: #33c27f; }
+.xp-pop.out { opacity: 0; transform: translateY(8px); }
+@keyframes xp-in { from { opacity: 0; transform: translateY(14px) scale(.9); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .xp-pop { animation: none; } }
+
 @media print {
   body { background: #fff; }
   .card { box-shadow: none; }

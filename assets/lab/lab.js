@@ -769,7 +769,10 @@ class Lab {
       }
       if (s.ok) this.checkEls[i].classList.add("ok");
     });
-    if (this.checks.every((_, i) => cs[i] && cs[i].ok)) this.doneEl.hidden = false;
+    if (this.checks.every((_, i) => cs[i] && cs[i].ok) && this.doneEl.hidden) {
+      this.doneEl.hidden = false;
+      if (window.academySolved && this.preset) window.academySolved("lab-" + this.preset);
+    }
   }
 }
 
