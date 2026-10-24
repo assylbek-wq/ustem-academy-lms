@@ -1,0 +1,79 @@
+{# «Урок под ключ»: как провести занятие с учениками по этому уроку. Данные: lesson.kit|loc #}
+{% set k = lesson.kit|loc %}
+{% if k %}
+<section class="kit" id="kit-panel" aria-label="{{ t('kit.title') }}" data-l-prev="{{ t('kit.prev') }}" data-l-next="{{ t('kit.next') }}" data-l-close="{{ t('kit.close') }}">
+  <header class="kit-head">
+    <div>
+      <h2>{{ t('kit.title') }}</h2>
+      <p class="kit-goal">{{ k.goal }}</p>
+    </div>
+    <dl class="kit-facts">
+      <div><dt>{{ t('kit.minutes') }}</dt><dd>{{ k.minutes }} {{ t('kit.min') }}</dd></div>
+      {% if k.group %}<div><dt>{{ t('kit.group') }}</dt><dd>{{ k.group }}</dd></div>{% endif %}
+    </dl>
+    <div class="kit-actions">
+      {% if k.slides %}<button type="button" class="btn-primary btn-sm" data-kit-show>{{ ic('play', 'w-4 h-4') }} {{ t('kit.show') }}</button>{% endif %}
+      <button type="button" class="btn-secondary btn-sm" data-kit-print>{{ ic('download', 'w-4 h-4') }} {{ t('kit.print') }}</button>
+    </div>
+  </header>
+
+  {% if k.say %}
+  <figure class="kit-say">
+    <figcaption>{{ t('kit.say') }}</figcaption>
+    <blockquote>{{ k.say }}</blockquote>
+  </figure>
+  {% endif %}
+
+  <div class="kit-grid">
+    <div>
+      <h3>{{ t('kit.plan') }}</h3>
+      <ol class="kit-plan">
+        {% set ns = namespace(t=0) %}
+        {% for step in k.plan %}
+          <li>
+            <span class="kit-time">{{ ns.t }}-{{ ns.t + step[0] }}</span>
+            <div><b>{{ step[1] }}</b><p>{{ step[2] }}</p></div>
+          </li>
+          {% set ns.t = ns.t + step[0] %}
+        {% endfor %}
+      </ol>
+    </div>
+    <div class="kit-aside">
+      {% if k.prep %}
+      <h3>{{ t('kit.prep') }}</h3>
+      <ul class="kit-ticks">{% for p in k.prep %}<li>{{ p }}</li>{% endfor %}</ul>
+      {% endif %}
+      {% if k.task %}
+      <div class="kit-task">
+        <h3>{{ t('kit.task') }}: {{ k.task.title }}</h3>
+        <p>{{ k.task.text }}</p>
+        {% if k.task.sim %}<a class="btn-secondary btn-sm" href="{{ url_for('lab.ftc', preset=k.task.sim) }}" target="_blank" rel="noopener">{{ ic('target', 'w-4 h-4') }} {{ t('kit.open_sim') }}</a>{% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="kit-grid kit-grid-3">
+    {% if k.check %}<div><h3>{{ t('kit.check') }}</h3><ul class="kit-ticks kit-ok">{% for c in k.check %}<li>{{ c }}</li>{% endfor %}</ul></div>{% endif %}
+    {% if k.mistakes %}<div><h3>{{ t('kit.mistakes') }}</h3><ul class="kit-ticks kit-warn">{% for c in k.mistakes %}<li>{{ c }}</li>{% endfor %}</ul></div>{% endif %}
+    {% if k.homework %}<div><h3>{{ t('kit.homework') }}</h3><p class="kit-text">{{ k.homework }}</p></div>{% endif %}
+  </div>
+
+  {% if k.slides %}
+  <div class="kit-slides-head">
+    <h3>{{ t('kit.slides') }}</h3>
+    <span>{{ t('kit.slides_hint') }}</span>
+  </div>
+  <ol class="kit-slides">
+    {% for s in k.slides %}
+      <li><button type="button" data-kit-show="{{ loop.index0 }}" aria-label="{{ t('kit.show') }}: {{ s.title }}">
+        <span class="kit-slide-n">{{ loop.index }}</span>
+        <b>{{ s.title }}</b>
+        <ul>{% for b in s.bullets[:3] %}<li>{{ b }}</li>{% endfor %}</ul>
+      </button></li>
+    {% endfor %}
+  </ol>
+  <script type="application/json" id="kit-slides">{{ {'title': lesson.title|loc, 'slides': k.slides}|tojson }}</script>
+  {% endif %}
+</section>
+{% endif %}

@@ -310,4 +310,84 @@
       (r.badges || []).forEach((b) => pop(`<b>${esc(G.badge || "")}</b><span>${esc(b)}</span>`, "badge"));
     } catch (e) { reported.delete(preset); }
   };
+  // ─── Урок под ключ: вкладки, печать плана, показ слайдов ────────────
+  const kitTabs = $("[data-kit-tabs]");
+  if (kitTabs) {
+    const tabs = $$("[role=tab]", kitTabs);
+    const pick = (tab, focus) => {
+      tabs.forEach((x) => {
+        const on = x === tab;
+        x.setAttribute("aria-selected", on); x.tabIndex = on ? 0 : -1;
+        document.getElementById(x.getAttribute("aria-controls")).hidden = !on;
+      });
+      if (focus) tab.focus();
+      history.replaceState(null, "", tab.id === "tab-kit" ? "#kit" : location.pathname + location.search);
+    };
+    tabs.forEach((x, i) => {
+      x.addEventListener("click", () => pick(x));
+      x.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight" || e.key === "ArrowLeft") { e.preventDefault(); pick(tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length], true); }
+      });
+    });
+    if (location.hash === "#kit") pick(tabs[1]);
+  }
+  $$("[data-kit-print]").forEach((b) => b.addEventListener("click", () => {
+    document.body.classList.add("print-kit");
+    const panel = document.getElementById("panel-kit"); const wasHidden = panel && panel.hidden;
+    if (panel) panel.hidden = false;
+    window.print();
+    document.body.classList.remove("print-kit");
+    if (panel && wasHidden) panel.hidden = true;
+  }));
+  const slidesData = document.getElementById("kit-slides");
+  if (slidesData) {
+    const data = JSON.parse(slidesData.textContent);
+    const kit = $("#kit-panel");
+    const L = { prev: kit.dataset.lPrev, next: kit.dataset.lNext, close: kit.dataset.lClose };
+    let show = null, idx = 0, lastFocus = null;
+    const render = () => {
+      const s = data.slides[idx];
+      $(".ks-n", show).textContent = `${idx + 1} / ${data.slides.length}`;
+      $(".ks-bar i", show).style.width = `${(100 * (idx + 1)) / data.slides.length}%`;
+      const body = $(".ks-body", show);
+      body.innerHTML = `<h2>${esc(s.title)}</h2><ul>${(s.bullets || []).map((b) => `<li>${esc(b)}</li>`).join("")}</ul>`;
+      body.classList.remove("in"); void body.offsetWidth; body.classList.add("in");
+      $(".ks-prev", show).disabled = idx === 0;
+      $(".ks-next", show).disabled = idx === data.slides.length - 1;
+    };
+    const go = (d) => { const n = Math.max(0, Math.min(data.slides.length - 1, idx + d)); if (n !== idx) { idx = n; render(); } };
+    const close = () => {
+      if (!show) return;
+      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      show.remove(); show = null; document.removeEventListener("keydown", onKey);
+      if (lastFocus) lastFocus.focus();
+    };
+    const onKey = (e) => {
+      if (e.key === "Escape") close();
+      else if (["ArrowRight", "PageDown", " ", "Enter"].includes(e.key)) { e.preventDefault(); go(1); }
+      else if (["ArrowLeft", "PageUp", "Backspace"].includes(e.key)) { e.preventDefault(); go(-1); }
+      else if (e.key === "Home") { idx = 0; render(); }
+      else if (e.key === "End") { idx = data.slides.length - 1; render(); }
+    };
+    const open = (start) => {
+      lastFocus = document.activeElement; idx = start || 0;
+      show = document.createElement("div");
+      show.className = "ks"; show.setAttribute("role", "dialog"); show.setAttribute("aria-modal", "true"); show.setAttribute("aria-label", data.title);
+      show.innerHTML = `<div class="ks-top"><span class="ks-title">${esc(data.title)}</span><span class="ks-n"></span>
+        <button type="button" class="ks-close" aria-label="${esc(L.close)}">✕</button></div>
+        <div class="ks-body" aria-live="polite"></div>
+        <div class="ks-foot"><button type="button" class="ks-prev">${esc(L.prev)}</button><div class="ks-bar"><i></i></div><button type="button" class="ks-next">${esc(L.next)}</button></div>`;
+      document.body.appendChild(show);
+      $(".ks-close", show).addEventListener("click", close);
+      $(".ks-prev", show).addEventListener("click", () => go(-1));
+      $(".ks-next", show).addEventListener("click", () => go(1));
+      $(".ks-body", show).addEventListener("click", (e) => go(e.clientX > window.innerWidth / 3 ? 1 : -1));
+      document.addEventListener("keydown", onKey);
+      render();
+      if (show.requestFullscreen) show.requestFullscreen().catch(() => {});
+      $(".ks-next", show).focus();
+    };
+    $$("[data-kit-show]").forEach((b) => b.addEventListener("click", () => open(parseInt(b.dataset.kitShow || "0", 10) || 0)));
+    document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && show && show.dataset.fs) close(); if (document.fullscreenElement && show) show.dataset.fs = "1"; });
+  }
 })();

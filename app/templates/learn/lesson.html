@@ -8,7 +8,14 @@
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
   <div class="lg:col-span-2 space-y-6 min-w-0">
-    <article class="sm:pr-6">
+    {% if lesson.kit|loc %}
+    <div class="kit-tabs" role="tablist" aria-label="{{ t('kit.title') }}" data-kit-tabs>
+      <button type="button" role="tab" id="tab-lesson" aria-controls="panel-lesson" aria-selected="true">{{ ic('book', 'w-4 h-4') }} {{ t('kit.tab_lesson') }}</button>
+      <button type="button" role="tab" id="tab-kit" aria-controls="panel-kit" aria-selected="false" tabindex="-1">{{ ic('users', 'w-4 h-4') }} {{ t('kit.tab_kit') }}</button>
+    </div>
+    <div id="panel-kit" role="tabpanel" aria-labelledby="tab-kit" hidden>{% include "learn/_kit.html" %}</div>
+    {% endif %}
+    <article class="sm:pr-6" id="panel-lesson" {% if lesson.kit|loc %}role="tabpanel" aria-labelledby="tab-lesson"{% endif %}>
       {% include "learn/_lesson_content.html" %}
 
       {% if lesson.kind == 'quiz' %}
@@ -97,5 +104,5 @@
   </aside>
 </div>
 {% endblock %}
-{% block head %}{% if 'lab-preset-' in (lesson.body|loc) %}<link rel="stylesheet" href="{{ static_v('css/lab.css') }}">{% endif %}{% if 'ftc-sim-' in (lesson.body|loc) %}<link rel="stylesheet" href="{{ static_v('css/ftcsim.css') }}">{% endif %}{% if 'spike-sim-' in (lesson.body|loc) %}<link rel="stylesheet" href="{{ static_v('css/spikesim.css') }}">{% endif %}{% endblock %}
+{% block head %}{% if lesson.kit|loc %}<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="{{ static_v('css/kit.css') }}">{% endif %}{% if 'lab-preset-' in (lesson.body|loc) %}<link rel="stylesheet" href="{{ static_v('css/lab.css') }}">{% endif %}{% if 'ftc-sim-' in (lesson.body|loc) %}<link rel="stylesheet" href="{{ static_v('css/ftcsim.css') }}">{% endif %}{% if 'spike-sim-' in (lesson.body|loc) %}<link rel="stylesheet" href="{{ static_v('css/spikesim.css') }}">{% endif %}{% endblock %}
 {% block scripts %}{% if 'lab-preset-' in (lesson.body|loc) %}<script src="{{ static_v('js/lab.js') }}" defer></script>{% endif %}{% if 'ftc-sim-' in (lesson.body|loc) %}<script src="{{ static_v('js/ftcsim.js') }}" defer></script>{% endif %}{% if 'spike-sim-' in (lesson.body|loc) %}<script src="{{ static_v('js/spikesim.js') }}" defer></script>{% endif %}<script>window.I18N_AI = {thinking: {{ t("ai.thinking")|tojson }}, failed: {{ t("ai.failed")|tojson }}};</script>{% endblock %}

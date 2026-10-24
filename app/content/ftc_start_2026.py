@@ -1112,3 +1112,8 @@ PROGRAM = {
         },
     ],
 }
+
+# Уроки под ключ: план занятия с учениками и слайды для каждого урока (app/content/ftc_kits)
+from .ftc_kits import attach as _attach_kits  # noqa: E402
+
+_attach_kits(PROGRAM)

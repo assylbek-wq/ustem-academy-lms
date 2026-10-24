@@ -1,0 +1,98 @@
+/* Урок под ключ: план занятия как лист на планшете тренера, слайды для проектора. */
+.kit, .ks { --k-ink: #1f2a35; --k-ink-2: #4a5866; --k-ink-3: #7d8b99; --k-line: #e3e9ef; --k-acc: #f27c1c; --k-acc-soft: #fff1e4;
+  --k-ok: #2f9e67; --k-warn: #c4413c; --k-display: Unbounded, Inter, system-ui, sans-serif; }
+
+.kit-tabs { display: flex; gap: 4px; margin: 0 0 22px; padding: 4px; border-radius: 12px; background: #f1f4f7; width: fit-content; max-width: 100%; }
+.kit-tabs button { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border: 0; border-radius: 9px; background: none;
+  font: 600 14px/1.2 Inter, system-ui, sans-serif; color: #5a6774; cursor: pointer; }
+.kit-tabs button[aria-selected="true"] { background: #fff; color: #1f2a35; box-shadow: 0 1px 2px rgba(31, 42, 53, .08), 0 0 0 1px #e3e9ef; }
+.kit-tabs button:focus-visible { outline: 2px solid #0085ff; outline-offset: 2px; }
+
+.kit { color: var(--k-ink); }
+.kit h2 { margin: 0; font: 800 24px/1.15 var(--k-display); letter-spacing: -.02em; }
+.kit h3 { margin: 0 0 10px; font-size: 15px; font-weight: 700; }
+.kit-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 14px 24px; padding-bottom: 18px; border-bottom: 2px solid var(--k-ink); }
+.kit-goal { margin: 8px 0 0; font-size: 16px; line-height: 1.5; color: var(--k-ink-2); max-width: 62ch; }
+.kit-facts { display: flex; gap: 22px; margin: 0; align-self: start; }
+.kit-facts dt { font-size: 12.5px; color: var(--k-ink-3); }
+.kit-facts dd { margin: 2px 0 0; font: 700 17px/1.2 var(--k-display); }
+.kit-facts div:not(:first-child) dd { font: 600 14px/1.35 Inter, system-ui, sans-serif; max-width: 220px; }
+.kit-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
+
+.kit-say { margin: 22px 0 0; padding: 16px 18px 16px 20px; border-left: 4px solid var(--k-acc); background: var(--k-acc-soft); border-radius: 0 12px 12px 0; }
+.kit-say figcaption { font-size: 13px; font-weight: 700; color: #9a4d0e; margin-bottom: 6px; }
+.kit-say blockquote { margin: 0; font-size: 16px; line-height: 1.6; font-style: italic; color: #3a2a1c; }
+
+.kit-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 28px; margin-top: 26px; }
+.kit-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; padding-top: 22px; border-top: 1px solid var(--k-line); }
+
+.kit-plan { list-style: none; margin: 0; padding: 0; position: relative; }
+.kit-plan li { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 12px; padding: 0 0 16px; position: relative; }
+.kit-plan li::before { content: ""; position: absolute; left: 30px; top: 26px; bottom: 0; width: 2px; background: var(--k-line); }
+.kit-plan li:last-child::before { display: none; }
+.kit-time { justify-self: start; padding: 4px 8px; border-radius: 8px; background: var(--k-ink); color: #fff; font: 600 12px/1.2 var(--k-display);
+  white-space: nowrap; position: relative; z-index: 1; height: fit-content; }
+.kit-plan b { display: block; font-size: 15px; }
+.kit-plan p { margin: 3px 0 0; font-size: 14px; line-height: 1.55; color: var(--k-ink-2); }
+
+.kit-aside { display: flex; flex-direction: column; gap: 22px; }
+.kit-ticks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 14px; line-height: 1.5; color: var(--k-ink-2); }
+.kit-ticks li { position: relative; padding-left: 24px; }
+.kit-ticks li::before { content: ""; position: absolute; left: 0; top: 3px; width: 14px; height: 14px; border-radius: 4px; box-shadow: inset 0 0 0 2px #b9c5d0; }
+.kit-ok li::before { border-radius: 50%; box-shadow: inset 0 0 0 2px var(--k-ok); }
+.kit-warn li::before { border-radius: 2px; transform: rotate(45deg) scale(.8); box-shadow: inset 0 0 0 2px var(--k-warn); }
+.kit-task { padding: 16px; border-radius: 14px; background: #17212b; color: #e6ecf1; }
+.kit-task h3 { color: #fff; }
+.kit-task p { margin: 0 0 12px; font-size: 14px; line-height: 1.55; color: #c4cfd9; }
+.kit-task p:last-child { margin-bottom: 0; }
+.kit-text { margin: 0; font-size: 14px; line-height: 1.55; color: var(--k-ink-2); }
+
+.kit-slides-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--k-line); }
+.kit-slides-head span { font-size: 13px; color: var(--k-ink-3); }
+.kit-slides { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.kit-slides button { position: relative; width: 100%; aspect-ratio: 16 / 10; padding: 12px; border: 0; border-radius: 10px; text-align: left; cursor: pointer; overflow: hidden;
+  background: #17212b; color: #eef2f6; display: flex; flex-direction: column; gap: 6px; }
+.kit-slides button:hover { box-shadow: 0 0 0 3px var(--k-acc); }
+.kit-slides button:focus-visible { outline: 3px solid #0085ff; outline-offset: 2px; }
+.kit-slide-n { font: 700 11px var(--k-display); color: var(--k-acc); }
+.kit-slides b { font: 700 13px/1.25 var(--k-display); }
+.kit-slides ul { margin: 0; padding: 0 0 0 12px; font-size: 10.5px; line-height: 1.4; color: #aab6c2; }
+
+/* ─── Показ слайдов ─── */
+.ks { position: fixed; inset: 0; z-index: 100; display: grid; grid-template-rows: auto 1fr auto; background: #121a22; color: #f2f5f8;
+  background-image: linear-gradient(#1b2632 1px, transparent 1px), linear-gradient(90deg, #1b2632 1px, transparent 1px); background-size: 12vmin 12vmin; }
+.ks-top { display: flex; align-items: center; gap: 16px; padding: 18px 28px; font-size: 15px; color: #9fb0bf; }
+.ks-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ks-n { font: 700 15px var(--k-display); color: var(--k-acc); }
+.ks-close { width: 40px; height: 40px; border: 0; border-radius: 10px; background: rgba(255, 255, 255, .06); color: #fff; font-size: 18px; cursor: pointer; }
+.ks-body { align-self: center; padding: 0 9vw; cursor: pointer; max-width: 1500px; }
+.ks-body h2 { margin: 0 0 4vh; font: 800 clamp(30px, 5.4vw, 84px)/1.08 var(--k-display); letter-spacing: -.02em; }
+.ks-body ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2.4vh; }
+.ks-body li { position: relative; padding-left: 1.4em; font-size: clamp(20px, 2.6vw, 42px); line-height: 1.3; color: #d5dee6; }
+.ks-body li::before { content: ""; position: absolute; left: 0; top: .5em; width: .5em; height: .5em; border-radius: 3px; background: var(--k-acc); }
+.ks-body.in h2, .ks-body.in li { animation: ks-in .35s ease-out both; }
+.ks-body.in li:nth-child(2) { animation-delay: .05s; } .ks-body.in li:nth-child(3) { animation-delay: .1s; } .ks-body.in li:nth-child(4) { animation-delay: .15s; }
+@keyframes ks-in { from { opacity: 0; transform: translateY(10px); } }
+.ks-foot { display: flex; align-items: center; gap: 18px; padding: 18px 28px 24px; }
+.ks-foot button { padding: 10px 18px; border: 0; border-radius: 10px; background: rgba(255, 255, 255, .08); color: #fff; font: 600 15px Inter, sans-serif; cursor: pointer; }
+.ks-foot button:disabled { opacity: .3; cursor: default; }
+.ks-foot button:focus-visible, .ks-close:focus-visible { outline: 2px solid var(--k-acc); outline-offset: 2px; }
+.ks-bar { flex: 1; height: 4px; border-radius: 2px; background: #26323e; overflow: hidden; }
+.ks-bar i { display: block; height: 100%; background: var(--k-acc); transition: width .25s; }
+
+@media (max-width: 900px) {
+  .kit-grid, .kit-grid-3 { grid-template-columns: minmax(0, 1fr); }
+  .kit-head { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) { .ks-body.in h2, .ks-body.in li { animation: none; } }
+
+/* Печать плана: только лист занятия, без слайдов и меню */
+@media print {
+  body.print-kit * { visibility: hidden; }
+  body.print-kit #panel-kit, body.print-kit #panel-kit * { visibility: visible; }
+  body.print-kit #panel-kit { position: absolute; left: 0; top: 0; width: 100%; }
+  body.print-kit .kit-actions, body.print-kit .kit-slides, body.print-kit .kit-slides-head { display: none; }
+  .kit-task { background: none; color: #000; border: 1.5px solid #000; }
+  .kit-task h3, .kit-task p { color: #000; }
+  .kit-time { background: none; color: #000; border: 1px solid #000; }
+}

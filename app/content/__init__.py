@@ -95,7 +95,7 @@ def load(slug: str, replace: bool = False, cohorts: bool = True) -> Program:
             db.session.flush()
             for li, les in enumerate(mod["lessons"]):
                 lesson = Lesson(module_id=m.id, position=li, kind=les["kind"], title=les["title"],
-                                body=les.get("body", {}), video_url=les.get("video", {}),
+                                body=les.get("body", {}), video_url=les.get("video", {}), kit=les.get("kit"),
                                 duration_min=les.get("minutes", 10))
                 db.session.add(lesson)
                 db.session.flush()
@@ -180,6 +180,7 @@ def _update_level_content(level: Level, lv_spec: dict) -> None:
             lesson.module_id, lesson.position, lesson.kind = m.id, li, les["kind"]
             lesson.title, lesson.body = les["title"], les.get("body", {})
             lesson.video_url, lesson.duration_min = les.get("video", {}), les.get("minutes", 10)
+            lesson.kit = les.get("kit")
             db.session.flush()
             kept_ids.add(lesson.id)
             QuizQuestion.query.filter_by(lesson_id=lesson.id).delete()

@@ -51,3 +51,9 @@ USTEM Academy - LMS для подготовки учителей. Flask + SQLAlc
   подключение `/connect/start` -> Connect `/link/academy` -> `/connect/callback`, данные `GET /api/v1/academy/journey`,
   ключ `CONNECT_API_KEY` = ключ academy из `CERT_API_KEYS` Connect). Решенные задания симуляторов приходят
   в `POST /api/sim/solved` (`window.academySolved` в app.js).
+- Урок под ключ (план занятия с учениками, слайды для проектора, печать плана): поле `Lesson.kit` = `{"ru": {...}}`,
+  шаблон `learn/_kit.html`, в уроке вкладка «Провести занятие с учениками». Для «FTC с нуля» данные в
+  `app/content/ftc_kits/level*.py` (ключ - русское название урока), подключаются `attach()` в `ftc_start_2026.py`.
+- Миграции для SQLite: не используйте `batch_alter_table` для таблиц, на которые ссылаются ON DELETE CASCADE
+  (users, lessons, programs): SQLite пересоздает таблицу и каскадно удаляет связанные записи. Добавляйте колонки
+  через `op.add_column`, уникальность - через `op.create_index(..., unique=True)`.

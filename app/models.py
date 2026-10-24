@@ -208,6 +208,7 @@ class Lesson(db.Model):
     title = db.Column(JSON, nullable=False, default=dict)
     body = db.Column(JSON, default=dict)        # Markdown по языкам
     video_url = db.Column(JSON, default=dict)   # YouTube / Vimeo / прямой mp4, по языкам
+    kit = db.Column(JSON)  # «урок под ключ»: план занятия с учениками, слайды (по языкам), см. learn/_kit.html
     duration_min = db.Column(db.Integer, default=10)
     module = db.relationship("Module", back_populates="lessons")
     questions = db.relationship("QuizQuestion", back_populates="lesson", order_by="QuizQuestion.position",
