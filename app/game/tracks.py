@@ -358,12 +358,91 @@ WSO_CUBESAT = {
     ],
 }
 
+def _cansat(preset, ru, kk, en):
+    return sim(preset, ml("Симулятор: " + ru, "Симулятор: " + kk, "Simulator: " + en))
+
+
+# CanSat: регламент WSO, глава 12 (банка до 300 г, ракета до 1500 г, двигатель РД1-100-7М, устойчивость от 1,5 калибра)
+WSO_CANSAT = {
+    "code": "wso-cansat", "programs": ["WSO_CANSAT"], "color": "#c2410c",
+    "title": ml("WSO: CanSat", "WSO: CanSat", "WSO: CanSat"),
+    "season": ml("Олимпиада 2026-2027, категория CanSat", "Олимпиада 2026-2027, CanSat санаты", "Olympiad 2026-2027, CanSat category"),
+    "sim_url": "/lab/cansat?preset=",
+    "stages": [
+        {"code": "start", "icon": "flag", "title": ml("Старт", "Басы", "Start"), "steps": [
+            LINK,
+            self_step("rules", 30, ml("Прочитать главу CanSat в регламенте", "Регламенттегі CanSat тарауын оқу", "Read the CanSat chapter of the rules"),
+                      ml("Требования к ракете и CanSat, предстартовая проверка, критерии финала.", "Зымыран мен CanSat талаптары, ұшу алдындағы тексеру, финал критерийлері.",
+                         "Rocket and CanSat requirements, safety check, final criteria.")),
+            _cansat("cansat-build", "соберите CanSat", "CanSat құрастырыңыз", "build a CanSat"),
+        ]},
+        {"code": "team", "icon": "team", "title": ml("Команда", "Команда", "Team"), "steps": [
+            connect("team", 150, ml("Команда CanSat в USTEM Connect", "USTEM Connect-тегі CanSat командасы", "CanSat team in USTEM Connect"),
+                    ml("Тренер создает команду в категории CanSat: от 1 до 4 участников.", "Жаттықтырушы CanSat санатында команда құрады: 1-ден 4 қатысушыға дейін.",
+                       "The coach creates a CanSat team of 1 to 4 participants."), "team"),
+            connect("approved", 200, ml("Заявка на олимпиаду одобрена", "Олимпиадаға өтінім мақұлданды", "Olympiad application approved"),
+                    ml("Команда попала в возрастную группу и допущена.", "Команда жас тобына кіріп, жіберілді.", "The team fits an age group and is admitted."),
+                    "approved"),
+        ]},
+        {"code": "rocket", "icon": "flag-race", "title": ml("Ракета-носитель", "Зымыран-тасығыш", "Launch vehicle"), "steps": [
+            _cansat("cansat-rocket", "устойчивая ракета", "орнықты зымыран", "a stable rocket"),
+            _cansat("cansat-recovery", "парашюты и вышибной заряд", "парашюттер мен лақтыру заряды", "parachutes and ejection"),
+            self_step("ork", 80, ml("Проект в OpenRocket", "OpenRocket жобасы", "OpenRocket project"),
+                      ml("Файл .ork со стандартным двигателем, устойчивость не меньше 1,5 калибра на всем активном участке.",
+                         "Стандартты қозғалтқышы бар .ork файлы, белсенді бөлікте орнықтылық кемінде 1,5 калибр.",
+                         "An .ork file with the standard motor, stability of at least 1.5 calibers in powered flight.")),
+            self_step("rocket-built", 60, ml("Ракета собрана", "Зымыран жиналды", "Rocket built"),
+                      ml("Фото ракеты рядом с рулеткой и весами: длина, диаметр, масса как в проекте.", "Зымыранның рулетка мен таразы жанындағы суреті: ұзындығы, диаметрі, массасы жобадағыдай.",
+                         "A photo of the rocket with a tape and scales: length, diameter and mass as designed."), photo=True),
+        ]},
+        {"code": "cansat", "icon": "chip", "title": ml("CanSat и программа", "CanSat және бағдарлама", "CanSat and software"), "steps": [
+            self_step("schematic", 50, ml("Схема электроники", "Электроника сызбасы", "Electronics schematic"),
+                      ml("PDF со всеми компонентами, выводами и напряжениями питания.", "Барлық компоненттер, шығыстар және қоректену кернеулері бар PDF.",
+                         "A PDF with all components, pins and supply voltages.")),
+            _cansat("cansat-telemetry", "запись 10 раз в секунду", "секундына 10 рет жазу", "10 Hz logging"),
+            _cansat("cansat-events", "старт и апогей", "старт пен апогей", "launch and apogee"),
+            self_step("can-built", 60, ml("CanSat собран и пишет данные", "CanSat жиналды және деректер жазады", "CanSat built and logging"),
+                      ml("Фото банки и файл с SD после проверки на столе.", "Банка суреті және үстелде тексерілгеннен кейінгі SD файлы.",
+                         "A photo of the can and the SD file after a bench test."), photo=True),
+        ]},
+        {"code": "selection", "icon": "book", "title": ml("Отбор", "Іріктеу", "Selection"), "steps": [
+            self_step("docs", 80, ml("Документация отборочного этапа", "Іріктеу кезеңінің құжаттамасы", "Selection documentation"),
+                      ml("Файл .ork, 3D-модели ракеты и CanSat, схема и презентация сданы в Connect.", "Файл .ork, зымыран мен CanSat 3D-модельдері, сызба және презентация Connect-ке тапсырылды.",
+                         "The .ork file, 3D models, schematic and presentation are submitted in Connect.")),
+        ]},
+        {"code": "tests", "icon": "box", "title": ml("Испытания", "Сынақтар", "Tests"), "steps": [
+            self_step("drop", 60, ml("Сброс CanSat с высоты", "CanSat-ты биіктіктен тастау", "CanSat drop test"),
+                      ml("Парашют раскрывается, скорость снижения как в расчете, данные сохранились.", "Парашют ашылады, түсу жылдамдығы есептегідей, деректер сақталды.",
+                         "The parachute opens, the descent rate matches the calculation, data survive."), photo=True),
+            self_step("ejection", 60, ml("Проверка спасательной системы", "Құтқару жүйесін тексеру", "Recovery system test"),
+                      ml("Пыж, амортизатор и парашют ракеты укладываются и выходят без заеданий.", "Пыж, амортизатор және зымыран парашюты кептелмей жиналады және шығады.",
+                         "Wadding, shock cord and rocket parachute pack and deploy freely.")),
+        ]},
+        {"code": "final", "icon": "podium", "title": ml("Финал", "Финал", "Final"), "steps": [
+            _cansat("cansat-mission", "финальный запуск", "финалдық ұшыру", "final launch"),
+            connect("played", 400, ml("Выступили в финале", "Финалда өнер көрсеттік", "Competed in the final"),
+                    ml("Команду отметили на регистрации в день финала.", "Финал күні команда тіркеуде белгіленді.", "The team was checked in on the final day."),
+                    "played"),
+            self_step("launch", 80, ml("Ракета стартовала, CanSat найден", "Зымыран ұшты, CanSat табылды", "Rocket launched, CanSat recovered"),
+                      ml("Фото старта и график высоты по данным CanSat.", "Старт суреті және CanSat деректері бойынша биіктік графигі.",
+                         "A launch photo and an altitude chart from the CanSat data."), photo=True),
+        ]},
+        {"code": "results", "icon": "trophy", "title": ml("Итоги", "Қорытынды", "Results"), "steps": [
+            connect("award", 600, ml("Награда олимпиады", "Олимпиада марапаты", "Olympiad award"),
+                    ml("Место или награда категории.", "Орын не санат марапаты.", "A place or category award."), "award"),
+            connect("advanced", 800, ml("Прошли на следующий уровень", "Келесі деңгейге өттік", "Advanced to the next level"),
+                    ml("Отметка «проходит дальше» в итогах.", "Қорытындыдағы «әрі қарай өтеді» белгісі.", "Marked as advancing in the results."), "advanced"),
+        ]},
+    ],
+}
+
 # Пути, которые создаются при первом запуске; дальше их правят в Студии (Студия -> Пути)
 SEED_PATHS = [
     {**TRACKS["fll"], "programs": [TRACKS["fll"]["program"]]},
     {**TRACKS["ftc"], "programs": [TRACKS["ftc"]["program"]]},
     WSO,
     WSO_CUBESAT,
+    WSO_CANSAT,
 ]
 
 # Звания тренера по опыту
@@ -393,6 +472,8 @@ BADGES: dict[str, dict] = {
                    "desc": ml("Все задания симулятора FTC.", "FTC симуляторының барлық тапсырмасы.", "Every FTC simulator task.")},
     "cubesat-master": {"tier": "gold", "glyph": "chip", "title": ml("Мастер CubeSat", "CubeSat шебері", "CubeSat master"),
                        "desc": ml("Все задания симулятора CubeSat.", "CubeSat симуляторының барлық тапсырмасы.", "Every CubeSat simulator task.")},
+    "cansat-master": {"tier": "gold", "glyph": "flag-race", "title": ml("Мастер CanSat", "CanSat шебері", "CanSat master"),
+                      "desc": ml("Все задания симулятора CanSat.", "CanSat симуляторының барлық тапсырмасы.", "Every CanSat simulator task.")},
     "certified": {"tier": "silver", "glyph": "medal", "title": ml("Сертифицирован", "Сертификатталған", "Certified"),
                   "desc": ml("Получен первый сертификат уровня.", "Алғашқы деңгей сертификаты алынды.", "Earned a first level certificate.")},
     "team": {"tier": "bronze", "glyph": "team", "title": ml("Своя команда", "Өз командам", "Own team"),
@@ -429,7 +510,7 @@ def all_steps(track: dict):
 def sim_presets(prefix: str) -> list[str]:
     """Все задания симулятора с этим префиксом (для значков «Мастер SPIKE», «Мастер FTC», «Мастер CubeSat»)."""
     from pathlib import Path
-    folder = {"spike-": "spikesim/presets", "ftc-": "ftcsim/presets", "cubesat-": "cubesat/presets"}[prefix]
+    folder = {"spike-": "spikesim/presets", "ftc-": "ftcsim/presets", "cubesat-": "cubesat/presets", "cansat-": "cansat/presets"}[prefix]
     return sorted(p.stem for p in (Path(__file__).resolve().parents[1] / "static" / folder).glob(f"{prefix}*.json")
                   if "sandbox" not in p.stem)
 

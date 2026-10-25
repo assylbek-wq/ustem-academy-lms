@@ -1,18 +1,15 @@
-// Модель спутника без DOM: бюджеты массы и энергии, радиолиния, предстартовая проверка.
-// Используется конструктором (ui.js), полетом (runner.js) и проверками заданий.
+// Модель CubeSat 1U: масса, стек плат, энергия, радиолиния и предстартовая проверка по регламенту WSO (глава 13).
 import { CATEGORIES, FRAME_STACK, PARTS, part } from "./catalog.js";
+import { FADE, TX_EFF, TX_LEVELS, airtime, linkBudget, txPowerW } from "../sat/core.js";
 
+export { FADE, TX_LEVELS };
 export const MAX_MASS = 800;            // г, правила WSO CubeSat 13.4.1
 export const WIRING = 0.06;             // провода, крепеж, разъемы: 6% от массы компонентов
 export const BOARD_GAP = 2;             // зазор между платами в стеке, мм
 export const DCDC = 0.9;                // КПД преобразователя питания
-export const TX_EFF = 0.3;              // КПД передатчика: доля мощности питания, уходящая в эфир
-export const TX_LEVELS = [10, 14, 17, 20]; // дБм
-export const OTHER_LOSS = 3;            // кабели, рассогласование, корпус, дБ
-export const FADE = 10;                 // рекомендуемый запас на замирания и вращение, дБ
 
 export const DEFAULT_FLIGHT = { altMax: 500, ascent: 3, descent: 3, hold: 300, pre: 60, post: 30, station: 150,
-  groundP: 973.5, groundT: 12, lat: 51.0905, lon: 71.4185, spin: 18, seed: 7 };
+  groundP: 973.5, groundT: 12, lat: 51.0905, lon: 71.4185, spin: 18, wind: 4, seed: 7 };
 
 export function flightPlan(f = {}) {
   const fl = { ...DEFAULT_FLIGHT, ...f };
@@ -64,31 +61,26 @@ export function radio(cfg) {
   return { ...r, mode, txDbm: TX_LEVELS.includes(+cfg.txDbm) ? +cfg.txDbm : 14 };
 }
 
-export const txPowerW = (dbm) => Math.pow(10, dbm / 10) / 1000;
-export const airtime = (bytes, kbps) => ((bytes + 13) * 8) / (kbps * 1000); // 13 байт: преамбула, заголовок, CRC
+/** Радиолиния на борту и на станции для бюджета: модуль, режим, мощность, антенны */
+export function linkOf(cfg) {
+  const r = radio(cfg);
+  return r ? { radio: r, mode: r.mode, txDbm: r.txDbm, ant: find(cfg, "antenna"), gs: find(cfg, "station") } : null;
+}
 
-/** Потери в свободном пространстве, дБ */
-export const fspl = (dKm, fMHz) => 20 * Math.log10(Math.max(dKm, 0.001)) + 20 * Math.log10(fMHz) + 32.44;
-
-/** Потери из-за диаграммы направленности вертикального штыря: прямо вверх и вниз он почти не излучает */
-export const patternLoss = (elevDeg) => Math.min(20, -20 * Math.log10(Math.max(Math.cos((elevDeg * Math.PI) / 180), 0.1)));
-
-/** Радиолиния на расстоянии distM при угле места elevDeg (угол спутника над горизонтом, если смотреть со станции) */
+/** Радиолиния на расстоянии distM при угле места elevDeg */
 export function link(cfg, distM, elevDeg = 0) {
-  const r = radio(cfg), ant = find(cfg, "antenna"), gs = find(cfg, "station");
-  if (!r || !ant || !gs) return null;
-  const bad = ant.freq !== r.freq ? "antenna" : gs.freq !== r.freq ? "station" : null;
-  const loss = fspl(distM / 1000, r.freq);
-  const pattern = (ant.omni ? patternLoss(elevDeg) : 0) + (gs.omni ? patternLoss(elevDeg) : 0);
-  const prx = r.txDbm + ant.gain + gs.gain - loss - pattern - OTHER_LOSS - (bad ? 40 : 0);
-  return { prx, margin: prx - r.mode.sens, sens: r.mode.sens, loss, pattern, bad, r, ant, gs };
+  const l = linkOf(cfg);
+  const b = l && linkBudget(l, distM, elevDeg);
+  return b ? { ...b, r: l.radio, ant: l.ant, gs: l.gs } : null;
 }
 
 /** Самая трудная точка полета для связи: проверяем дальнюю точку и точку с самым большим углом места */
 export function worstLink(cfg, fl) {
   let worst = null;
   for (let i = 0; i <= 20; i++) {
-    const alt = (fl.altMax * i) / 20, d = Math.hypot(alt, fl.station), el = (Math.atan2(alt, fl.station) * 180) / Math.PI;
+    // ветер наклоняет трос и уносит спутник от станции: учитываем снос на этой высоте
+    const alt = (fl.altMax * i) / 20, x = fl.station + alt * Math.tan((Math.min(35, (fl.wind || 0) * 2.6 * Math.pow(Math.max(2, alt) / 10, 0.14)) * Math.PI) / 180);
+    const d = Math.hypot(alt, x), el = (Math.atan2(alt, x) * 180) / Math.PI;
     const ln = link(cfg, d, el);
     if (ln && (!worst || ln.margin < worst.margin)) worst = { ...ln, dist: d, elev: el, alt };
   }
@@ -100,7 +92,7 @@ export function power(cfg, pktBytes = 48, period = 1) {
   const list = items(cfg);
   const idle = list.reduce((s, p) => s + (p.idle || 0), 0) / 1000;
   const r = radio(cfg);
-  const duty = r ? Math.min(1, airtime(Math.min(pktBytes, r.maxlen), r.mode.kbps) / period) : 0;
+  const duty = r ? Math.min(1, airtime(r, r.mode, Math.min(pktBytes, r.maxlen)) / period) : 0;
   const tx = r ? (txPowerW(r.txDbm) / TX_EFF) * duty : 0;
   const bms = list.some((p) => p.bms);
   const total = (idle + tx) / (bms ? DCDC : 1);

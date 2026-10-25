@@ -1,4 +1,4 @@
-// Модуль sat для бортовой программы CubeSat (MicroPython). Внутри вызывает _sat (JavaScript, runner.js).
+// Модуль sat для бортовой программы CubeSat и CanSat (MicroPython). Внутри вызывает _sat (JavaScript, симуляция полета).
 // Время виртуальное: sleep() и каждый вызов датчика продвигают часы полета, программа работает весь полет.
 export const SAT_PY = `
 import _sat
@@ -49,6 +49,9 @@ class _BME:
 
 
 class _IMU:
+    def range(self, g):
+        """Диапазон акселерометра: 2, 4, 8 или 16 g. По умолчанию 2 g: старт ракеты в него не помещается."""
+        _r(_sat.setrange(int(g)))
     def accel(self):
         """Ускорение (x, y, z), м/с2. В покое z около 9.8."""
         return _t(_sat.vec("accel"))
@@ -75,10 +78,19 @@ class _CO2:
         return _r(_sat.read("co2"))
 
 
+class _Therm:
+    def temperature(self):
+        """Наружная температура с выносного датчика DS18B20, градусы. Новое значение раз в 0,75 с."""
+        return _r(_sat.read("ext_t"))
+
+
 class _Camera:
     def capture(self):
         """Сделать снимок и сохранить на накопитель. Возвращает имя файла."""
         return _r(_sat.photo())
+    def video(self, on=True):
+        """Начать (True) или остановить (False) запись видео на накопитель."""
+        _r(_sat.video(bool(on)))
 
 
 class _Radio:
@@ -106,6 +118,7 @@ bme = _BME()
 imu = _IMU()
 gps = _GPS()
 light = _Light()
+therm = _Therm()
 co2 = _CO2()
 camera = _Camera()
 radio = _Radio()

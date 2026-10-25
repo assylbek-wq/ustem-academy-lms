@@ -18,7 +18,7 @@ from ..services import connect, game, storage
 bp = Blueprint("game", __name__)
 
 STATIC = Path(__file__).resolve().parents[1] / "static"
-SIM_DIRS = {"spike-": ("spikesim/presets", ""), "ftc-": ("ftcsim/presets", ""), "cubesat-": ("cubesat/presets", ""),
+SIM_DIRS = {"spike-": ("spikesim/presets", ""), "ftc-": ("ftcsim/presets", ""), "cubesat-": ("cubesat/presets", ""), "cansat-": ("cansat/presets", ""),
             "lab-": ("lab/presets", "lab-")}
 
 
@@ -105,6 +105,8 @@ def sim_url(preset: str) -> str:
         return url_for("lab.ftc", preset=preset)
     if preset.startswith("cubesat-"):
         return url_for("lab.cubesat", preset=preset)
+    if preset.startswith("cansat-"):
+        return url_for("lab.cansat", preset=preset)
     return url_for("lab.index", preset=preset.removeprefix("lab-"))
 
 

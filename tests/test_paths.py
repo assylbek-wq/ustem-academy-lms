@@ -47,7 +47,7 @@ class PathsTest(AppTestCase):
 
     def test_wso_path_from_connect_category(self):
         self.user.connect_person_id = "0b5f8e0a-1111-4222-8333-944455556666"
-        self.user.connect_snapshot = {"person": {}, "teams": [{"program": "WSO_CANSAT", "is_current": True, "status": "draft",
+        self.user.connect_snapshot = {"person": {}, "teams": [{"program": "WSO_ROVERS", "is_current": True, "status": "draft",
             "students": 4, "registrations": [{"status": "approved", "kind": "national", "awards": [], "starts_at": "2026-12-01T05:00:00Z"}]}]}
         db.session.commit()
         mine = gpaths.for_user(self.user)

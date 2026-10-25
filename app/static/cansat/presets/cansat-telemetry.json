@@ -1,0 +1,65 @@
+{
+ "title": "Запись 10 раз в секунду",
+ "task": "Полет от старта до раскрытия парашюта длится около 9 секунд: записи раз в секунду мало. Пишите на SD не реже 10 раз в секунду и отправляйте на станцию каждую 4-ю строку: пакет LoRa летит около 80 мс, все строки в эфир не помещаются.\nРадио не должно молчать дольше 2 секунд за весь полет.",
+ "config": {
+  "items": [
+   "body-pla",
+   "obc-pico",
+   "bat-lipo1000",
+   "eps-tp4056",
+   "bme280",
+   "imu",
+   "gps",
+   "sd",
+   "radio-lora",
+   "ant-whip433",
+   "gs-yagi433"
+  ],
+  "radioMode": "sf7",
+  "txDbm": 14,
+  "canChute": 22,
+  "rocket": {
+   "d": 75,
+   "len": 100,
+   "material": "paper",
+   "nose": "ogive",
+   "noseK": 3,
+   "fins": 4,
+   "finMat": "balsa",
+   "root": 110,
+   "tip": 50,
+   "span": 70,
+   "sweep": 50,
+   "chute": 60,
+   "rail": 3
+  }
+ },
+ "python": "from sat import *\n\nn = 0\nwhile True:\n    line = \"%d,%.2f,%.2f\" % (n, time(), bme.pressure())\n    sd.write(line)\n    radio.send(line)\n    n += 1\n    sleep(1)\n",
+ "tab": "flight",
+ "checks": [
+  {
+   "type": "no_error",
+   "label": "Программа работает без ошибок"
+  },
+  {
+   "type": "sd_rate",
+   "hz": 10,
+   "label": "Запись на SD не реже 10 раз в секунду"
+  },
+  {
+   "type": "rx_rate",
+   "hz": 2,
+   "label": "Станция принимает не реже 2 пакетов в секунду"
+  },
+  {
+   "type": "max_gap",
+   "s": 2,
+   "label": "В телеметрии нет пауз дольше 2 с"
+  },
+  {
+   "type": "sd_match",
+   "share": 0.95,
+   "label": "Принятые пакеты совпадают со строками на SD"
+  }
+ ]
+}

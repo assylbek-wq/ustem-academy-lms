@@ -1,0 +1,41 @@
+{
+ "title": "Свободная сборка и запуск",
+ "task": "Соберите CanSat и ракету-носитель, напишите бортовую программу и запустите на стандартном двигателе РД1-100-7М. Ветер и удаление станции можно менять в «Условиях запуска».",
+ "config": {
+  "items": [
+   "body-pla",
+   "obc-pico",
+   "bat-lipo1000",
+   "eps-tp4056",
+   "bme280",
+   "imu",
+   "gps",
+   "sd",
+   "radio-lora",
+   "ant-whip433",
+   "gs-yagi433"
+  ],
+  "radioMode": "sf7",
+  "txDbm": 14,
+  "canChute": 22,
+  "rocket": {
+   "d": 75,
+   "len": 100,
+   "material": "paper",
+   "nose": "ogive",
+   "noseK": 3,
+   "fins": 4,
+   "finMat": "balsa",
+   "root": 110,
+   "tip": 50,
+   "span": 70,
+   "sweep": 50,
+   "chute": 60,
+   "rail": 3
+  }
+ },
+ "python": "from sat import *\n\nimu.range(16)\np0 = 0\nfor i in range(10):\n    p0 += bme.pressure()\n    sleep(0.1)\np0 /= 10\n\nn = 0\nlat = 0\nlon = 0\nwhile True:\n    p = bme.pressure()\n    h = 44330 * (1 - (p / p0) ** 0.1903)\n    a = imu.accel()\n    g = (a[0] ** 2 + a[1] ** 2 + a[2] ** 2) ** 0.5 / 9.81\n    w = imu.gyro()\n    if n % 10 == 0:\n        pos = gps.position()\n        if pos:\n            lat = pos[0]\n            lon = pos[1]\n    line = \"%d,%.2f,%.2f,%.1f,%.2f,%.1f,%.2f,%.1f,%.5f,%.5f\" % (n, time(), p, h, bme.temperature(), bme.humidity(), g, w[2], lat, lon)\n    sd.write(line)\n    if n % 4 == 0:\n        radio.send(line)\n    n += 1\n    sleep(0.05)\n",
+ "checks": [],
+ "free_flight": true,
+ "tab": "build"
+}

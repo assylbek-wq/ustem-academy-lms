@@ -1,0 +1,61 @@
+{
+ "title": "Финальный запуск",
+ "task": "Финал WSO CanSat: один запуск. Нужен устойчивый полет, раскрытие обоих парашютов, CanSat найден в поле, данные полные и частые, на SD и на станции совпадают.\nНаберите не меньше 62 из 75 баллов, которые оценивает симулятор (критерии B, C, D, E). Ветер 5 м/с.",
+ "config": {
+  "items": [
+   "body-pla",
+   "obc-pico",
+   "bat-lipo1000",
+   "eps-tp4056",
+   "bme280",
+   "imu",
+   "gps",
+   "sd",
+   "radio-lora",
+   "ant-whip433",
+   "gs-yagi433"
+  ],
+  "radioMode": "sf7",
+  "txDbm": 14,
+  "canChute": 60,
+  "rocket": {
+   "d": 75,
+   "len": 130,
+   "material": "pla",
+   "nose": "ogive",
+   "noseK": 3,
+   "fins": 4,
+   "finMat": "balsa",
+   "root": 110,
+   "tip": 50,
+   "span": 70,
+   "sweep": 50,
+   "chute": 30,
+   "rail": 3
+  }
+ },
+ "python": "from sat import *\n\nimu.range(16)\nn = 0\nwhile True:\n    a = imu.accel()\n    line = \"%d,%.2f,%.2f,%.2f,%.1f\" % (n, time(), bme.pressure(), bme.temperature(), a[2])\n    sd.write(line)\n    if n % 4 == 0:\n        radio.send(line)\n    n += 1\n    sleep(0.05)\n",
+ "tab": "build",
+ "flight": {
+  "wind": 5
+ },
+ "checks": [
+  {
+   "type": "inspect_all",
+   "label": "Предстартовая проверка пройдена"
+  },
+  {
+   "type": "no_error",
+   "label": "Программа работает без ошибок"
+  },
+  {
+   "type": "found",
+   "label": "CanSat нашли в поле"
+  },
+  {
+   "type": "score_min",
+   "points": 62,
+   "label": "Не меньше 62 из 75 баллов"
+  }
+ ]
+}

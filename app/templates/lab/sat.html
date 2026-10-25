@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_header with context %}
+{% block title %}{{ t(kind ~ '.title') }}{% endblock %}
+{% block head %}<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="{{ static_v('css/sat.css') }}">{% endblock %}
+{% block content %}
+{{ page_header(t(kind ~ '.title'), t(kind ~ '.subtitle'), icon='🛰️' if kind == 'cubesat' else '🚀') }}
+<div class="{{ kind }}-sim-{{ preset }}"></div>
+<p class="help mt-3">{{ t(kind ~ '.help') }}</p>
+{% endblock %}
+{% block scripts %}<script src="{{ static_v('js/satsim.js') }}" defer></script>{% endblock %}

@@ -16,6 +16,7 @@ PRESET_DIR = Path(__file__).resolve().parents[1] / "static" / "lab" / "presets"
 SPIKE_DIR = Path(__file__).resolve().parents[1] / "static" / "spikesim" / "presets"
 FTC_DIR = Path(__file__).resolve().parents[1] / "static" / "ftcsim" / "presets"
 CUBESAT_DIR = Path(__file__).resolve().parents[1] / "static" / "cubesat" / "presets"
+CANSAT_DIR = Path(__file__).resolve().parents[1] / "static" / "cansat" / "presets"
 _hits: dict[int, deque] = defaultdict(deque)
 
 
@@ -63,7 +64,16 @@ def cubesat():
     preset = request.args.get("preset", "")
     if not re.fullmatch(r"cubesat-[a-z0-9-]{1,40}", preset or "") or not (CUBESAT_DIR / f"{preset}.json").exists():
         preset = "cubesat-sandbox"
-    return render_template("lab/cubesat.html", preset=preset.removeprefix("cubesat-"))
+    return render_template("lab/sat.html", kind="cubesat", preset=preset.removeprefix("cubesat-"))
+
+
+@bp.route("/lab/cansat")
+@login_required
+def cansat():
+    preset = request.args.get("preset", "")
+    if not re.fullmatch(r"cansat-[a-z0-9-]{1,40}", preset or "") or not (CANSAT_DIR / f"{preset}.json").exists():
+        preset = "cansat-sandbox"
+    return render_template("lab/sat.html", kind="cansat", preset=preset.removeprefix("cansat-"))
 
 
 @bp.route("/lab/compile", methods=["POST"])

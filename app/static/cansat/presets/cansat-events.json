@@ -1,0 +1,66 @@
+{
+ "title": "Старт и апогей",
+ "task": "Бортовая программа сама должна понять, что ракета стартовала и прошла верхнюю точку. Запишите на SD метку LAUNCH в момент старта (перегрузка больше 3 g) и APOGEE в апогее (высота по давлению начала уменьшаться).\nПроверка сравнивает метки с настоящими моментами: старт не позже 0,5 с, апогей не позже 1,5 с.",
+ "config": {
+  "items": [
+   "body-pla",
+   "obc-pico",
+   "bat-lipo1000",
+   "eps-tp4056",
+   "bme280",
+   "imu",
+   "gps",
+   "sd",
+   "radio-lora",
+   "ant-whip433",
+   "gs-yagi433"
+  ],
+  "radioMode": "sf7",
+  "txDbm": 14,
+  "canChute": 22,
+  "rocket": {
+   "d": 75,
+   "len": 100,
+   "material": "paper",
+   "nose": "ogive",
+   "noseK": 3,
+   "fins": 4,
+   "finMat": "balsa",
+   "root": 110,
+   "tip": 50,
+   "span": 70,
+   "sweep": 50,
+   "chute": 60,
+   "rail": 3
+  }
+ },
+ "python": "from sat import *\n\n# Задача: записать метку LAUNCH в момент старта и APOGEE в верхней точке.\n# Старт: перегрузка больше 3 g. Апогей: высота по давлению начала падать.\n# Подсказка: imu.range(16), иначе акселерометр упрется в 2 g.\n\nn = 0\nwhile True:\n    line = \"%d,%.2f,%.2f\" % (n, time(), bme.pressure())\n    sd.write(line)\n    n += 1\n    sleep(0.05)\n",
+ "tab": "flight",
+ "checks": [
+  {
+   "type": "no_error",
+   "label": "Программа работает без ошибок"
+  },
+  {
+   "type": "accel_range",
+   "g": 8,
+   "label": "Акселерометр настроен на старт: диапазон не меньше 8 g"
+  },
+  {
+   "type": "event",
+   "token": "LAUNCH",
+   "at": "tLaunch",
+   "before": 0.05,
+   "after": 0.5,
+   "label": "Метка LAUNCH в момент старта"
+  },
+  {
+   "type": "event",
+   "token": "APOGEE",
+   "at": "tApogee",
+   "before": 0.5,
+   "after": 1.5,
+   "label": "Метка APOGEE в апогее"
+  }
+ ]
+}
