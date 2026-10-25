@@ -7,7 +7,12 @@
 {% endblock %}
 {% block content %}
 {% call page_header(t('game.board'), t('game.lb_lead'), url_for('game.journey_index'), t('game.title')) %}
-  <form method="get" class="flex items-center gap-2">
+  <form method="get" class="flex flex-wrap items-center gap-2">
+    <label for="lb-path" class="text-sm text-slate-500">{{ t('game.lb_path') }}</label>
+    <select id="lb-path" name="path" class="input py-1.5 text-sm w-auto" onchange="this.form.submit()">
+      <option value="">{{ t('game.lb_path_all') }}</option>
+      {% for x in paths %}<option value="{{ x.key }}" {% if path and path.key == x.key %}selected{% endif %}>{{ x.title|loc }}</option>{% endfor %}
+    </select>
     <label for="lb-region" class="text-sm text-slate-500">{{ t('game.lb_region') }}</label>
     <select id="lb-region" name="region" class="input py-1.5 text-sm w-auto" onchange="this.form.submit()">
       <option value="">{{ t('game.lb_all') }}</option>

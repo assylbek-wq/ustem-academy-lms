@@ -37,16 +37,17 @@
       {% if s.week %}<span class="jy-stat jy-gold">{{ t('game.week', xp=s.week) }}</span>{% endif %}
     </div>
     <nav class="jy-tracks" aria-label="{{ t('game.title') }}">
-      {% for code, x in tracks.items() %}
-        <a href="{{ url_for('game.journey', track=code) }}" class="{% if code == tr.code %}on{% endif %}" style="--c: {{ x.color }}"
-           {% if code == tr.code %}aria-current="page"{% endif %}>{{ x.title|loc }}</a>
+      {% for x in mine %}
+        <a href="{{ url_for('game.journey', track=x.key) }}" class="{% if x.key == tr.key %}on{% endif %}" style="--c: {{ x.color }}"
+           {% if x.key == tr.key %}aria-current="page"{% endif %}>{{ x.title|loc }}</a>
       {% endfor %}
+      <a href="{{ url_for('game.setup') }}" class="jy-tracks-edit">{{ ic('plus', 'w-4 h-4') }} {{ t('game.setup_short') }}</a>
     </nav>
   </div>
 
   <div class="jy-head">
-    <h1>{{ tr.season|loc }}</h1>
-    <p><span>{{ t('game.season_pct', pct=state.pct) }}</span><span>{{ t('game.steps_done', done=state.done, total=state.total) }}</span></p>
+    <h1>{{ (tr.title if tr.kind == 'course' else (tr.season|loc or tr.title))|loc }}</h1>
+    <p><span>{{ t('game.course_pct' if tr.kind == 'course' else 'game.season_pct', pct=state.pct) }}</span><span>{{ t('game.steps_done', done=state.done, total=state.total) }}</span></p>
   </div>
 
   {% for mode in ('wide', 'tall') %}
@@ -58,7 +59,7 @@
       {% set x, y = L.nodes[loop.index0] %}
       {% set final = loop.last %}
       {% set kind = 'done' if st.complete else ('cur' if st.index == cur else 'next') %}
-      <a href="{{ url_for('game.journey', track=tr.code, stage=st.index) }}#stage" role="listitem"
+      <a href="{{ url_for('game.journey', track=tr.key, stage=st.index) }}#stage" role="listitem"
          class="jy-node jy-{{ kind }}{% if st.index == sel %} sel{% endif %}{% if final %} final{% endif %}"
          aria-label="{{ t('game.stage', n=loop.index) }}: {{ st.title|loc }}, {{ t('game.steps_done', done=st.done, total=st.total) }}"
          style="--d: {{ loop.index0 }}">
@@ -93,7 +94,7 @@
   {% endfor %}
 </section>
 
-{% if not g.user.connect_person_id %}
+{% if uses_connect and not g.user.connect_person_id %}
   <div class="jy-banner">
     <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#g-link"/></svg>
     <p>{{ t('game.connect_banner') }}</p>
@@ -111,8 +112,8 @@
         <p>{% if stage.complete %}{{ t('game.stage_done') }}{% else %}{{ t('game.steps_done', done=stage.done, total=stage.total) }}{% endif %}</p>
       </div>
       <nav class="jy-stage-nav">
-        {% if sel > 0 %}<a href="{{ url_for('game.journey', track=tr.code, stage=sel - 1) }}#stage" aria-label="{{ t('common.back') }}">{{ ic('arrow-left') }}</a>{% endif %}
-        {% if sel + 1 < state.stages|length %}<a href="{{ url_for('game.journey', track=tr.code, stage=sel + 1) }}#stage" aria-label="{{ t('common.next') }}">{{ ic('arrow-right') }}</a>{% endif %}
+        {% if sel > 0 %}<a href="{{ url_for('game.journey', track=tr.key, stage=sel - 1) }}#stage" aria-label="{{ t('common.back') }}">{{ ic('arrow-left') }}</a>{% endif %}
+        {% if sel + 1 < state.stages|length %}<a href="{{ url_for('game.journey', track=tr.key, stage=sel + 1) }}#stage" aria-label="{{ t('common.next') }}">{{ ic('arrow-right') }}</a>{% endif %}
       </nav>
     </header>
     <ol class="jy-steps">
@@ -131,7 +132,7 @@
           {% if step.kind == 'self' and not step.done %}
             <details class="jy-mark">
               <summary class="btn-secondary btn-sm">{{ t('game.mark') }}</summary>
-              <form method="post" action="{{ url_for('game.mark', track=tr.code) }}" enctype="multipart/form-data">
+              <form method="post" action="{{ url_for('game.mark', track=tr.key) }}" enctype="multipart/form-data">
                 {{ csrf() }}<input type="hidden" name="step" value="{{ step.code }}"><input type="hidden" name="stage" value="{{ sel }}">
                 <input name="note" class="input" maxlength="1000" placeholder="{{ t('game.mark_note') }}" aria-label="{{ t('game.mark_note') }}">
                 {% if step.photo %}
@@ -153,12 +154,14 @@
                 <a class="btn-secondary btn-sm" href="{{ connect_url }}/cabinet" target="_blank" rel="noopener">{{ t('game.open_connect') }}</a>
               {% endif %}
             {% elif step.kind == 'sim' %}
-              <a class="btn-secondary btn-sm" href="{{ tr.sim_url }}{{ step.preset }}">{{ t('game.open_sim') }}</a>
+              <a class="btn-secondary btn-sm" href="{{ sim_url(step.preset) }}">{{ t('game.open_sim') }}</a>
+            {% elif step.kind in ('lesson', 'evidence') %}
+              <a class="btn-secondary btn-sm" href="{{ links.get(step.code) or url_for('public.program', slug=tr.course) }}">{{ t('game.open_' ~ step.kind) }}</a>
             {% elif step.kind == 'course' %}
               <a class="btn-secondary btn-sm" href="{{ url_for('public.program', slug=step.course) }}">{{ t('game.open_course') }}</a>
             {% endif %}
           {% elif step.kind == 'self' %}
-            <form method="post" action="{{ url_for('game.mark', track=tr.code) }}">
+            <form method="post" action="{{ url_for('game.mark', track=tr.key) }}">
               {{ csrf() }}<input type="hidden" name="step" value="{{ step.code }}"><input type="hidden" name="stage" value="{{ sel }}">
               <button name="action" value="undo" class="jy-undo">{{ t('game.undo') }}</button>
             </form>

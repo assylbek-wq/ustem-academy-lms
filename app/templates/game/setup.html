@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, page_header with context %}
+{% block title %}{{ t('game.setup_title') }}{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ static_v('css/journey.css') }}">{% endblock %}
+{% block content %}
+{{ page_header(t('game.setup_title'), t('game.setup_lead'), url_for('game.journey_index') if user.journey_setup_at else None, t('game.title')) }}
+<form method="post" class="js-setup max-w-3xl">
+  {{ csrf() }}
+  {% for kind in ('season', 'growth') %}
+    {% set items = season|selectattr('kind', 'equalto', kind)|list %}
+    {% if items %}
+    <h2 class="font-bold text-lg mb-3 {% if not loop.first %}mt-8{% endif %}">{{ t('game.setup_' ~ kind) }}</h2>
+    <div class="js-grid">
+      {% for x in items %}
+        {% set on = x.key in chosen or x.key in auto %}
+        <label class="js-card" style="--c: {{ x.color }}">
+          <input type="checkbox" name="path" value="{{ x.key }}" {% if on %}checked{% endif %} {% if x.key in auto %}disabled{% endif %}>
+          {% if x.key in auto %}<input type="hidden" name="path" value="{{ x.key }}">{% endif %}
+          <span class="js-stripe" aria-hidden="true"></span>
+          <span class="js-name">{{ x.title|loc }}</span>
+          {% if x.season|loc %}<span class="js-sub">{{ x.season|loc }}</span>{% endif %}
+          {% if x.key in auto %}<span class="js-auto">{{ t('game.setup_auto') }}</span>{% endif %}
+        </label>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endfor %}
+
+  <h2 class="font-bold text-lg mt-8 mb-3">{{ t('game.setup_my_courses') }}</h2>
+  {% if courses %}
+    <ul class="js-courses">{% for c in courses %}<li style="--c: {{ c.color }}"><span class="js-dot"></span>{{ c.title|loc }}</li>{% endfor %}</ul>
+  {% else %}
+    <p class="text-slate-500 text-sm">{{ t('game.setup_no_courses') }} <a href="{{ url_for('learn.catalog') }}" class="text-brand-700 hover:underline">{{ t('nav.catalog') }}</a></p>
+  {% endif %}
+
+  <label class="flex items-start gap-3 mt-8 p-4 rounded-xl border border-slate-200">
+    <input type="checkbox" name="courses_only" value="1" class="mt-1">
+    <span><b>{{ t('game.setup_courses_only') }}</b><span class="block text-sm text-slate-500">{{ t('game.setup_courses_hint') }}</span></span>
+  </label>
+
+  <button class="btn-primary mt-6">{{ t('game.setup_save') }}</button>
+</form>
+{% endblock %}

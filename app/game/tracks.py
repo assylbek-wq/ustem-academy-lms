@@ -228,6 +228,67 @@ TRACKS: dict[str, dict] = {
     },
 }
 
+WSO = {
+    "code": "wso", "programs": ["WSO"], "color": "#2563eb",
+    "title": ml("World Space Olympiad", "World Space Olympiad", "World Space Olympiad"),
+    "season": ml("Олимпиада 2026-2027", "Олимпиада 2026-2027", "Olympiad 2026-2027"),
+    "stages": [
+        {"code": "start", "icon": "flag", "title": ml("Старт", "Басы", "Start"), "steps": [
+            LINK,
+            self_step("rules", 30, ml("Прочитать регламент олимпиады", "Олимпиада регламентін оқу", "Read the olympiad rules"),
+                      ml("Этапы, сроки, лист оценки и список материалов.", "Кезеңдер, мерзімдер, бағалау парағы және материалдар тізімі.",
+                         "Stages, deadlines, the score sheet and the materials list.")),
+            self_step("category", 30, ml("Выбрать категорию", "Санатты таңдау", "Choose a category"),
+                      ml("CanSat, CubeSat, Rovers, Inventors или Outer Worlds.", "CanSat, CubeSat, Rovers, Inventors не Outer Worlds.",
+                         "CanSat, CubeSat, Rovers, Inventors or Outer Worlds.")),
+        ]},
+        {"code": "team", "icon": "team", "title": ml("Команда", "Команда", "Team"), "steps": [
+            connect("team", 150, ml("Команда в USTEM Connect", "USTEM Connect-тегі команда", "Team in USTEM Connect"),
+                    ml("Капитан или тренер создает команду в категории WSO и собирает состав.", "Капитан не жаттықтырушы WSO санатында команда құрып, құрамды жинайды.",
+                       "The captain or coach creates a team in a WSO category and builds the roster."), "team"),
+            connect("approved", 200, ml("Заявка на олимпиаду одобрена", "Олимпиадаға өтінім мақұлданды", "Olympiad application approved"),
+                    ml("Команда попала в возрастную группу и допущена.", "Команда жас тобына кіріп, жіберілді.", "The team fits an age group and is admitted."),
+                    "approved"),
+        ]},
+        {"code": "project", "icon": "bulb", "title": ml("Проект", "Жоба", "Project"), "steps": [
+            self_step("idea", 40, ml("Идея и план работ", "Идея және жұмыс жоспары", "Idea and work plan"),
+                      ml("Цель миссии, роли в команде и график до отбора.", "Миссия мақсаты, командадағы рөлдер және іріктеуге дейінгі кесте.",
+                         "Mission goal, team roles and a schedule to the selection.")),
+            self_step("prototype", 60, ml("Первый прототип", "Алғашқы прототип", "First prototype"),
+                      ml("Фото прототипа или схемы.", "Прототиптің не сызбаның суреті.", "A photo of the prototype or diagram."), photo=True),
+            self_step("test", 60, ml("Испытания и замеры", "Сынақтар мен өлшеулер", "Tests and measurements"),
+                      ml("Таблица результатов испытаний.", "Сынақ нәтижелерінің кестесі.", "A table of test results."), photo=True),
+        ]},
+        {"code": "selection", "icon": "code", "title": ml("Отбор", "Іріктеу", "Selection"), "steps": [
+            self_step("sel-sent", 80, ml("Материалы отбора сданы", "Іріктеу материалдары тапсырылды", "Selection materials submitted"),
+                      ml("Команда загрузила файлы в кабинете Connect, раздел «Этапы олимпиады».", "Команда файлдарды Connect кабинетіндегі «Олимпиада кезеңдері» бөліміне жүктеді.",
+                         "The team uploaded files in Connect, section Olympiad stages.")),
+            self_step("precheck", 80, ml("Предварительная проверка пройдена", "Алдын ала тексеру өтті", "Preliminary check passed"),
+                      ml("Команду допустили к следующему этапу.", "Команда келесі кезеңге жіберілді.", "The team was admitted to the next stage.")),
+        ]},
+        {"code": "final", "icon": "podium", "title": ml("Финал", "Финал", "Final"), "steps": [
+            connect("played", 400, ml("Выступили в финале", "Финалда өнер көрсеттік", "Competed in the final"),
+                    ml("Команду отметили на регистрации в день финала.", "Финал күні команда тіркеуде белгіленді.", "The team was checked in on the final day."),
+                    "played"),
+            self_step("stand", 60, ml("Защита у стенда", "Стенд жанындағы қорғау", "Stand presentation"),
+                      ml("Фото команды на защите.", "Қорғаудағы команда суреті.", "A photo of the team presenting."), photo=True),
+        ]},
+        {"code": "results", "icon": "trophy", "title": ml("Итоги", "Қорытынды", "Results"), "steps": [
+            connect("award", 600, ml("Награда олимпиады", "Олимпиада марапаты", "Olympiad award"),
+                    ml("Место, награда категории или Impact Award.", "Орын, санат марапаты не Impact Award.", "A place, category award or Impact Award."), "award"),
+            connect("advanced", 800, ml("Прошли на следующий уровень", "Келесі деңгейге өттік", "Advanced to the next level"),
+                    ml("Отметка «проходит дальше» в итогах.", "Қорытындыдағы «әрі қарай өтеді» белгісі.", "Marked as advancing in the results."), "advanced"),
+        ]},
+    ],
+}
+
+# Пути, которые создаются при первом запуске; дальше их правят в Студии (Студия -> Пути)
+SEED_PATHS = [
+    {**TRACKS["fll"], "programs": [TRACKS["fll"]["program"]]},
+    {**TRACKS["ftc"], "programs": [TRACKS["ftc"]["program"]]},
+    WSO,
+]
+
 # Звания тренера по опыту
 RANKS = [
     (0, ml("Тренер-новичок", "Жаңадан бастаған жаттықтырушы", "Rookie coach")),
@@ -287,7 +348,11 @@ def all_steps(track: dict):
 
 
 def sim_presets(prefix: str) -> list[str]:
-    return [s["preset"] for t in TRACKS.values() for _, s in all_steps(t) if s["kind"] == "sim" and s["preset"].startswith(prefix)]
+    """Все задания симулятора с этим префиксом (для значков «Мастер SPIKE», «Мастер FTC»)."""
+    from pathlib import Path
+    folder = {"spike-": "spikesim/presets", "ftc-": "ftcsim/presets"}[prefix]
+    return sorted(p.stem for p in (Path(__file__).resolve().parents[1] / "static" / folder).glob(f"{prefix}*.json")
+                  if "sandbox" not in p.stem)
 
 
 # Регионы для рейтинга: те же названия, что в справочнике USTEM Connect (regions.name.ru)

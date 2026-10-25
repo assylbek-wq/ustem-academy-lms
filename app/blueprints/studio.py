@@ -401,3 +401,76 @@ def assignment(assignment_id):
 @role_required("methodist")
 def preview_md():
     return jsonify(html=str(render_markdown((request.get_json(silent=True) or {}).get("text", ""))))
+
+
+# ─── Пути сезонов (карта «Мой путь» у тренеров) ──────────────────────────
+@bp.route("/paths", methods=["GET", "POST"])
+@role_required("methodist")
+def paths():
+    from ..game import paths as gpaths
+    from ..models import JourneyPath
+    gpaths.seed()
+    if request.method == "POST":
+        slug = (request.form.get("slug") or "").strip().lower()
+        title = (request.form.get("title") or "").strip()
+        if not re.fullmatch(r"[a-z][a-z0-9-]{1,29}", slug) or slug.startswith("c-") or JourneyPath.query.filter_by(slug=slug).first() or not title:
+            flash(t("paths.err", msg=t("paths.err_slug")), "error")
+            return redirect(url_for("studio.paths"))
+        p = JourneyPath(slug=slug, kind="season", title={"ru": title}, stages=[], status="draft",
+                        position=(db.session.query(db.func.max(JourneyPath.position)).scalar() or 0) + 1)
+        db.session.add(p)
+        audit("path.created", "path", None, slug=slug)
+        db.session.commit()
+        return redirect(url_for("studio.path_edit", path_id=p.id))
+    items = JourneyPath.query.order_by(JourneyPath.position, JourneyPath.id).all()
+    return render_template("studio/paths.html", items=items)
+
+
+@bp.route("/paths/<int:path_id>", methods=["GET", "POST"])
+@role_required("methodist")
+def path_edit(path_id):
+    import json as _json
+
+    from ..game import pathedit
+    from ..game.paths import ICONS
+    from ..models import JourneyMark, JourneyPath
+    from .game import known_preset
+    p = get_or_404(JourneyPath, path_id)
+    if request.method == "POST":
+        action = request.form.get("action", "save")
+        if action == "delete":
+            if JourneyMark.query.filter_by(track=p.slug).first():
+                flash(t("paths.cant_delete"), "error")
+                return redirect(url_for("studio.path_edit", path_id=p.id))
+            audit("path.deleted", "path", p.id, slug=p.slug)
+            db.session.delete(p)
+            db.session.commit()
+            flash(t("paths.deleted"), "success")
+            return redirect(url_for("studio.paths"))
+        if action in ("publish", "unpublish"):
+            p.status = "published" if action == "publish" else "draft"
+            audit("path.published" if action == "publish" else "path.unpublished", "path", p.id, slug=p.slug)
+            db.session.commit()
+            return redirect(url_for("studio.path_edit", path_id=p.id))
+        try:
+            stages = pathedit.clean_stages(_json.loads(request.form.get("stages") or "[]"), known_preset)
+        except (ValueError, pathedit.PathError) as e:
+            flash(t("paths.err", msg=str(e)), "error")
+            return redirect(url_for("studio.path_edit", path_id=p.id))
+        title = ml_from_form("title")
+        if not title.get("ru"):
+            flash(t("paths.err", msg=t("paths.f_title")), "error")
+            return redirect(url_for("studio.path_edit", path_id=p.id))
+        p.title, p.subtitle, p.stages = title, ml_from_form("subtitle"), stages
+        p.kind = request.form.get("kind") if request.form.get("kind") in ("season", "growth") else "season"
+        p.programs = pathedit.clean_programs(request.form.get("programs"))
+        color = request.form.get("color") or ""
+        p.color = color if re.fullmatch(r"#[0-9a-fA-F]{6}", color) else p.color
+        audit("path.updated", "path", p.id, slug=p.slug)
+        db.session.commit()
+        flash(t("paths.saved"), "success")
+        return redirect(url_for("studio.path_edit", path_id=p.id))
+    courses = [{"slug": c.slug, "title": c.title.get("ru") or c.slug, "levels": len(c.levels)}
+               for c in Program.query.order_by(Program.position, Program.id)]
+    return render_template("studio/path_edit.html", p=p, icons=ICONS, courses=courses,
+                           rules=pathedit.RULES, event_kinds=pathedit.EVENT_KINDS)

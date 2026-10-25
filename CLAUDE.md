@@ -45,12 +45,16 @@ USTEM Academy - LMS для подготовки учителей. Flask + SQLAlc
   Задания: `python3 assets/lab/spike_presets.py` -> `app/static/spikesim/presets/*.json`. В уроке блок
   `<div class="spike-sim-ИМЯ"></div>` (задание `spike-ИМЯ`), песочница `/lab/spike`. Сквозная проверка:
   `python3 tests/e2e/spike_solutions.py http://localhost:5080` и `--negative`.
-- Геймификация для тренеров: путь сезона FLL Challenge и FTC (`app/game/tracks.py` - этапы и шаги, звания, значки;
-  `services/game.py` - опыт пересчитывается из фактов функцией `refresh`, не начисляйте его вручную), страницы
-  `/journey/<fll|ftc>` и `/leaderboard`. Шаги про команду и турниры засчитывает USTEM Connect (`services/connect.py`:
-  подключение `/connect/start` -> Connect `/link/academy` -> `/connect/callback`, данные `GET /api/v1/academy/journey`,
-  ключ `CONNECT_API_KEY` = ключ academy из `CERT_API_KEYS` Connect). Решенные задания симуляторов приходят
-  в `POST /api/sim/solved` (`window.academySolved` в app.js).
+- Геймификация для тренеров («Мой путь»): общий опыт, звания, значки, серия дней и рейтинг считаются от любого курса
+  (`services/game.py`, опыт пересчитывается из фактов функцией `refresh`, не начисляйте его вручную). Пути
+  (`app/game/paths.py`): сезоны программ и рост тренера хранятся в `journey_paths`, их собирает методист в Студии
+  (Студия -> Пути, `pathedit.js`, проверка `app/game/pathedit.py`; первые FLL, FTC, WSO из `SEED_PATHS` в
+  `app/game/tracks.py`); пути курсов (`c-<slug>`) строятся сами из уровней курса. У тренера свои пути: выбранные на
+  `/journey/setup` (`user_paths`) + курсы, на которые записан, + программы его команд в Connect (код WSO включает
+  WSO_CANSAT и т.д.). Шаги про команду и турниры засчитывает USTEM Connect (`services/connect.py`: подключение
+  `/connect/start` -> Connect `/link/academy` -> `/connect/callback`, данные `GET /api/v1/academy/journey`, ключ
+  `CONNECT_API_KEY` = ключ academy из `CERT_API_KEYS` Connect). Решенные задания симуляторов приходят в
+  `POST /api/sim/solved` (`window.academySolved` в app.js).
 - Урок под ключ (план занятия с учениками, слайды для проектора, печать плана): поле `Lesson.kit` = `{"ru": {...}}`,
   шаблон `learn/_kit.html`, в уроке вкладка «Провести занятие с учениками». Для «FTC с нуля» данные в
   `app/content/ftc_kits/level*.py` (ключ - русское название урока), подключаются `attach()` в `ftc_start_2026.py`.

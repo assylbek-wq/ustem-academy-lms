@@ -61,13 +61,12 @@ def home():
         [(e, a) for e, st in items if e.status == "active" for a in st.assignments
          if a.due and a.status in ("todo", "returned")], key=lambda x: x[1].due)[:5]
     certs = Certificate.query.filter_by(user_id=g.user.id, status="valid").count()
-    from ..game.tracks import TRACKS
     from ..services import game
-    from .game import _default_track
+    from .game import default_path
     game.refresh(g.user)
-    tr = TRACKS[_default_track(g.user)]
-    js = game.track_state(g.user, tr)
-    next_step = next((st for st in js["stages"][js["current"]]["steps"] if not st["done"]), None)
+    tr = default_path(g.user)
+    js = game.track_state(g.user, tr) if tr else None
+    next_step = next((st for st in js["stages"][js["current"]]["steps"] if not st["done"]), None) if js else None
     return render_template("learn/home.html", items=items, sessions=sessions, deadlines=deadlines,
                            certs=certs, staff_links=staff_home_links(), gs=game.summary(g.user), gtr=tr, gjs=js,
                            next_step=next_step)

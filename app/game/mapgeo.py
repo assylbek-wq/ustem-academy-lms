@@ -17,18 +17,26 @@ def _catmull(points: list[tuple[float, float]]) -> str:
 
 
 def wide(n: int) -> dict:
-    """Змейка в три ряда для широкого экрана: 4 слева направо, 3 обратно, остальные снова вправо.
+    """Змейка для широкого экрана: ряды по 4 этапа, направление чередуется (сколько угодно этапов).
     На поворотах линия уходит за край ряда, чтобы не проходить по подписям этапов."""
-    rows = [(90, [110, 330, 550, 770]), (260, [690, 470, 250]), (430, [300, 530, 760, 880])]
-    turns = {3: [(905, 120), (905, 230)], 6: [(115, 290), (115, 400)]}  # после 4-го и 7-го этапа
-    nodes: list[tuple[float, float]] = [(x, y) for y, xs in rows for x in xs][:n]
-    route: list[list[tuple[float, float]]] = []  # точки маршрута до каждого этапа включительно
+    per, row_h, top = 4, 170, 90
+    xs = [120, 340, 560, 780]
+    nodes: list[tuple[float, float]] = []
+    for i in range(n):
+        r, c = divmod(i, per)
+        nodes.append((xs[c] if r % 2 == 0 else xs[per - 1 - c], top + r * row_h))
+    route: list[list[tuple[float, float]]] = []
     pts: list[tuple[float, float]] = []
     for i, p in enumerate(nodes):
         pts.append(p)
         route.append(list(pts))
-        pts.extend(turns.get(i, []) if i < n - 1 else [])
-    return {"w": 1000, "h": 520, "nodes": nodes, "path": _catmull(route[-1]), "parts": [_catmull(r) for r in route]}
+        if i < n - 1 and (i + 1) % per == 0:  # поворот на следующий ряд
+            r = i // per
+            x = 905 if r % 2 == 0 else 95
+            pts.extend([(x, p[1] + 30), (x, p[1] + row_h - 30)])
+    rows = (n + per - 1) // per or 1
+    return {"w": 1000, "h": top + (rows - 1) * row_h + 90, "nodes": nodes,
+            "path": _catmull(route[-1]) if route else "", "parts": [_catmull(r) for r in route]}
 
 
 def tall(n: int) -> dict:

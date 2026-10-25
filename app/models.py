@@ -71,6 +71,7 @@ class User(db.Model):
     connect_linked_at = db.Column(db.DateTime)
     connect_synced_at = db.Column(db.DateTime)
     connect_snapshot = db.Column(JSON)
+    journey_setup_at = db.Column(db.DateTime)  # тренер выбрал свои пути (страница /journey/setup)
 
     roles = db.relationship("UserRole", back_populates="user", cascade="all, delete-orphan")
 
@@ -561,3 +562,30 @@ class SimSolve(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     preset = db.Column(db.String(64), nullable=False)
     solved_at = db.Column(db.DateTime, default=utcnow)
+
+
+class JourneyPath(db.Model):
+    """Путь на карте: сезон программы (FLL, FTC, WSO...) или рост тренера. Собирается в Студии.
+    Пути курсов не хранятся: они строятся из уровней курса (app/game/paths.py)."""
+    __tablename__ = "journey_paths"
+    id = db.Column(db.Integer, primary_key=True)
+    slug = db.Column(db.String(40), unique=True, nullable=False)
+    kind = db.Column(db.String(16), nullable=False, default="season")  # season | growth
+    title = db.Column(JSON, nullable=False, default=dict)
+    subtitle = db.Column(JSON, default=dict)      # «Сезон BIOGLOW 2026-2027»
+    color = db.Column(db.String(16), default="#0085ff")
+    programs = db.Column(JSON, default=list)       # коды программ Connect: FLL_CHALLENGE, WSO, WSO_CANSAT...
+    stages = db.Column(JSON, nullable=False, default=list)
+    status = db.Column(db.String(16), nullable=False, default="draft")  # draft | published
+    position = db.Column(db.Integer, default=0)
+    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
+
+
+class UserPath(db.Model):
+    """Путь, который тренер выбрал сам (пути курсов и программ его команд в Connect добавляются автоматически)."""
+    __tablename__ = "user_paths"
+    __table_args__ = (db.UniqueConstraint("user_id", "key", name="uq_user_path"),)
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    key = db.Column(db.String(80), nullable=False)
+    created_at = db.Column(db.DateTime, default=utcnow)

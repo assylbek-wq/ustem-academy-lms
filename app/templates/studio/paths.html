@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, page_header with context %}
+{% block title %}{{ t('paths.title') }}{% endblock %}
+{% block content %}
+{{ page_header(t('paths.title'), t('paths.lead'), icon='🗺️') }}
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <div class="lg:col-span-2 space-y-3">
+    {% for x in items %}
+      {% set n_steps = x.stages|map(attribute='steps')|map('length')|sum %}
+      <a href="{{ url_for('studio.path_edit', path_id=x.id) }}" class="card p-4 flex items-center gap-4 hover:bg-slate-50">
+        <span class="w-3 self-stretch rounded" style="background: {{ x.color }}"></span>
+        <div class="flex-1 min-w-0">
+          <div class="font-semibold">{{ x.title|loc }}</div>
+          <div class="text-sm text-slate-500">{{ x.subtitle|loc }}{% if x.programs %} · {{ x.programs|join(', ') }}{% endif %}</div>
+          <div class="text-xs text-slate-400 mt-1">{{ t('paths.steps_n', stages=x.stages|length, steps=n_steps) }} · {{ t('paths.kind_' ~ x.kind) }}</div>
+        </div>
+        <span class="text-xs px-2 py-1 rounded {{ 'bg-emerald-100 text-emerald-800' if x.status == 'published' else 'bg-slate-100 text-slate-600' }}">{{ t('paths.' ~ x.status) }}</span>
+      </a>
+    {% endfor %}
+  </div>
+  <form method="post" class="card p-5 space-y-3 h-fit">
+    {{ csrf() }}
+    <div class="font-semibold">{{ t('paths.new') }}</div>
+    <div><label class="label" for="np-title">{{ t('paths.f_title') }}</label><input id="np-title" name="title" class="input" required placeholder="Alem Drone League"></div>
+    <div><label class="label" for="np-slug">{{ t('paths.f_slug') }}</label><input id="np-slug" name="slug" class="input" required pattern="[a-z][a-z0-9-]{1,29}" placeholder="drone-league"></div>
+    <button class="btn-primary">{{ t('paths.new') }}</button>
+  </form>
+</div>
+{% endblock %}

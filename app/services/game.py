@@ -11,7 +11,8 @@ from datetime import date, datetime, timedelta
 
 from sqlalchemy import func
 
-from ..game.tracks import (BADGES, RANKS, TRACKS, XP_EVIDENCE, XP_LESSON, XP_LEVEL, XP_PHOTO_BONUS, XP_QUIZ, XP_SIM,
+from ..game import paths as gpaths
+from ..game.tracks import (BADGES, RANKS, XP_EVIDENCE, XP_LESSON, XP_LEVEL, XP_PHOTO_BONUS, XP_QUIZ, XP_SIM,
                            all_steps, sim_presets)
 from ..models import (Certificate, Cohort, Enrollment, Evidence, JourneyMark, Lesson, LessonProgress, Program,
                       SimSolve, User, UserBadge, XpEvent, db, utcnow)
@@ -31,8 +32,9 @@ def _dt(v) -> datetime | None:
 
 
 # ─── Шаги из Connect ─────────────────────────────────────────────────────
-def _teams(user: User, program: str) -> list[dict]:
-    teams = [t for t in (user.connect_snapshot or {}).get("teams", []) if t.get("program") == program]
+def _teams(user: User, track: dict) -> list[dict]:
+    teams = [t for t in (user.connect_snapshot or {}).get("teams", [])
+             if t.get("program") and gpaths.program_matches(track, t["program"])]
     current = [t for t in teams if t.get("is_current")]
     return current or teams
 
@@ -44,7 +46,7 @@ def connect_step(user: User, track: dict, step: dict) -> datetime | None:
         return user.connect_linked_at
     if not user.connect_person_id:
         return None
-    teams = _teams(user, track["program"])
+    teams = _teams(user, track)
     now = user.connect_synced_at or utcnow()
     if rule == "team":
         return now if teams else None
@@ -106,6 +108,10 @@ class Facts:
             return self.sims.get(step["preset"])
         if k == "course":
             return self.course_done(step["course"], step["level"])
+        if k == "lesson":
+            return self.lessons.get(step["lesson_id"])
+        if k == "evidence":
+            return self.evidence.get(step["assignment_id"])
         m = self.marks.get((track["code"], step["code"]))
         return m.created_at if m else None
 
@@ -124,7 +130,9 @@ class Facts:
         for preset, at in self.sims.items():
             out[f"sim:{preset}"] = ("sim", XP_SIM, {"ru": preset}, at)
         seen = set()
-        for track in TRACKS.values():
+        # все опубликованные пути, а не только выбранные: отметка или результат в Connect не теряются,
+        # если тренер убрал путь из своего списка
+        for track in gpaths.published_db_paths():
             for _stage, step in all_steps(track):
                 if step["kind"] not in ("connect", "self"):
                     continue
@@ -176,12 +184,13 @@ def _badges(user: User, facts: Facts, want: dict) -> list[str]:
         "ftc-master": all(p in facts.sims for p in sim_presets("ftc-")),
         "certified": bool(facts.certs),
         "team": any(r.endswith((":registered",)) for r in want),
-        "first-event": any(r.endswith((":scrimmage", ":qual-played", ":nat-played")) for r in want),
+        "first-event": any(r.endswith((":scrimmage", ":qual-played", ":nat-played", ":played")) for r in want),
         "award": any(r.endswith((":award", ":nat-award")) for r in want),
         "advanced": any(r.endswith(":advanced") for r in want),
         "national": any(r.endswith(":nat-played") for r in want),
         "world": any(r.endswith(":world") for r in want),
-        "stage": any(s["done"] == s["total"] for t in TRACKS.values() for s in track_state(user, t, facts)["stages"]),
+        "stage": any(s["done"] == s["total"] and s["total"] for t in gpaths.for_user(user)
+                     for s in track_state(user, t, facts)["stages"]),
         "chronicler": sum(1 for m in facts.marks.values() if m.photo_id) >= 10,
         "streak-7": streak(user)[1] >= 7,
         "streak-30": streak(user)[1] >= 30,
@@ -232,7 +241,8 @@ def track_state(user: User, track: dict, facts: Facts | None = None) -> dict:
         steps = []
         for step in stage["steps"]:
             at = facts.step_done(track, step)
-            xp = step.get("xp") or {"sim": XP_SIM, "course": XP_LEVEL}.get(step["kind"], 0)
+            xp = step.get("xp") or {"sim": XP_SIM, "course": XP_LEVEL, "evidence": XP_EVIDENCE,
+                                    "lesson": XP_QUIZ if step.get("quiz") else XP_LESSON}.get(step["kind"], 0)
             mark = facts.marks.get((track["code"], step["code"])) if step["kind"] == "self" else None
             steps.append({**step, "done": bool(at), "done_at": at, "xp": xp, "mark": mark})
         done = sum(1 for s in steps if s["done"])
@@ -260,13 +270,31 @@ def summary(user: User) -> dict:
             "week": week, "region": connect.region_of(user)}
 
 
-def leaderboard(region: str | None = None, limit: int = 50) -> list[dict]:
+def path_member_ids(path: dict) -> set[int]:
+    """Кто идет по пути: выбрал сам, записан на курс или ведет команду этой программы в Connect."""
+    from ..models import Cohort, Enrollment, UserPath
+    ids = {u.user_id for u in UserPath.query.filter_by(key=path["key"])}
+    if path["kind"] == "course":
+        ids |= {uid for (uid,) in db.session.query(Enrollment.user_id).join(Cohort, Cohort.id == Enrollment.cohort_id)
+                .join(Program, Program.id == Cohort.program_id)
+                .filter(Program.slug == path["course"], Enrollment.status != "dropped")}
+    elif path.get("programs"):
+        for u in User.query.filter(User.connect_person_id.isnot(None)):
+            if any(gpaths.program_matches(path, c) for c in gpaths.connect_programs(u)):
+                ids.add(u.id)
+    return ids
+
+
+def leaderboard(region: str | None = None, limit: int | None = 50, path: dict | None = None) -> list[dict]:
     rows = (db.session.query(User, func.sum(XpEvent.xp).label("xp"))
             .join(XpEvent, XpEvent.user_id == User.id)
             .filter(User.leaderboard_hidden.is_(False), User.is_active.is_(True))
             .group_by(User.id).order_by(func.sum(XpEvent.xp).desc()).all())
+    members = path_member_ids(path) if path else None
     out = []
     for u, xp in rows:
+        if members is not None and u.id not in members:
+            continue
         r = connect.region_of(u)
         if region and r != region:
             continue

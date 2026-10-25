@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% from "_macros.html" import csrf, page_header, ml_field with context %}
+{% block title %}{{ p.title|loc }} - {{ t('paths.title') }}{% endblock %}
+{% block content %}
+{% call page_header(p.title|loc, t('paths.' ~ p.status), url_for('studio.paths'), t('paths.title'), icon='🗺️') %}
+  <a href="{{ url_for('game.journey', track=p.slug) }}" target="_blank" class="btn-ghost btn-sm">{{ ic('eye', 'w-4 h-4') }} {{ t('paths.open') }}</a>
+  <form method="post">{{ csrf() }}
+    {% if p.status == 'published' %}<button name="action" value="unpublish" class="btn-secondary btn-sm">{{ t('paths.unpublish') }}</button>
+    {% else %}<button name="action" value="publish" class="btn-primary btn-sm">{{ t('paths.publish') }}</button>{% endif %}
+  </form>
+{% endcall %}
+
+<form method="post" class="space-y-6" id="path-form">
+  {{ csrf() }}<input type="hidden" name="action" value="save"><input type="hidden" name="stages" id="pe-json">
+  <div class="card p-5 grid md:grid-cols-2 gap-4">
+    {{ ml_field('title', p.title, t('paths.f_title'), required=True) }}
+    {{ ml_field('subtitle', p.subtitle, t('paths.f_subtitle')) }}
+    <div><label class="label" for="pe-kind">{{ t('paths.f_kind') }}</label>
+      <select id="pe-kind" name="kind" class="input">{% for k in ('season', 'growth') %}<option value="{{ k }}" {% if p.kind == k %}selected{% endif %}>{{ t('paths.kind_' ~ k) }}</option>{% endfor %}</select></div>
+    <div class="flex gap-3">
+      <div class="flex-1"><label class="label" for="pe-prog">{{ t('paths.f_programs') }}</label><input id="pe-prog" name="programs" class="input" value="{{ (p.programs or [])|join(', ') }}" placeholder="FLL_CHALLENGE"></div>
+      <div><label class="label" for="pe-color">{{ t('paths.f_color') }}</label><input id="pe-color" type="color" name="color" value="{{ p.color or '#0085ff' }}" class="h-10 w-16 rounded border border-slate-200"></div>
+    </div>
+    <p class="help md:col-span-2 -mt-2">{{ t('paths.f_programs_hint') }}</p>
+  </div>
+
+  <div>
+    <h2 class="font-bold text-lg">{{ t('paths.stages') }}</h2>
+    <p class="help mb-3">{{ t('paths.stages_hint') }}</p>
+    <div id="pe-stages" class="space-y-4"></div>
+    <button type="button" class="btn-secondary mt-3" id="pe-add-stage">{{ ic('plus', 'w-4 h-4') }} {{ t('paths.add_stage') }}</button>
+  </div>
+  <div class="sticky bottom-0 bg-white/90 backdrop-blur py-3 border-t border-slate-200 flex items-center gap-3">
+    <button class="btn-primary">{{ t('common.save') }}</button>
+  </div>
+</form>
+<form method="post" class="mt-8 text-right">{{ csrf() }}<button name="action" value="delete" class="text-sm text-rose-600 hover:underline" data-confirm="{{ t('common.confirm') }}">{{ t('paths.delete') }}</button></form>
+
+<script type="application/json" id="pe-data">{{ {
+  'stages': p.stages or [], 'icons': icons, 'courses': courses, 'rules': rules, 'event_kinds': event_kinds,
+  'L': {'stage': t('paths.f_title'), 'icon': t('paths.icon'), 'add_step': t('paths.add_step'), 'kind': t('paths.step_kind'),
+        'k_self': t('paths.k_self'), 'k_connect': t('paths.k_connect'), 'k_course': t('paths.k_course'), 'k_sim': t('paths.k_sim'),
+        'title': t('paths.f_title'), 'hint': t('paths.hint'), 'xp': t('paths.xp'), 'rule': t('paths.rule'),
+        'kinds': t('paths.event_kinds'), 'photo': t('paths.photo'), 'course': t('paths.course'), 'level': t('paths.level'),
+        'preset': t('paths.preset'), 'up': t('paths.up'), 'down': t('paths.down'), 'remove': t('paths.remove'),
+        'x': ''},
+  'R': {'linked': t('paths.r_linked'), 'team': t('paths.r_team'), 'roster': t('paths.r_roster'), 'registered': t('paths.r_registered'),
+        'number': t('paths.r_number'), 'approved': t('paths.r_approved'), 'played': t('paths.r_played'), 'award': t('paths.r_award'),
+        'advanced': t('paths.r_advanced')}
+}|tojson }}</script>
+{% endblock %}
+{% block scripts %}<script src="{{ static_v('js/pathedit.js') }}" defer></script>{% endblock %}
