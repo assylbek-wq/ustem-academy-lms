@@ -1,0 +1,6 @@
+{# Узкая строка над приложением лаборатории: путь назад в Лабораторию и название, без большого заголовка страницы #}
+{% macro lab_bar(title) -%}
+<nav class="lab-crumbs" aria-label="{{ t('labhub.back') }}">
+  <a href="{{ url_for('lab.index') }}">{{ t('labhub.back') }}</a><span aria-hidden="true">/</span><h1>{{ title }}</h1>
+</nav>
+{%- endmacro %}

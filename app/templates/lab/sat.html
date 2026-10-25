@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% from "_macros.html" import page_header with context %}
+{% from "lab/_bar.html" import lab_bar with context %}
 {% block title %}{{ t(kind ~ '.title') }}{% endblock %}
-{% block head %}<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="{{ static_v('css/sat.css') }}">{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ static_v('css/labhub.css') }}"><link rel="stylesheet" href="{{ static_v('css/sat.css') }}">{% endblock %}
 {% block content %}
-{{ page_header(t(kind ~ '.title'), t(kind ~ '.subtitle'), icon='🛰️' if kind == 'cubesat' else '🚀') }}
+{{ lab_bar(t('labhub.' ~ kind ~ '.name')) }}
 <div class="{{ kind }}-sim-{{ preset }}"></div>
 <p class="help mt-3">{{ t(kind ~ '.help') }}</p>
 {% endblock %}

@@ -46,7 +46,9 @@ export default {
   inspect(cfg, flight) {
     const f = { ...DEFAULT_FLIGHT, ...flight };
     const pr = forecast(cfg, f).ev;
-    return inspect(cfg, f, pr);
+    const ins = inspect(cfg, f, pr);
+    ins.pred = pr;
+    return ins;
   },
   flightPlan: (fl) => ({ ...DEFAULT_FLIGHT, ...fl }),
   modes: [{ id: "build", label: "CanSat" }, { id: "rocket", label: "Ракета" }],
@@ -54,7 +56,7 @@ export default {
   rocketOf,
   canChute: { label: "Парашют CanSat", min: 0, max: 80, step: 1, unit: "см" },
   draw(cv, mode, cfg, ins) {
-    if (mode === "rocket") drawRocket(cv, cfg, ins.rocket.lift, ins.rocket.burn);
+    if (mode === "rocket") drawRocket(cv, cfg, ins.rocket.lift, ins.rocket.burn, ins.pred);
     else drawCan(cv, items(cfg), cfg, ins);
   },
 

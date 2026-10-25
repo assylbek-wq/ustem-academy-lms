@@ -57,61 +57,74 @@ class SpikeSim {
   // ─────────────── Разметка ───────────────
   build() {
     const r = this.root; r.classList.add("sp"); r.innerHTML = "";
-    this.btnRun = h("button", { type: "button", class: "sp-btn sp-run", onclick: () => (this.running ? this.stop() : this.run()) }, "▶ Запуск");
+    const icon = (d, size = 18) => { const n = document.createElementNS("http://www.w3.org/2000/svg", "svg"); n.setAttribute("viewBox", "0 0 24 24"); n.setAttribute("width", size); n.setAttribute("height", size); n.setAttribute("aria-hidden", "true"); n.innerHTML = d; return n; };
+    this.btnRun = h("button", { type: "button", class: "sp-run", title: "Запуск", "aria-label": "Запуск программы", onclick: () => (this.running ? this.stop() : this.run()) }, "▶");
     this.tabBlocks = h("button", { type: "button", class: "sp-mode", onclick: () => this.setMode("blocks") }, "Блоки");
     this.tabPy = h("button", { type: "button", class: "sp-mode", onclick: () => this.setMode("python") }, "Python");
-    this.btnPreview = h("button", { type: "button", class: "sp-btn", title: "Посмотреть, какой Python получается из блоков", onclick: () => this.togglePreview() }, "{ } Код блоков");
-    this.btnToPy = h("button", { type: "button", class: "sp-btn", title: "Продолжить в Python: код блоков перенесется в редактор Python", onclick: () => this.blocksToPython() }, "→ В Python");
-    const speed = h("select", { class: "sp-select", title: "Скорость симуляции", onchange: (e) => { this.speed = +e.target.value; } },
-      h("option", { value: 1 }, "1x"), h("option", { value: 2 }, "2x"), h("option", { value: 4 }, "4x"));
-    this.btnReset = h("button", { type: "button", class: "sp-btn", title: "Вернуть стартовую программу задания", onclick: () => this.resetAll() }, "Сброс");
-    const tb = h("div", { class: "sp-toolbar" }, this.btnRun, h("div", { class: "sp-modes" }, this.tabBlocks, this.tabPy), this.btnPreview, this.btnToPy,
-      h("span", { class: "sp-grow" }), speed,
-      h("button", { type: "button", class: "sp-btn", title: "Скачать main.py для приложения SPIKE", onclick: () => this.download() }, "⭳ .py"),
-      h("button", { type: "button", class: "sp-btn", title: "Скопировать код Python", onclick: () => this.copy() }, "Копировать"),
+    this.btnPreview = h("button", { type: "button", class: "sp-tool", title: "Посмотреть, какой Python получается из блоков", onclick: () => this.togglePreview() }, "Код блоков");
+    this.btnToPy = h("button", { type: "button", class: "sp-tool", title: "Продолжить в Python: код блоков перенесется в редактор Python", onclick: () => this.blocksToPython() }, "В Python");
+    const speed = h("select", { class: "sp-select", title: "Скорость симуляции", "aria-label": "Скорость симуляции", onchange: (e) => { this.speed = +e.target.value; } },
+      h("option", { value: 1 }, "Скорость 1x"), h("option", { value: 2 }, "Скорость 2x"), h("option", { value: 4 }, "Скорость 4x"));
+    this.btnReset = h("button", { type: "button", class: "sp-tool", title: "Вернуть стартовую программу задания", onclick: () => this.resetAll() }, "Сброс");
+    this.titleEl = h("span", { class: "sp-project" }, "Проект");
+    const hubGlyph = icon('<rect x="4" y="3" width="16" height="18" rx="3" fill="#ffd500" stroke="#1a1a1a" stroke-width="1.5"/><rect x="7" y="6" width="10" height="8" rx="1" fill="#1a1a1a"/><circle cx="12" cy="17.5" r="1.6" fill="#fff" stroke="#1a1a1a"/>', 22);
+    const tb = h("header", { class: "sp-appbar" },
+      h("div", { class: "sp-title" }, hubGlyph, this.titleEl),
+      h("div", { class: "sp-modes", role: "tablist" }, this.tabBlocks, this.tabPy), this.btnPreview, this.btnToPy,
+      h("span", { class: "sp-grow" }),
+      speed,
+      h("button", { type: "button", class: "sp-tool", title: "Скачать main.py для приложения SPIKE", onclick: () => this.download() }, "Скачать .py"),
+      h("button", { type: "button", class: "sp-tool", title: "Скопировать код Python", onclick: () => this.copy() }, "Копировать"),
       this.btnReset,
-      h("button", { type: "button", class: "sp-btn", title: "Во весь экран", onclick: () => { this.root.classList.toggle("sp-full"); this.resize(); Blockly.svgResize(this.ws); } }, "⛶"));
+      h("button", { type: "button", class: "sp-tool sp-icon", title: "Во весь экран", "aria-label": "Во весь экран", onclick: () => { this.root.classList.toggle("sp-full"); this.resize(); Blockly.svgResize(this.ws); } },
+        icon('<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2"/>', 16)),
+      h("span", { class: "sp-hubstate", title: "Программа работает на виртуальном хабе" }, h("i"), "Хаб: симулятор"));
 
-    // редакторы
+    // редакторы и консоль снизу, как в приложении
     this.blocksDiv = h("div", { class: "sp-blockly" });
     this.pyDiv = h("div", { class: "sp-python", hidden: true });
     this.preview = h("pre", { class: "sp-preview", hidden: true });
-    const editor = h("div", { class: "sp-editor" }, this.blocksDiv, this.pyDiv, this.preview);
+    this.consoleBox = h("pre", { class: "sp-console" });
+    this.tabs = {};
+    const conHead = h("button", { type: "button", class: "sp-drawer-h", "aria-expanded": "false", onclick: () => this.showTab(this.tabs.console.pane.hidden ? "console" : "-console") }, "Консоль");
+    this.tabs.console = { b: conHead, pane: h("div", { class: "sp-drawer-b", hidden: true }, this.consoleBox) };
+    const editor = h("div", { class: "sp-editor" },
+      h("div", { class: "sp-canvas-wrap" }, this.blocksDiv, this.pyDiv, this.preview, h("div", { class: "sp-runbar" }, this.btnRun)),
+      h("div", { class: "sp-drawer" }, conHead, this.tabs.console.pane));
 
-    // поле и хаб
+    // симулятор: поле, хаб, порты, задание
     this.canvas = h("canvas", { class: "sp-canvas" });
     this.hud = h("div", { class: "sp-hud" });
-    this.toastBox = h("div", { class: "sp-toasts" });
-    this.field = h("div", { class: "sp-field" }, this.canvas, this.hud, this.toastBox);
+    this.toastBox = h("div", { class: "sp-toasts", "aria-live": "polite" });
+    this.field = h("div", { class: "sp-field" }, this.canvas, this.toastBox);
     this.matrix = h("div", { class: "sp-matrix" }, ...Array.from({ length: 25 }, () => h("i")));
     this.matrixText = h("div", { class: "sp-mtext" });
     const hbtn = (which, label) => {
-      const b = h("button", { type: "button", class: "sp-hbtn", title: which === "left" ? "Левая кнопка хаба" : "Правая кнопка хаба" }, label);
+      const b = h("button", { type: "button", class: "sp-hbtn", title: which === "left" ? "Левая кнопка хаба" : "Правая кнопка хаба", "aria-label": which === "left" ? "Левая кнопка хаба" : "Правая кнопка хаба" }, label);
       const set = (down) => (e) => { e.preventDefault(); b.classList.toggle("on", down); if (this.worker) this.worker.postMessage({ type: "button", which, down }); };
       b.addEventListener("pointerdown", set(true)); b.addEventListener("pointerup", set(false)); b.addEventListener("pointerleave", set(false));
       return b;
     };
-    this.hubCenter = h("button", { type: "button", class: "sp-hbtn sp-hcenter", title: "Центральная кнопка: запуск и стоп", onclick: () => (this.running ? this.stop() : this.run()) }, "●");
-    const hub = h("div", { class: "sp-hub" }, h("div", { class: "sp-hub-title" }, "Хаб"), this.matrix, this.matrixText,
-      h("div", { class: "sp-hbtns" }, hbtn("left", "◀"), this.hubCenter, hbtn("right", "▶")));
-    // вкладки справа
-    this.tabs = {};
-    const tab = (id, title) => { const b = h("button", { type: "button", class: "sp-tab", onclick: () => this.showTab(id) }, title); this.tabs[id] = { b }; return b; };
+    this.hubCenter = h("button", { type: "button", class: "sp-hbtn sp-hcenter", title: "Центральная кнопка: запуск и стоп", "aria-label": "Центральная кнопка хаба", onclick: () => (this.running ? this.stop() : this.run()) });
+    const hub = h("div", { class: "sp-hub" }, this.matrix, this.matrixText, h("div", { class: "sp-hbtns" }, hbtn("left", "◀"), this.hubCenter, hbtn("right", "▶")));
+    this.portsBox = h("div", { class: "sp-portgrid" });
+    const tab = (id, title) => { const b = h("button", { type: "button", class: "sp-tab", role: "tab", onclick: () => this.showTab(id) }, title); this.tabs[id] = { b }; return b; };
     this.taskBox = h("div", { class: "sp-task" });
-    this.consoleBox = h("pre", { class: "sp-console" });
     this.robotBox = h("div", { class: "sp-robot" });
     this.helpBox = h("div", { class: "sp-help" });
-    this.tabs.task = { ...this.tabs.task };
-    const bar = h("div", { class: "sp-tabbar" }, tab("task", "Задание"), tab("console", "Консоль"), tab("robot", "Робот"), tab("help", "Справка"));
+    const bar = h("div", { class: "sp-tabbar", role: "tablist" }, tab("task", "Задание"), tab("robot", "Робот"), tab("help", "Справка"));
     this.tabs.task.pane = h("div", { class: "sp-pane" }, this.taskBox);
-    this.tabs.console.pane = h("div", { class: "sp-pane" }, this.consoleBox);
     this.tabs.robot.pane = h("div", { class: "sp-pane" }, this.robotBox);
     this.tabs.help.pane = h("div", { class: "sp-pane" }, this.helpBox);
-    const info = h("div", { class: "sp-info" }, bar, ...Object.values(this.tabs).map((t) => t.pane));
-    const right = h("div", { class: "sp-right" }, this.field, h("div", { class: "sp-under" }, hub, info));
-    r.append(tb, h("div", { class: "sp-body" }, editor, right));
+    const side = h("aside", { class: "sp-side" },
+      h("div", { class: "sp-sec-h" }, h("span", {}, "Тренировочное поле"), this.hud),
+      this.field,
+      h("div", { class: "sp-hubrow" }, hub, h("div", { class: "sp-ports-live" }, h("div", { class: "sp-sec-h" }, h("span", {}, "Порты")), this.portsBox)),
+      h("div", { class: "sp-info" }, bar, this.tabs.task.pane, this.tabs.robot.pane, this.tabs.help.pane));
+    r.append(tb, h("div", { class: "sp-body" }, editor, side));
 
     this.ws = createWorkspace(this.blocksDiv, () => { this.save(); if (!this.preview.hidden) this.updatePreview(); });
+    this.decorateToolbox();
     this.py = new EditorView({ doc: "", parent: this.pyDiv,
       extensions: [basicSetup, python(), keymap.of([indentWithTab]), EditorView.updateListener.of((u) => { if (u.docChanged) this.save(); })] });
     this.renderHelp();
@@ -120,7 +133,49 @@ class SpikeSim {
     requestAnimationFrame(() => this.loop());
   }
 
-  showTab(id) { for (const [k, t] of Object.entries(this.tabs)) { t.pane.hidden = k !== id; t.b.classList.toggle("active", k === id); } }
+  /** Категории блоков кружками своего цвета, как в приложении SPIKE */
+  decorateToolbox() {
+    try {
+      for (const item of this.ws.getToolbox().getToolboxItems()) {
+        const row = item.rowDiv_ || (item.getDiv && item.getDiv() && item.getDiv().querySelector(".blocklyToolboxCategory, .blocklyTreeRow"));
+        const box = item.rowContents_ || row;
+        if (!row || !box || box.querySelector(".sp-dot")) continue;
+        const color = item.colour_ || row.style.borderLeftColor || "#999";
+        row.style.borderLeft = "0";
+        const dot = document.createElement("span"); dot.className = "sp-dot"; dot.style.background = color;
+        box.prepend(dot);
+      }
+    } catch (e) { /* другая версия Blockly: остаются полоски */ }
+  }
+
+  showTab(id) {
+    if (id === "console" || id === "-console") {
+      const open = id === "console";
+      this.tabs.console.pane.hidden = !open; this.tabs.console.b.setAttribute("aria-expanded", String(open)); this.tabs.console.b.classList.toggle("open", open);
+      requestAnimationFrame(() => Blockly.svgResize(this.ws));
+      return;
+    }
+    for (const [k, t] of Object.entries(this.tabs)) {
+      if (k === "console") continue;
+      t.pane.hidden = k !== id; t.b.classList.toggle("active", k === id); t.b.setAttribute("aria-selected", String(k === id));
+    }
+  }
+
+  /** Живые показания портов, как панель хаба в приложении */
+  renderPorts() {
+    const ports = { ...DEFAULT_ROBOT, ...((this.pd && this.pd.robot) || {}) }, st = this.state || {};
+    const key = JSON.stringify([st.motors, st.yaw, Object.keys(st.sensors || {})]);
+    if (key === this.portsKey) return;
+    this.portsKey = key;
+    this.portsBox.replaceChildren(...["A", "B", "C", "D", "E", "F"].map((p) => {
+      const d = String(ports[p] || "");
+      let v = "-";
+      if (d.startsWith("motor") && st.motors && st.motors[p] !== undefined) v = `${st.motors[p]}°`;
+      else if (d === "color" && st.sensors && st.sensors[p]) v = "цвет";
+      const short = { "motor:large": "мотор L", "motor:medium": "мотор M", color: "цвет", distance: "дальномер", force: "сила" };
+      return h("div", { class: "sp-port" + (d ? "" : " empty") }, h("b", {}, p), h("span", { title: PORT_TITLES[d] || "" }, d ? (short[d] || d) : "пусто"), h("em", {}, d ? v : ""));
+    }), h("div", { class: "sp-port sp-port-yaw" }, h("b", {}, "Yaw"), h("span", {}, "гироскоп"), h("em", {}, st.yaw !== undefined ? `${(-st.yaw / 10).toFixed(0)}°` : "-")));
+  }
 
   setMode(mode) {
     this.mode = mode;
@@ -158,6 +213,7 @@ class SpikeSim {
     let pd = null;
     try { pd = await (await fetch(`/static/spikesim/presets/${this.presetName}.json`, { cache: "no-cache" })).json(); } catch (e) { pd = null; }
     this.pd = pd || { title: "Свободная тренировка", checks: [], mode: "blocks" };
+    this.titleEl.textContent = this.pd.title || "Свободная тренировка";
     let saved = null;
     try { saved = JSON.parse(localStorage.getItem(this.storageKey) || "null"); } catch (e) { saved = null; }
     loadBlocks(this.ws, (saved && saved.blocks) || this.pd.blocks || null);
@@ -218,7 +274,7 @@ class SpikeSim {
     const code = this.code();
     this.lastCode = code;
     this.running = true; this.finished = false; this.ended = false; this.error = null;
-    this.btnRun.textContent = "■ Стоп"; this.btnRun.classList.add("on");
+    this.btnRun.textContent = "■"; this.btnRun.title = "Стоп"; this.btnRun.setAttribute("aria-label", "Остановить программу"); this.btnRun.classList.add("on");
     this.lastMsg = performance.now();
     const w = new Worker(WORKER_URL, { type: "module" });
     this.worker = w;
@@ -233,7 +289,7 @@ class SpikeSim {
     if (this.worker) { this.worker.terminate(); this.worker = null; }
     if (this.running && !silent) this.finish(false, null, true);
     this.running = false;
-    this.btnRun.textContent = "▶ Запуск"; this.btnRun.classList.remove("on");
+    this.btnRun.textContent = "▶"; this.btnRun.title = "Запуск"; this.btnRun.setAttribute("aria-label", "Запуск программы"); this.btnRun.classList.remove("on");
   }
 
   onMsg(m) {
@@ -250,7 +306,7 @@ class SpikeSim {
   finish(ok, error, byUser) {
     if (this.worker) { this.worker.terminate(); this.worker = null; }
     this.running = false; this.ended = true; this.finished = !!ok;
-    this.btnRun.textContent = "▶ Запуск"; this.btnRun.classList.remove("on");
+    this.btnRun.textContent = "▶"; this.btnRun.title = "Запуск"; this.btnRun.setAttribute("aria-label", "Запуск программы"); this.btnRun.classList.remove("on");
     if (error) {
       const ex = explainError(error);
       this.error = ex;
@@ -353,7 +409,7 @@ class SpikeSim {
     if (this.running && performance.now() - this.lastMsg > 3000) {
       this.finish(false, "Программа зависла: цикл без await и без обращения к моторам или датчикам. Добавьте в цикл await runloop.sleep_ms(10).");
     }
-    this.draw(); this.drawMatrix();
+    this.draw(); this.drawMatrix(); this.renderPorts();
     requestAnimationFrame(() => this.loop());
   }
 

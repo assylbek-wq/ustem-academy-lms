@@ -57,7 +57,13 @@ class NewCoursesTest(AppTestCase):
         html = self.client.get(f"/my/cohort/{cohort.id}/lesson/{lesson.id}").get_data(as_text=True)
         self.assertIn('class="lab-preset-battery-led"', html)
         self.assertIn("js/lab.js", html)
-        self.assertEqual(self.client.get("/lab").status_code, 200)
+        hub = self.client.get("/lab").get_data(as_text=True)  # все симуляторы на одной странице
+        for path in ("/lab/arduino", "/lab/spike", "/lab/ftc", "/lab/cubesat", "/lab/cansat"):
+            self.assertIn(f'href="{path}"', hub)
+        self.assertIn("lab-preset-blink", self.client.get("/lab/arduino?preset=blink").get_data(as_text=True))
+        r = self.client.get("/lab?preset=blink")  # старые ссылки
+        self.assertEqual(r.status_code, 302)
+        self.assertIn("/lab/arduino?preset=blink", r.headers["Location"])
 
 
 @unittest.skipUnless(arduino.available(), "avr-gcc не установлен")

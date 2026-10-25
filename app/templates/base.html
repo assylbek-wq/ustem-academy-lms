@@ -43,11 +43,7 @@
       <a href="{{ url_for('game.journey_index') }}" class="sidebar-link {% if cur_path.startswith('/journey') %}sidebar-link-active{% endif %}">{{ ic('map-pin') }} <span>{{ t('nav.journey') }}</span></a>
       <a href="{{ url_for('game.leaderboard') }}" class="sidebar-link {% if cur_path.startswith('/leaderboard') %}sidebar-link-active{% endif %}">{{ ic('trophy') }} <span>{{ t('nav.leaderboard') }}</span></a>
       <a href="{{ url_for('learn.catalog') }}" class="sidebar-link {% if cur_path.startswith('/catalog') %}sidebar-link-active{% endif %}">{{ ic('layers') }} <span>{{ t('nav.catalog') }}</span></a>
-      <a href="{{ url_for('lab.index') }}" class="sidebar-link {% if cur_path.startswith('/lab') and not cur_path.startswith('/lab/ftc') and not cur_path.startswith('/lab/spike') and not cur_path.startswith('/lab/cubesat') and not cur_path.startswith('/lab/cansat') %}sidebar-link-active{% endif %}">{{ ic('cpu') }} <span>{{ t('nav.lab') }}</span></a>
-      <a href="{{ url_for('lab.ftc') }}" class="sidebar-link {% if cur_path.startswith('/lab/ftc') %}sidebar-link-active{% endif %}">{{ ic('target') }} <span>{{ t('nav.ftcsim') }}</span></a>
-      <a href="{{ url_for('lab.spike') }}" class="sidebar-link {% if cur_path.startswith('/lab/spike') %}sidebar-link-active{% endif %}">{{ ic('layers') }} <span>{{ t('nav.spikesim') }}</span></a>
-      <a href="{{ url_for('lab.cubesat') }}" class="sidebar-link {% if cur_path.startswith('/lab/cubesat') %}sidebar-link-active{% endif %}">{{ ic('globe') }} <span>{{ t('nav.cubesat') }}</span></a>
-      <a href="{{ url_for('lab.cansat') }}" class="sidebar-link {% if cur_path.startswith('/lab/cansat') %}sidebar-link-active{% endif %}">{{ ic('target') }} <span>{{ t('nav.cansat') }}</span></a>
+      <a href="{{ url_for('lab.index') }}" class="sidebar-link {% if cur_path.startswith('/lab') %}sidebar-link-active{% endif %}">{{ ic('cpu') }} <span>{{ t('nav.lab') }}</span></a>
       <a href="{{ url_for('learn.certificates') }}" class="sidebar-link {% if cur_path.startswith('/my/certificates') %}sidebar-link-active{% endif %}">{{ ic('award') }} <span>{{ t('nav.certificates') }}</span></a>
       <a href="{{ url_for('learn.portfolio') }}" class="sidebar-link {% if cur_path.startswith('/my/portfolio') %}sidebar-link-active{% endif %}">{{ ic('folder') }} <span>{{ t('nav.portfolio') }}</span></a>
 

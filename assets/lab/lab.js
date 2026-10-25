@@ -48,70 +48,115 @@ class Lab {
     const r = this.root;
     r.classList.add("lab");
     r.innerHTML = "";
+    const svgIcon = (d) => { const n = document.createElementNS("http://www.w3.org/2000/svg", "svg"); n.setAttribute("viewBox", "0 0 24 24"); n.setAttribute("aria-hidden", "true"); n.innerHTML = d; return n; };
     const groups = {};
     for (const [type, def] of Object.entries(PARTS)) (groups[def.group] ||= []).push([type, def]);
     this.palette = h("div", { class: "lab-palette" },
       ...Object.entries(groups).map(([g, items]) => h("div", { class: "lab-pgroup" }, h("div", { class: "lab-pgtitle" }, g),
         ...items.map(([type, def]) => h("button", { type: "button", class: "lab-pbtn", onclick: () => { this.addPart(type); this.palette.classList.remove("open"); } }, def.title)))));
-    this.btnRun = h("button", { type: "button", class: "lab-btn lab-run", onclick: () => (this.running ? this.stop() : this.start()) }, "▶ Старт");
-    const tb = h("div", { class: "lab-toolbar" },
-      h("div", { class: "lab-add" }, h("button", { type: "button", class: "lab-btn", onclick: () => this.palette.classList.toggle("open") }, "+ Деталь"), this.palette),
-      this.btnRun,
-      h("button", { type: "button", class: "lab-btn", title: "Отменить (Ctrl+Z)", onclick: () => this.undo() }, "↶"),
-      h("button", { type: "button", class: "lab-btn", title: "Повторить (Ctrl+Y)", onclick: () => this.redo() }, "↷"),
-      h("button", { type: "button", class: "lab-btn", title: "Повернуть (R)", onclick: () => this.rotateSel() }, "⟳"),
-      h("button", { type: "button", class: "lab-btn", title: "Копия детали (Ctrl+D)", onclick: () => this.duplicateSel() }, "⧉"),
-      h("button", { type: "button", class: "lab-btn", title: "Удалить (Delete)", onclick: () => this.deleteSel() }, "✕"),
+
+    // ─── IDE: панель как в Arduino IDE 2 (проверить, загрузить, плата, монитор порта) ───
+    const round = (title, d, onclick, cls = "") => h("button", { type: "button", class: "ide-round " + cls, title, "aria-label": title, onclick }, svgIcon(d));
+    this.btnVerify = round("Проверить (скомпилировать)", '<path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>', () => this.verify());
+    this.btnUpload = round("Загрузить и запустить симуляцию", '<path d="M5 12h12M12 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>', () => (this.running ? null : this.start()));
+    const ide = h("div", { class: "ide-bar" }, this.btnVerify, this.btnUpload,
+      h("div", { class: "ide-board", title: "Плата в симуляторе" }, svgIcon('<path d="M7 4v5M17 4v5M5 9h14v4a7 7 0 0 1-14 0z" fill="none" stroke="currentColor" stroke-width="1.8"/>'), h("b", {}, "Arduino Uno"), h("span", {}, "симулятор")),
+      h("span", { class: "lab-grow" }),
+      round("Плоттер по порту", '<path d="M3 17l5-6 4 4 5-8 4 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>', () => { this.showTab("serial"); this.togglePlot(true); }, "ide-sm"),
+      round("Монитор порта", '<circle cx="10.5" cy="10.5" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15 15l5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>', () => this.showTab("serial"), "ide-sm"));
+    this.fileTab = h("div", { class: "ide-tabs" }, h("span", { class: "ide-tab" }, "sketch.ino"));
+    this.codeBox = h("div", { class: "lab-code" });
+    this.compileOut = h("pre", { class: "lab-out" });
+    this.serialOut = h("pre", { class: "lab-serial" });
+    const serialIn = h("input", { class: "lab-input", placeholder: "Сообщение (Enter - отправить в Arduino Uno)" });
+    const send = () => { if (this.uno && serialIn.value) { this.uno.serialWrite(serialIn.value + "\n"); serialIn.value = ""; } };
+    serialIn.addEventListener("keydown", (e) => { if (e.key === "Enter") send(); });
+    this.plot = h("canvas", { class: "lab-plot", width: 600, height: 200, hidden: true });
+    this.plotData = []; this.serialLine = "";
+    this.plotBtn = h("button", { type: "button", class: "lab-mini", title: "Числа из Serial в виде графика", onclick: () => this.togglePlot() }, "График");
+    this.tabs = {};
+    const mkTab = (id, title, cls) => { const b = h("button", { type: "button", class: cls, role: "tab", onclick: () => this.showTab(id) }, title); this.tabs[id].b = b; return b; };
+    this.tabs.output = { pane: h("div", { class: "ide-pane" }, this.compileOut) };
+    this.tabs.serial = { pane: h("div", { class: "ide-pane ide-serial" }, h("div", { class: "lab-row" }, serialIn, h("button", { type: "button", class: "lab-mini", onclick: send }, "Отправить"), this.plotBtn,
+      h("button", { type: "button", class: "lab-mini", onclick: () => { this.serialOut.textContent = ""; this.plotData = []; this.drawPlot(); } }, "Очистить")), this.plot, this.serialOut) };
+    const bottom = h("div", { class: "ide-bottom" }, h("div", { class: "ide-btabs", role: "tablist" }, mkTab("output", "Вывод", "ide-btab"), mkTab("serial", "Монитор порта", "ide-btab")), this.tabs.output.pane, this.tabs.serial.pane);
+    const ideCol = h("section", { class: "ide" }, ide, this.fileTab, this.codeBox, bottom);
+
+    // ─── Симуляция: холст с макетной платой, своя панель запуска ───
+    this.btnRun = h("button", { type: "button", class: "sim-play", title: "Запустить симуляцию", "aria-label": "Запустить симуляцию", onclick: () => (this.running ? this.stop() : this.start()) }, "▶");
+    this.simClock = h("span", { class: "sim-clock" }, "00:00.000");
+    const tool = (title, text, onclick) => h("button", { type: "button", class: "lab-mini", title, "aria-label": title, onclick }, text);
+    const simBar = h("div", { class: "sim-bar" }, this.btnRun, this.simClock,
+      h("div", { class: "lab-add" }, h("button", { type: "button", class: "lab-mini lab-addbtn", onclick: () => this.palette.classList.toggle("open") }, "+ Деталь"), this.palette),
+      h("span", { class: "lab-grow" }),
+      tool("Отменить (Ctrl+Z)", "↶", () => this.undo()), tool("Повторить (Ctrl+Y)", "↷", () => this.redo()),
+      tool("Повернуть (R)", "⟳", () => this.rotateSel()), tool("Копия детали (Ctrl+D)", "⧉", () => this.duplicateSel()), tool("Удалить (Delete)", "✕", () => this.deleteSel()),
       h("span", { class: "lab-sep" }),
-      h("button", { type: "button", class: "lab-btn", title: "Приблизить", onclick: () => this.zoom(1.2) }, "+"),
-      h("button", { type: "button", class: "lab-btn", title: "Отдалить", onclick: () => this.zoom(1 / 1.2) }, "−".replace("−", "-")),
-      h("button", { type: "button", class: "lab-btn", title: "Показать все", onclick: () => this.fit() }, "⤢"),
+      tool("Приблизить", "+", () => this.zoom(1.2)), tool("Отдалить", "-", () => this.zoom(1 / 1.2)), tool("Показать все", "⤢", () => this.fit()),
       h("span", { class: "lab-sep" }),
-      h("button", { type: "button", class: "lab-btn", title: "Вернуть исходную схему и код", onclick: () => this.reset() }, "Сброс"),
-      h("button", { type: "button", class: "lab-btn", title: "Скачать проект", onclick: () => this.exportJson() }, "Скачать"),
-      h("label", { class: "lab-btn", title: "Открыть проект" }, "Открыть", h("input", { type: "file", accept: ".json", hidden: true, onchange: (e) => this.importJson(e) })),
-      h("button", { type: "button", class: "lab-btn", title: "Во весь экран", onclick: () => this.root.classList.toggle("lab-full") }, "⛶"));
+      h("details", { class: "lab-more" }, h("summary", { class: "lab-mini", title: "Проект" }, "Проект"),
+        h("div", { class: "lab-menu" },
+          h("button", { type: "button", onclick: () => this.reset() }, "Вернуть исходную схему и код"),
+          h("button", { type: "button", onclick: () => this.exportJson() }, "Скачать проект"),
+          h("label", {}, "Открыть проект", h("input", { type: "file", accept: ".json", hidden: true, onchange: (e) => this.importJson(e) })))),
+      tool("Во весь экран", "⛶", () => this.root.classList.toggle("lab-full")));
     this.svg = el("svg", { class: "lab-svg" });
     this.world = el("g", {}, this.svg);
     this.gParts0 = el("g", {}, this.world); this.gParts = el("g", {}, this.world); this.gWires = el("g", {}, this.world); this.gTemp = el("g", {}, this.world);
     this.status = h("div", { class: "lab-status" }, "");
     const canvas = h("div", { class: "lab-canvas" }, this.svg, this.status);
-    // Правая панель
-    this.tabs = {};
-    const mkTab = (id, title) => { const b = h("button", { type: "button", class: "lab-tab", onclick: () => this.showTab(id) }, title); this.tabs[id].b = b; return b; };
-    this.codeBox = h("div", { class: "lab-code" });
-    this.compileOut = h("pre", { class: "lab-out" });
-    this.serialOut = h("pre", { class: "lab-serial" });
-    const serialIn = h("input", { class: "lab-input", placeholder: "Отправить в Serial..." });
-    const send = () => { if (this.uno && serialIn.value) { this.uno.serialWrite(serialIn.value + "\n"); serialIn.value = ""; } };
-    serialIn.addEventListener("keydown", (e) => { if (e.key === "Enter") send(); });
     this.propsBox = h("div", { class: "lab-props" });
     this.checksBox = h("div", { class: "lab-checks" });
-    this.tabs.code = { b: null, pane: h("div", { class: "lab-pane" }, this.codeBox, this.compileOut) };
-    this.plot = h("canvas", { class: "lab-plot", width: 600, height: 220, hidden: true });
-    this.plotData = []; this.serialLine = "";
-    const plotBtn = h("button", { type: "button", class: "lab-btn", title: "Числа из Serial в виде графика" }, "График");
-    plotBtn.addEventListener("click", () => { this.plot.hidden = !this.plot.hidden; plotBtn.classList.toggle("on", !this.plot.hidden); this.drawPlot(); });
-    this.tabs.serial = { b: null, pane: h("div", { class: "lab-pane" }, this.plot, this.serialOut, h("div", { class: "lab-row" }, serialIn,
-      h("button", { type: "button", class: "lab-btn", onclick: send }, "Отправить"), plotBtn,
-      h("button", { type: "button", class: "lab-btn", onclick: () => { this.serialOut.textContent = ""; this.plotData = []; this.drawPlot(); } }, "Очистить"))) };
-    this.tabs.props = { b: null, pane: h("div", { class: "lab-pane" }, this.propsBox) };
-    this.tabs.task = { b: null, pane: h("div", { class: "lab-pane" }, this.checksBox) };
-    const tabBar = h("div", { class: "lab-tabbar" }, mkTab("code", "Код"), mkTab("serial", "Serial"), mkTab("props", "Свойства"), mkTab("task", "Задание"));
-    for (const t of Object.values(this.tabs)) t.pane && (t.pane.hidden = true);
-    const side = h("div", { class: "lab-side" }, tabBar, ...Object.values(this.tabs).map((t) => t.pane));
-    r.append(tb, h("div", { class: "lab-body" }, canvas, side));
+    this.tabs.props = { pane: h("div", { class: "lab-pane" }, this.propsBox) };
+    this.tabs.task = { pane: h("div", { class: "lab-pane" }, this.checksBox) };
+    const side = h("div", { class: "lab-side" }, h("div", { class: "lab-tabbar", role: "tablist" }, mkTab("task", "Задание", "lab-tab"), mkTab("props", "Свойства детали", "lab-tab")), this.tabs.task.pane, this.tabs.props.pane);
+    const simCol = h("section", { class: "sim" }, simBar, canvas, side);
+    r.append(h("div", { class: "lab-body" }, ideCol, simCol));
     this.editor = new EditorView({
       doc: DEFAULT_CODE, parent: this.codeBox,
       extensions: [basicSetup, cpp(), keymap.of([indentWithTab]), EditorView.updateListener.of((u) => { if (u.docChanged) this.save(); })],
     });
     this.bindCanvas();
-    this.showTab("code");
+    this.showTab("output"); this.showTab("task");
+  }
+
+  togglePlot(force) {
+    const on = force === undefined ? this.plot.hidden : force;
+    this.plot.hidden = !on; this.plotBtn.classList.toggle("on", on); this.drawPlot();
+  }
+
+  /** Как ✓ в Arduino IDE: только компиляция, без запуска */
+  async verify() {
+    if (!this.hasUno()) { this.showTab("output"); this.compileOut.textContent = "На схеме нет Arduino Uno: компилировать нечего."; return; }
+    this.compiledFor = null;
+    await this.compile();
+  }
+
+  async compile() {
+    const code = this.editor.state.doc.toString();
+    if (this.compiledFor === code) return true;
+    this.showTab("output");
+    this.setStatus("Компиляция...", "busy");
+    this.compileOut.classList.remove("err");
+    this.compileOut.textContent = "Компиляция скетча для Arduino Uno...";
+    this.btnVerify.classList.add("busy"); this.btnUpload.classList.add("busy");
+    try {
+      const res = await fetch(this.compileUrl, { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf() }, body: JSON.stringify({ code }) });
+      const data = await res.json().catch(() => ({ ok: false, error: "Сервер не ответил" }));
+      if (!data.ok) { this.compileOut.textContent = data.error || "Ошибка компиляции"; this.compileOut.classList.add("err"); this.setStatus("Ошибка в коде: смотрите «Вывод» под редактором", "err"); return false; }
+      this.hex = data.hex; this.compiledFor = code;
+      this.compileOut.textContent = `Скетч использует ${data.size} байт (${Math.round((100 * data.size) / 32256)}%) памяти устройства. Всего доступно 32 256 байт.`;
+      this.setStatus("Скомпилировано", "ok");
+      return true;
+    } catch (e) { this.compileOut.textContent = "Нет связи с сервером компиляции."; this.setStatus("Нет связи с сервером", "err"); return false; }
+    finally { this.btnVerify.classList.remove("busy"); this.btnUpload.classList.remove("busy"); }
   }
 
   showTab(id) {
-    for (const [k, t] of Object.entries(this.tabs)) { t.pane.hidden = k !== id; t.b && t.b.classList.toggle("active", k === id); }
-    this.tab = id;
+    if (id === "code") id = "output";
+    const group = ["output", "serial"].includes(id) ? ["output", "serial"] : ["props", "task"];
+    for (const k of group) { const t = this.tabs[k]; t.pane.hidden = k !== id; t.b && t.b.classList.toggle("active", k === id); t.b && t.b.setAttribute("aria-selected", String(k === id)); }
+    if (group[0] === "props") this.tab = id;
   }
 
   setStatus(text, kind = "") { this.status.textContent = text; this.status.className = "lab-status " + kind; }
@@ -290,7 +335,7 @@ class Lab {
     for (const p of this.parts) p.$g && this.placePart(p);
     this.renderWires();
     this.renderProps();
-    if (s && this.tab !== "code" && this.tab !== "serial") this.showTab("props");
+    if (s) this.showTab("props");
   }
 
   selPart() { return this.sel && this.sel.kind === "part" ? this.parts.find((p) => p.id === this.sel.id) : null; }
@@ -528,25 +573,13 @@ class Lab {
     this.buildNets();
     this.serialOut.textContent = ""; this.plotData = []; this.serialLine = ""; this.drawPlot();
     if (this.hasUno()) {
-      const code = this.editor.state.doc.toString();
-      if (this.compiledFor !== code) {
-        this.setStatus("Компиляция...", "busy");
-        this.compileOut.textContent = "Компиляция...";
-        try {
-          const res = await fetch(this.compileUrl, { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf() }, body: JSON.stringify({ code }) });
-          const data = await res.json().catch(() => ({ ok: false, error: "Сервер не ответил" }));
-          if (!data.ok) { this.compileOut.textContent = data.error || "Ошибка компиляции"; this.compileOut.classList.add("err"); this.showTab("code"); this.setStatus("Ошибка в коде: смотрите вкладку «Код»", "err"); return; }
-          this.hex = data.hex; this.compiledFor = code;
-          this.compileOut.classList.remove("err");
-          this.compileOut.textContent = `Готово: скетч занимает ${data.size} байт из 32 256.`;
-        } catch (e) { this.compileOut.textContent = "Нет связи с сервером компиляции."; this.setStatus("Нет связи с сервером", "err"); return; }
-      }
+      if (!(await this.compile())) return;
       this.uno = new Uno(this.hex, { onSerial: (ch) => this.onSerial(ch) });
       this.setupSonars();
     } else this.uno = null;
     for (const p of this.parts) if (p.type === "led") p.burnt = false;
     this.running = true; this.simTime = 0; this.checkState = {};
-    this.btnRun.textContent = "■ Стоп"; this.btnRun.classList.add("on");
+    this.btnRun.textContent = "■"; this.btnRun.title = "Остановить симуляцию"; this.btnRun.classList.add("on");
     this.setStatus(this.uno ? "Симуляция работает" : "Цепь под напряжением", "ok");
     this.root.classList.add("running");
     this.lastT = performance.now();
@@ -557,7 +590,7 @@ class Lab {
   stop() {
     if (!this.running) return;
     this.running = false; cancelAnimationFrame(this.raf); this.uno = null;
-    this.btnRun.textContent = "▶ Старт"; this.btnRun.classList.remove("on");
+    this.btnRun.textContent = "▶"; this.btnRun.title = "Запустить симуляцию"; this.btnRun.classList.remove("on"); this.simClock.textContent = "00:00.000";
     this.root.classList.remove("running");
     this.setStatus("");
     for (const t of Object.values(this.tones)) t.gain.gain.value = 0;
@@ -570,6 +603,7 @@ class Lab {
     const { node, count } = this.net;
     let stats = null;
     if (this.uno) { stats = this.uno.run(Math.round(FREQ * dt)); this.simTime = this.uno.seconds; } else this.simTime += dt;
+    { const t = this.simTime, m = Math.floor(t / 60), sec = t - m * 60; this.simClock.textContent = `${String(m).padStart(2, "0")}:${sec.toFixed(3).padStart(6, "0")}`; }
     // Базовые элементы деталей
     const base = [];
     for (const p of this.parts) {
@@ -687,7 +721,7 @@ class Lab {
     if (pd && pd.title) box.append(h("h4", {}, pd.title));
     if (pd && pd.task) box.append(h("div", { class: "lab-task" }, ...pd.task.split("\n").map((l) => h("p", {}, l))));
     if (!this.checks.length) { if (!pd) box.append(h("p", { class: "lab-muted" }, "Свободная лаборатория: собирайте любые схемы. Задания с автопроверкой есть в уроках курса.")); return; }
-    box.append(h("p", { class: "lab-muted" }, "Нажмите «Старт»: проверка идет во время симуляции."));
+    box.append(h("p", { class: "lab-muted" }, "Нажмите ▶ над схемой: проверка идет во время симуляции."));
     this.checkEls = this.checks.map((c) => { const li = h("li", {}, c.label); return li; });
     box.append(h("ul", { class: "lab-checklist" }, ...this.checkEls));
     this.doneEl = h("div", { class: "lab-done", hidden: true }, "Задание выполнено! Отметьте урок как пройденный.");

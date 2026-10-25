@@ -6,7 +6,7 @@ import time
 from pathlib import Path
 from collections import defaultdict, deque
 
-from flask import Blueprint, g, jsonify, render_template, request
+from flask import Blueprint, g, jsonify, redirect, render_template, request, url_for
 
 from ..core import login_required
 from ..services import arduino
@@ -31,9 +31,40 @@ def _limited(user_id: int, limit: int = 30, window: int = 60) -> bool:
     return False
 
 
+STATIC = Path(__file__).resolve().parents[1] / "static"
+# Лаборатории на главной странице: ключ, раздел, префикс задания в SimSolve, папка заданий
+LABS = [
+    {"key": "arduino", "group": "robotics", "endpoint": "lab.arduino", "solved": "lab-", "dir": "lab/presets", "glob": "*.json"},
+    {"key": "spike", "group": "robotics", "endpoint": "lab.spike", "solved": "spike-", "dir": "spikesim/presets", "glob": "spike-*.json"},
+    {"key": "ftc", "group": "robotics", "endpoint": "lab.ftc", "solved": "ftc-", "dir": "ftcsim/presets", "glob": "ftc-*.json"},
+    {"key": "cubesat", "group": "space", "endpoint": "lab.cubesat", "solved": "cubesat-", "dir": "cubesat/presets", "glob": "cubesat-*.json"},
+    {"key": "cansat", "group": "space", "endpoint": "lab.cansat", "solved": "cansat-", "dir": "cansat/presets", "glob": "cansat-*.json"},
+]
+
+
+def _hub_rows(user_id: int) -> list[dict]:
+    from ..models import SimSolve
+    solved = [s.preset for s in SimSolve.query.filter_by(user_id=user_id)]
+    rows = []
+    for lab in LABS:
+        total = sum(1 for p in (STATIC / lab["dir"]).glob(lab["glob"]) if "sandbox" not in p.stem)
+        done = sum(1 for s in solved if s.startswith(lab["solved"]))
+        rows.append({**lab, "total": total, "done": min(done, total)})
+    return rows
+
+
 @bp.route("/lab")
 @login_required
 def index():
+    """Все симуляторы и лаборатории на одной странице. Старые ссылки /lab?preset=... ведут в Arduino."""
+    if request.args.get("preset"):
+        return redirect(url_for("lab.arduino", preset=request.args["preset"]))
+    return render_template("lab/hub.html", rows=_hub_rows(g.user.id))
+
+
+@bp.route("/lab/arduino", endpoint="arduino")
+@login_required
+def arduino_lab():  # не arduino: так называется модуль компиляции services.arduino
     preset = request.args.get("preset", "")
     if not re.fullmatch(r"[a-z0-9-]{1,40}", preset or "") or not (PRESET_DIR / f"{preset}.json").exists():
         preset = ""

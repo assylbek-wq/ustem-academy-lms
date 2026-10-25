@@ -107,7 +107,7 @@ def sim_url(preset: str) -> str:
         return url_for("lab.cubesat", preset=preset)
     if preset.startswith("cansat-"):
         return url_for("lab.cansat", preset=preset)
-    return url_for("lab.index", preset=preset.removeprefix("lab-"))
+    return url_for("lab.arduino", preset=preset.removeprefix("lab-"))
 
 
 def _course_links(user: User, tr: dict) -> dict:

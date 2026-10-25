@@ -56,61 +56,77 @@ class FtcSim {
     r.tabIndex = -1;
     r.addEventListener("pointerdown", () => { activeSim = this; });
     this.opLabel = h("span", { class: "ftc-op" }, "");
-    this.btnInit = h("button", { type: "button", class: "ftc-btn ftc-init", onclick: () => this.init() }, "INIT");
-    this.btnStart = h("button", { type: "button", class: "ftc-btn ftc-start", onclick: () => this.start(), disabled: true }, "▶ START");
-    this.btnStop = h("button", { type: "button", class: "ftc-btn ftc-stop", onclick: () => this.stop(), disabled: true }, "■ STOP");
-    this.viewSel = h("select", { class: "ftc-select", title: "Как смотреть на поле", onchange: (e) => { this.view = e.target.value; this.draw(); } },
+    this.btnInit = h("button", { type: "button", class: "ds-big ds-init", onclick: () => this.init() }, "INIT");
+    this.btnStart = h("button", { type: "button", class: "ds-big ds-start", title: "START", "aria-label": "START", onclick: () => this.start(), disabled: true }, "▶");
+    this.btnStop = h("button", { type: "button", class: "ds-stop", title: "STOP", "aria-label": "STOP", onclick: () => this.stop(), disabled: true }, "■");
+    this.viewSel = h("select", { class: "ftc-select", title: "Как смотреть на поле", "aria-label": "Вид на поле", onchange: (e) => { this.view = e.target.value; this.draw(); } },
       h("option", { value: "driver" }, "Вид пилотов"), h("option", { value: "audience" }, "Вид зрителей"));
     this.view = "driver";
-    const speed = h("select", { class: "ftc-select", title: "Скорость симуляции", onchange: (e) => { this.speed = +e.target.value; } },
+    const speed = h("select", { class: "ftc-select", title: "Скорость симуляции", "aria-label": "Скорость симуляции", onchange: (e) => { this.speed = +e.target.value; } },
       h("option", { value: 1 }, "1x"), h("option", { value: 2 }, "2x"), h("option", { value: 4 }, "4x"));
-    this.btnReset = h("button", { type: "button", class: "ftc-btn", title: "Вернуть стартовый код и робота задания", onclick: () => this.resetAll() }, "Сброс");
-    const tb = h("div", { class: "ftc-toolbar" }, this.btnInit, this.btnStart, this.btnStop, this.opLabel, h("span", { class: "ftc-grow" }),
-      h("button", { type: "button", class: "ftc-btn", title: "Вернуть робота и пыльцу на старт", onclick: () => this.resetField() }, "⟲ Поле"),
-      this.viewSel, speed, this.btnReset,
-      h("button", { type: "button", class: "ftc-btn", title: "Во весь экран", onclick: () => { this.root.classList.toggle("ftc-full"); this.resize(); } }, "⛶"));
+    this.btnReset = h("button", { type: "button", class: "ftc-tool", title: "Вернуть стартовый код и робота задания", onclick: () => this.resetAll() }, "Сброс");
+    this.fileName = h("span", { class: "obj-file" }, "TeleOpMain.java");
+
+    // OnBot Java: дерево проекта сверху, редактор, сообщения сборки снизу
+    this.codeBox = h("div", { class: "ftc-code" });
+    this.codeErr = h("pre", { class: "ftc-err", hidden: true });
+    const editor = h("section", { class: "obj" },
+      h("div", { class: "obj-head" }, h("b", {}, "OnBot Java"), h("span", { class: "obj-path" }, "TeamCode / src / org / firstinspires / ftc / teamcode /"), this.fileName),
+      h("div", { class: "obj-tabs" }, h("span", { class: "obj-tab" }, this.fileName.cloneNode(true))),
+      this.codeBox,
+      h("div", { class: "obj-build" }, h("div", { class: "obj-build-h" }, "Сообщения сборки"), this.codeErr, this.buildOk = h("div", { class: "obj-build-ok" }, "Нажмите INIT на Driver Station: код соберется и запустится.")));
 
     // Поле
     this.canvas = h("canvas", { class: "ftc-canvas" });
     this.hudTime = h("div", { class: "ftc-hud-time" });
     this.hudScore = h("div", { class: "ftc-hud-score" });
     this.hudPose = h("div", { class: "ftc-hud-pose" });
-    this.toastBox = h("div", { class: "ftc-toasts" });
+    this.toastBox = h("div", { class: "ftc-toasts", "aria-live": "polite" });
     this.fieldWrap = h("div", { class: "ftc-field" }, this.canvas, this.hudTime, this.hudScore, this.hudPose, this.toastBox);
     this.padBox = this.buildPad();
-    const keysHelp = h("div", { class: "ftc-keys" },
-      h("b", {}, "Геймпад с клавиатуры: "), "W A S D - левый стик, ← → - поворот (правый стик), ↑ ↓ - правый стик Y, ",
-      "J K U I - кнопки A B X Y, Q E - бамперы, Z C - триггеры, T G F H - крестовина. Подходит и настоящий геймпад по USB или Bluetooth. ",
-      h("button", { type: "button", class: "ftc-link", onclick: () => { this.padBox.hidden = !this.padBox.hidden; } }, "Экранный геймпад"));
-    const left = h("div", { class: "ftc-left" }, this.fieldWrap, keysHelp, this.padBox);
+    const keysHelp = h("details", { class: "ftc-keys" },
+      h("summary", {}, "Управление геймпадом"),
+      h("p", {}, "W A S D - левый стик, ← → - поворот (правый стик), ↑ ↓ - правый стик Y, J K U I - кнопки A B X Y, Q E - бамперы, Z C - триггеры, T G F H - крестовина. Подходит и настоящий геймпад по USB или Bluetooth."),
+      h("button", { type: "button", class: "ftc-tool", onclick: () => { this.padBox.hidden = !this.padBox.hidden; } }, "Экранный геймпад"));
 
-    // Правая панель
-    this.tabs = {};
-    const tab = (id, title) => { const b = h("button", { type: "button", class: "ftc-tab", onclick: () => this.showTab(id) }, title); this.tabs[id] = { b }; return b; };
-    const bar = h("div", { class: "ftc-tabbar" }, tab("code", "Код"), tab("hub", "Driver Hub"), tab("robot", "Робот"), tab("task", "Задание"));
-    this.codeBox = h("div", { class: "ftc-code" });
-    this.codeErr = h("pre", { class: "ftc-err", hidden: true });
-    this.tabs.code.pane = h("div", { class: "ftc-pane" }, this.codeBox, this.codeErr);
+    // Driver Station
     this.hub = this.buildHub();
-    this.tabs.hub.pane = h("div", { class: "ftc-pane" }, this.hub);
+
+    // Робот и задание
+    this.tabs = {};
+    const tab = (id, title) => { const b = h("button", { type: "button", class: "ftc-tab", role: "tab", onclick: () => this.showTab(id) }, title); this.tabs[id] = { b }; return b; };
+    const bar = h("div", { class: "ftc-tabbar", role: "tablist" }, tab("task", "Задание"), tab("robot", "Конфигурация робота"));
     this.robotBox = h("div", { class: "ftc-robot" });
     this.tabs.robot.pane = h("div", { class: "ftc-pane" }, this.robotBox);
     this.taskBox = h("div", { class: "ftc-task" });
     this.tabs.task.pane = h("div", { class: "ftc-pane" }, this.taskBox);
-    const side = h("div", { class: "ftc-side" }, bar, ...Object.values(this.tabs).map((t) => t.pane));
+
+    const top = h("header", { class: "ftc-appbar" }, this.titleEl = h("span", { class: "ftc-title" }, ""), h("span", { class: "ftc-grow" }),
+      h("button", { type: "button", class: "ftc-tool", title: "Вернуть робота и пыльцу на старт", onclick: () => this.resetField() }, "Поле на старт"),
+      this.viewSel, speed, this.btnReset,
+      h("button", { type: "button", class: "ftc-tool", title: "Во весь экран", "aria-label": "Во весь экран", onclick: () => { this.root.classList.toggle("ftc-full"); this.resize(); } }, "⛶"));
+    const right = h("div", { class: "ftc-right" }, this.fieldWrap, this.hub, keysHelp, this.padBox,
+      h("div", { class: "ftc-side" }, bar, this.tabs.task.pane, this.tabs.robot.pane));
     r.innerHTML = "";
-    r.append(tb, h("div", { class: "ftc-body" }, left, side));
+    r.append(top, h("div", { class: "ftc-body" }, editor, right));
 
     this.editor = new EditorView({
       doc: "", parent: this.codeBox,
-      extensions: [basicSetup, java(), keymap.of([indentWithTab]), EditorView.updateListener.of((u) => { if (u.docChanged) this.save(); })],
+      extensions: [basicSetup, java(), keymap.of([indentWithTab]), EditorView.updateListener.of((u) => { if (u.docChanged) { this.save(); this.updateFileName(); } })],
     });
-    this.showTab("code");
+    this.showTab("task");
     new ResizeObserver(() => this.resize()).observe(this.fieldWrap);
     this.core.on((ev, data) => this.onCore(ev, data));
     requestAnimationFrame(() => this.loop());
   }
 
+  updateFileName() {
+    const m = this.code().match(/public\s+class\s+(\w+)/);
+    const name = (m ? m[1] : "TeamCode") + ".java";
+    for (const el of this.root.querySelectorAll(".obj-file")) el.textContent = name;
+  }
+
+  /** Driver Station: выбор программы, круглая кнопка INIT / START, STOP, таймер и телеметрия */
   buildHub() {
     this.hubState = h("span", { class: "ftc-hub-state" }, "Выберите программу");
     this.hubName = h("div", { class: "ftc-hub-name" }, "");
@@ -118,11 +134,13 @@ class FtcSim {
     this.hubTel = h("pre", { class: "ftc-hub-tel" }, "");
     this.hubErr = h("pre", { class: "ftc-hub-err", hidden: true });
     this.hubLog = h("pre", { class: "ftc-hub-log", hidden: true });
-    return h("div", { class: "ftc-hub" },
-      h("div", { class: "ftc-hub-top" }, h("span", { class: "ftc-hub-brand" }, "Driver Hub"), this.hubState),
-      h("div", { class: "ftc-hub-row" }, this.hubName, this.hubTimer),
-      h("div", { class: "ftc-hub-label" }, "Telemetry"), this.hubTel, this.hubErr, this.hubLog,
-      h("p", { class: "ftc-hub-help" }, "Как на настоящем Driver Hub: INIT запускает код до waitForStart(), START - основную часть, STOP останавливает робота. AUTO длится 30 секунд."));
+    return h("section", { class: "ds", "aria-label": "Driver Station" },
+      h("div", { class: "ds-top" }, h("span", { class: "ds-brand" }, "Driver Station"), h("span", { class: "ds-net" }, h("i"), "Robot Controller подключен"), h("span", { class: "ds-volt" }, "12,8 В")),
+      h("div", { class: "ds-main" },
+        h("div", { class: "ds-left" },
+          h("div", { class: "ds-op" }, h("span", { class: "ds-op-k" }, "OpMode"), this.hubName),
+          h("div", { class: "ds-controls" }, this.btnInit, this.btnStart, h("div", { class: "ds-timer" }, this.hubTimer, this.hubState), this.btnStop)),
+        h("div", { class: "ds-telwrap" }, h("div", { class: "ds-tel-h" }, "Telemetry"), this.hubTel, this.hubErr, this.hubLog)));
   }
 
   buildPad() {
@@ -157,7 +175,8 @@ class FtcSim {
   }
 
   showTab(id) {
-    for (const [k, t] of Object.entries(this.tabs)) { t.pane.hidden = k !== id; t.b.classList.toggle("active", k === id); }
+    if (!this.tabs[id]) return; // код и Driver Station видны всегда
+    for (const [k, t] of Object.entries(this.tabs)) { t.pane.hidden = k !== id; t.b.classList.toggle("active", k === id); t.b.setAttribute("aria-selected", String(k === id)); }
     if (id === "robot") this.renderRobot();
   }
 
@@ -182,6 +201,8 @@ class FtcSim {
     this.core.setRobot(robot);
     this.editor.dispatch({ changes: { from: 0, to: this.editor.state.doc.length, insert: code } });
     this.core.code = code; this.core.evalStatic();
+    this.titleEl.textContent = this.presetData.title || "Свободная тренировка";
+    this.updateFileName();
     this.renderTask(); this.renderRobot(); this.refreshButtons(); this.updateHub();
     this.showTab(this.presetData.tab || (this.presetData.checks && this.presetData.checks.length ? "task" : "code"));
     this.resize();
@@ -230,10 +251,9 @@ class FtcSim {
     const ok = this.core.init(this.code());
     this.updateHub();
     if (!ok) {
-      this.codeErr.textContent = this.core.error; this.codeErr.hidden = false;
-      this.showTab("code");
+      this.codeErr.textContent = this.core.error; this.codeErr.hidden = false; this.buildOk.hidden = true;
     } else {
-      this.codeErr.hidden = true;
+      this.codeErr.hidden = true; this.buildOk.hidden = false; this.buildOk.textContent = "Сборка прошла успешно.";
       if (["code", "task"].includes(this.currentTab()) && !this.presetData.keepTab) this.showTab("hub");
     }
     this.renderChecks(); this.refreshButtons();
@@ -250,8 +270,10 @@ class FtcSim {
     this.btnInit.disabled = ["init", "run"].includes(ph);
     this.btnStart.disabled = ph !== "init" || !this.core.reachedWait;
     this.btnStop.disabled = !["init", "run"].includes(ph);
-    this.btnInit.classList.toggle("pulse", !this.btnInit.disabled);
-    this.btnStart.classList.toggle("pulse", !this.btnStart.disabled);
+    // как на Driver Station: одна большая кнопка - INIT, после инициализации ▶ START
+    this.btnInit.hidden = ["init", "run"].includes(ph);
+    this.btnStart.hidden = ph !== "init";
+    this.btnStart.classList.toggle("ready", !this.btnStart.disabled);
     const kind = this.core.kind === "auto" ? "Autonomous" : this.core.kind === "teleop" ? "TeleOp" : "";
     this.opLabel.textContent = this.core.opName ? `${this.core.opName} · ${kind}` : "";
   }
@@ -272,7 +294,7 @@ class FtcSim {
 
   afterRun() {
     const c = this.core;
-    if (c.phase === "error") { this.codeErr.textContent = c.error; this.codeErr.hidden = false; }
+    if (c.phase === "error") { this.codeErr.textContent = c.error; this.codeErr.hidden = false; this.buildOk.hidden = true; }
     this.renderChecks();
     if (c.allOk) { this.toast("Задание выполнено!", "ok"); if (window.academySolved) window.academySolved(this.presetName); }
   }

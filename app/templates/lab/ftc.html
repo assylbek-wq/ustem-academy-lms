@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% from "_macros.html" import page_header with context %}
+{% from "lab/_bar.html" import lab_bar with context %}
 {% block title %}{{ t('ftcsim.title') }}{% endblock %}
-{% block head %}<link rel="stylesheet" href="{{ static_v('css/ftcsim.css') }}">{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ static_v('css/labhub.css') }}"><link rel="stylesheet" href="{{ static_v('css/ftcsim.css') }}">{% endblock %}
 {% block content %}
-{{ page_header(t('ftcsim.title'), t('ftcsim.subtitle'), icon='🤖') }}
+{{ lab_bar(t('labhub.ftc.name')) }}
 <div class="ftc-sim-{{ preset }}"></div>
 <p class="help mt-3">{{ t('ftcsim.help') }}</p>
 {% endblock %}

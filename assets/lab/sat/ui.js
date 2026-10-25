@@ -46,14 +46,14 @@ class SatLab {
   build() {
     const r = this.root, K = this.K; r.className = "sl sl-" + this.kind; r.innerHTML = "";
     this.tabs = {};
-    const tab = (id, n, title) => { const b = h("button", { type: "button", class: "sl-step", onclick: () => this.showTab(id) }, n ? h("span", { class: "sl-step-n" }, n) : null, title); this.tabs[id] = { b }; return b; };
-    this.btnReset = h("button", { type: "button", class: "sl-ghost", title: "Вернуть стартовую сборку и программу задания", onclick: () => this.resetAll() }, "Сброс");
+    const tab = (id, n, title) => { const b = h("button", { type: "button", class: "sl-step", role: "tab", onclick: () => this.showTab(id) }, title); this.tabs[id] = { b }; return b; };
+    this.btnReset = h("button", { type: "button", class: "sl-tool", title: "Вернуть стартовую сборку и программу задания", onclick: () => this.resetAll() }, "Сброс");
     this.titleEl = h("div", { class: "sl-title" });
     const head = h("header", { class: "sl-head" },
-      h("div", { class: "sl-brand" }, h("div", { class: "sl-kind" }, K.title), this.titleEl),
-      h("nav", { class: "sl-steps", "aria-label": "Этапы" }, tab("build", "1", "Сборка"), tab("flight", "2", "Программа и полет"), tab("debrief", "3", "Разбор"), tab("help", "", "Справка")),
-      h("div", { class: "sl-head-tools" }, this.btnReset,
-        h("button", { type: "button", class: "sl-ghost", title: "Во весь экран", "aria-label": "Во весь экран", onclick: () => { this.root.classList.toggle("sl-full"); this.drawAll(); } }, "⛶")));
+      h("div", { class: "sl-brand" }, h("b", { class: "sl-kind" }, K.title), this.titleEl),
+      h("span", { class: "sl-grow" }), this.btnReset,
+      h("button", { type: "button", class: "sl-tool", title: "Во весь экран", "aria-label": "Во весь экран", onclick: () => { this.root.classList.toggle("sl-full"); this.drawAll(); } }, "⛶"));
+    const steps = h("nav", { class: "sl-steps", role: "tablist", "aria-label": "Разделы" }, tab("build", "", K.id === "cansat" ? "Конструктор" : "Конструктор"), tab("flight", "", "Программа и полет"), tab("debrief", "", "Разбор полета"), tab("help", "", "Справка"));
 
     // сборка
     this.modeBar = h("div", { class: "sl-seg", role: "tablist" });
@@ -71,7 +71,8 @@ class SatLab {
 
     // полет
     this.pyDiv = h("div", { class: "sl-python" });
-    this.btnRun = h("button", { type: "button", class: "sl-launch", onclick: () => (this.worker ? this.stopRun() : this.run()) }, "Запустить полет");
+    this.btnRun = h("button", { type: "button", class: "sl-launch", title: "Запустить полет (F5)", onclick: () => (this.worker ? this.stopRun() : this.run()) }, h("i", { class: "sl-ico-run" }), h("span", {}, "Запустить"));
+    this.btnStop = h("button", { type: "button", class: "sl-stopbtn", title: "Остановить", onclick: () => this.stopRun() }, h("i", { class: "sl-ico-stop" }), h("span", {}, "Стоп"));
     this.speedSel = h("select", { class: "sl-select", title: "Скорость проигрывания полета", "aria-label": "Скорость проигрывания" },
       ...(this.kind === "cansat" ? [[1, "×1"], [2, "×2"], [5, "×5"], [15, "×15"]] : [[10, "×10"], [30, "×30"], [60, "×60"], [150, "×150"]])
         .map(([v, t], i) => h("option", { value: v, selected: i === 2 }, t)));
@@ -85,9 +86,11 @@ class SatLab {
     this.seriesSel = h("select", { class: "sl-select", title: "Что показать на графике", "aria-label": "Ряд графика", onchange: () => this.drawChart(this.play ? this.play.t : undefined) });
     const flightPane = h("section", { class: "sl-flight" },
       h("div", { class: "sl-code" },
-        h("div", { class: "sl-bar" }, this.btnRun, this.speedSel, this.btnSkip, h("span", { class: "sl-grow" }),
-          h("button", { type: "button", class: "sl-btn sl-btn-sm", title: "Скачать main.py", onclick: () => download("main.py", this.code(), "text/x-python") }, "main.py")),
-        this.pyDiv),
+        h("div", { class: "sl-bar" }, this.btnRun, this.btnStop, h("span", { class: "sl-sep" }), h("label", { class: "sl-speed" }, "Проигрывание", this.speedSel), this.btnSkip, h("span", { class: "sl-grow" }),
+          h("button", { type: "button", class: "sl-btn sl-btn-sm", title: "Скачать main.py", onclick: () => download("main.py", this.code(), "text/x-python") }, "Скачать main.py")),
+        h("div", { class: "sl-filetabs" }, h("span", {}, "main.py")),
+        this.pyDiv,
+        h("div", { class: "sl-shell" }, h("div", { class: "sl-shell-h" }, "Оболочка"), this.shell = h("div", { class: "sl-shell-b", role: "log" }))),
       h("div", { class: "sl-sky" },
         h("div", { class: "sl-scenewrap" }, this.sceneCv, this.hud, this.toastBox),
         h("div", { class: "sl-panels" },
@@ -98,7 +101,7 @@ class SatLab {
     this.helpBox = h("section", { class: "sl-help" });
     this.tabs.build.pane = buildPane; this.tabs.flight.pane = flightPane; this.tabs.debrief.pane = this.debriefBox; this.tabs.help.pane = this.helpBox;
     this.taskBox = h("aside", { class: "sl-task" });
-    r.append(head, h("div", { class: "sl-body" }, this.taskBox, h("div", { class: "sl-main" }, buildPane, flightPane, this.debriefBox, this.helpBox)));
+    r.append(head, steps, h("div", { class: "sl-body" }, this.taskBox, h("div", { class: "sl-main" }, buildPane, flightPane, this.debriefBox, this.helpBox)));
 
     this.py = new EditorView({ doc: "", parent: this.pyDiv,
       extensions: [basicSetup, python(), keymap.of([indentWithTab]), EditorView.updateListener.of((u) => { if (u.docChanged) this.save(); })] });
@@ -328,7 +331,8 @@ class SatLab {
     const on = this.ins.checks.find((c) => c.key === "power_on");
     if (on && !on.ok) { this.showTab("build"); this.toast("Не включится: нужен бортовой компьютер и питание", "bad"); return; }
     this.res = null; this.renderFlightIdle("Полет рассчитывается...");
-    this.btnRun.textContent = "Отменить"; this.btnRun.classList.add("on");
+    this.shell.replaceChildren(); this.shellLog(">>> %Run main.py", "muted");
+    this.btnRun.classList.add("on");
     const w = new Worker(WORKER_URL, { type: "module" });
     this.worker = w;
     this.killT = setTimeout(() => this.fail("Программа зависла: в бесконечном цикле нет sleep(). Время полета идет только в sleep() и при работе с датчиками."), TIMEOUT);
@@ -341,14 +345,19 @@ class SatLab {
     clearTimeout(this.killT);
     if (this.worker) { this.worker.terminate(); this.worker = null; if (!silent) this.renderFlightIdle(); }
     if (this.play) { cancelAnimationFrame(this.play.raf); this.play = null; }
-    this.btnRun.textContent = "Запустить полет"; this.btnRun.classList.remove("on"); this.btnSkip.disabled = true;
+    this.btnRun.classList.remove("on"); this.btnSkip.disabled = true;
+  }
+
+  shellLog(text, kind = "") {
+    this.shell.append(h("div", { class: kind ? "sl-l-" + kind : "" }, text));
+    while (this.shell.childNodes.length > 300) this.shell.firstChild.remove();
+    this.shell.scrollTop = this.shell.scrollHeight;
   }
 
   fail(text) {
     this.stopRun(true);
-    this.gsBox.innerHTML = "";
     const ex = explainError(text);
-    this.log(ex.text, "err"); if (ex.hint) this.log("Подсказка: " + ex.hint, "hint");
+    this.shellLog(ex.text, "err"); if (ex.hint) this.shellLog("Подсказка: " + ex.hint, "hint");
     if (ex.line) this.gotoLine(ex.line);
   }
 
@@ -363,7 +372,7 @@ class SatLab {
 
   renderFlightIdle(text) {
     this.gsBox.innerHTML = "";
-    this.log(text || "Нажмите «Запустить полет». Программа выполнится на борту, а здесь появятся пакеты, которые примет станция.", "muted");
+    this.log(text || "Ожидание пакетов. Нажмите «Запустить»: программа выполнится на борту, а здесь появятся пакеты, которые примет станция.", "muted");
     this.hud.replaceChildren();
     this.seriesSel.innerHTML = ""; this.series = [];
     this.drawScene(0); this.drawChart();
@@ -372,7 +381,7 @@ class SatLab {
   startReplay() {
     const res = this.res, K = this.K;
     this.gsBox.innerHTML = "";
-    if (res.error) { const ex = explainError(res.error); this.log(ex.text, "err"); if (ex.hint) this.log("Подсказка: " + ex.hint, "hint"); if (ex.line) this.gotoLine(ex.line); }
+    if (res.error) { const ex = explainError(res.error); this.shellLog(ex.text, "err"); if (ex.hint) this.shellLog("Подсказка: " + ex.hint, "hint"); if (ex.line) this.gotoLine(ex.line); }
     this.buildSeries();
     this.events = [
       ...res.packets.map((p) => ({ t: p.t, kind: "pkt", p })),
@@ -386,12 +395,13 @@ class SatLab {
     const t0 = this.kind === "cansat" ? Math.max(0, res.flight.tLaunch - 4) : 0;
     // события до начала проигрывания показываем сразу
     this.play = { t: t0, last: performance.now(), speed: +this.speedSel.value, ei: 0, raf: 0 };
-    this.btnRun.textContent = "Запустить полет"; this.btnRun.classList.remove("on"); this.btnSkip.disabled = false;
+    this.btnRun.classList.remove("on"); this.btnSkip.disabled = false;
     this.flush(t0, true);
     const step = (now) => {
       const pl = this.play; if (!pl) return;
+      const prev = pl.t;
       pl.t = Math.min(res.flight.tEnd, pl.t + ((now - pl.last) / 1000) * pl.speed); pl.last = now;
-      this.flush(pl.t);
+      this.flush(pl.t, pl.t - prev > 3); // перемотка «В конец»: без всплывающих сообщений
       this.drawScene(pl.t); this.drawChart(pl.t);
       if (pl.t >= res.flight.tEnd) { this.endReplay(); return; }
       pl.raf = requestAnimationFrame(step);
@@ -408,7 +418,7 @@ class SatLab {
       if (e.kind === "pkt") {
         if (e.p.ok) this.log(`${fmtT(e.p.t)}  ${e.p.text}`, "", `${fmt(e.p.rssi)} дБм`);
         else this.log(`${fmtT(e.p.t)}  пакет потерян`, "lost", e.p.rssi == null ? "нет связи" : `${fmt(e.p.rssi)} дБм`);
-      } else if (e.kind === "print") this.log(`${fmtT(e.t)}  борт: ${e.p.text}`, "muted");
+      } else if (e.kind === "print") this.shellLog(e.p.text);
       else if (e.kind === "photo") this.log(`${fmtT(e.t)}  борт: снимок ${e.p.name}, ${fmt(e.p.alt)} м`, "muted");
       else if (e.kind === "phase") { this.log(`${fmtT(e.t)}  ${e.text}`, "phase"); if (!quiet) this.toast(e.text); }
       else if (e.kind === "warn") { this.log(`${fmtT(e.t)}  ${e.text}`, "err"); if (!quiet) this.toast(e.text, "bad"); }
@@ -495,13 +505,12 @@ class SatLab {
     if (!this.res) { box.append(h("div", { class: "sl-empty" }, h("b", {}, "Разбор появится после полета."), " Запустите полет на вкладке «Программа и полет»: здесь будут баллы по критериям регламента, потери пакетов и файлы для отчета.")); return; }
     const s = this.score, res = this.res, K = this.K;
     box.append(
-      h("div", { class: "sl-score" },
-        h("div", { class: "sl-score-n" }, String(s.total), h("small", {}, ` из ${s.max}`), s.bonus ? h("em", {}, `+${s.bonus} бонус`) : null),
-        h("div", {}, h("h4", {}, s.title), h("p", {}, s.note))),
-      h("div", { class: "sl-crit" }, s.items.map((x) => h("div", { class: "sl-crit-r " + (x.points >= x.max ? "full" : x.points ? "part" : "zero") },
-        h("div", { class: "sl-crit-k" }, x.key), h("div", { class: "sl-crit-b" }, h("div", { class: "sl-crit-l" }, x.label), h("div", { class: "sl-crit-v" }, x.value),
-          h("div", { class: "sl-crit-bar" }, h("i", { style: `width:${(100 * x.points) / x.max}%` }))),
-        h("div", { class: "sl-crit-p" }, `${x.points}`, h("small", {}, ` / ${x.max}`))))),
+      h("div", { class: "sl-sheet-h" }, h("h4", {}, s.title), h("p", {}, s.note)),
+      h("table", { class: "sl-scoresheet" },
+        h("thead", {}, h("tr", {}, h("th", {}, "Пункт"), h("th", {}, "Что оценивается"), h("th", {}, "Результат полета"), h("th", { class: "num" }, "Баллы"))),
+        h("tbody", {}, s.items.map((x) => h("tr", { class: x.points >= x.max ? "full" : x.points ? "part" : "zero" },
+          h("td", { class: "key" }, x.key), h("td", {}, x.label), h("td", { class: "val" }, x.value), h("td", { class: "num" }, `${x.points} из ${x.max}`)))),
+        h("tfoot", {}, h("tr", {}, h("td", { colspan: 3 }, "Итого" + (s.bonus ? `, плюс бонус ${s.bonus}` : "")), h("td", { class: "num" }, `${s.total} из ${s.max}`)))),
       h("div", { class: "sl-stats" }, s.stats.map(([l, v]) => h("div", { class: "sl-stat" }, h("div", { class: "sl-stat-v" }, String(v)), h("div", { class: "sl-stat-l" }, l)))),
       h("div", { class: "sl-downloads" },
         h("button", { type: "button", class: "sl-btn", onclick: () => download("ground-station.csv", "t;rssi;packet\n" + res.packets.filter((p) => p.ok).map((p) => `${p.t};${p.rssi};${p.text}`).join("\n")) }, "Принято станцией, CSV"),

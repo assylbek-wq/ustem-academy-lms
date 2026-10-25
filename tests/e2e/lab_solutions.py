@@ -78,7 +78,7 @@ async def main(base, names):
                 print(f"-- {name}: нет эталонного решения")
                 continue
             await pg.evaluate("localStorage.clear()")
-            await pg.goto(f"{base}/lab?preset={name}")
+            await pg.goto(f"{base}/lab/arduino?preset={name}")
             await pg.wait_for_function("window.USTEMLab && window.USTEMLab.instances.length && window.USTEMLab.instances[0].presetData !== undefined")
             await pg.wait_for_timeout(500)
             preset = P.PRESETS[name]

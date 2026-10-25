@@ -2,7 +2,7 @@
 // и центром давления. Рисуется на «миллиметровке», как лист эскизного проекта.
 
 export const INK = "#10213f";
-const GRID_MINOR = "rgba(16,33,63,.055)", GRID_MAJOR = "rgba(16,33,63,.11)";
+const GRID_MINOR = "rgba(16,33,63,.035)", GRID_MAJOR = "rgba(16,33,63,.07)";
 const LABEL = "#24385e";
 export const FONT = "Inter, system-ui, sans-serif";
 
@@ -20,8 +20,9 @@ export function setup(cv, ratio = 0.72, minH = 300) {
   return { ctx, W, H };
 }
 
-export function paper(ctx, W, H) {
-  ctx.fillStyle = "#f4f7fb"; ctx.fillRect(0, 0, W, H);
+export function paper(ctx, W, H, grid = true) {
+  ctx.fillStyle = "#ffffff"; ctx.fillRect(0, 0, W, H);
+  if (!grid) return;
   ctx.lineWidth = 1;
   for (const [step, color] of [[10, GRID_MINOR], [50, GRID_MAJOR]]) {
     ctx.strokeStyle = color; ctx.beginPath();
@@ -40,13 +41,13 @@ export function dim(ctx, x1, y1, x2, y2, text, { color = "#3b5b8f", side = -1 } 
   for (const [x, y] of [[x1, y1], [x2, y2]]) {
     ctx.beginPath(); ctx.moveTo(x - Math.cos(ang + 0.8) * 5, y - Math.sin(ang + 0.8) * 5); ctx.lineTo(x + Math.cos(ang + 0.8) * 5, y + Math.sin(ang + 0.8) * 5); ctx.stroke();
   }
-  ctx.font = `600 11px ${FONT}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.font = `500 11px ${FONT}`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
   const mx = (x1 + x2) / 2 + nx * 10, my = (y1 + y2) / 2 + ny * 10;
   ctx.translate(mx, my);
   let a = ang; if (a > Math.PI / 2 || a < -Math.PI / 2) a += Math.PI;
   ctx.rotate(a);
   const w = ctx.measureText(text).width + 8;
-  ctx.fillStyle = "#f4f7fb"; ctx.fillRect(-w / 2, -7, w, 14);
+  ctx.fillStyle = "#ffffff"; ctx.fillRect(-w / 2, -7, w, 14);
   ctx.fillStyle = color; ctx.fillText(text, 0, 0.5);
   ctx.restore();
 }
@@ -238,13 +239,13 @@ const BODY_LOOK = {
 };
 
 /** Ракета сбоку: нос, корпус с текстурой материала, разрез отсеков, стабилизаторы, ЦТ и ЦД, размеры */
-export function drawRocket(cv, cfg, rm, rmBurn) {
-  const { ctx, W, H } = setup(cv, 0.42, 260);
-  paper(ctx, W, H);
+export function drawRocket(cv, cfg, rm, rmBurn, pred) {
+  const { ctx, W, H } = setup(cv, 0.46, 280);
+  paper(ctx, W, H, false);
   const r = rm.r, L = rm.L, D = rm.D, Ln = rm.Ln;
   const finSpan = r.span;
-  const k = Math.min((W - 90) / L, (H - 120) / (D + 2 * finSpan));
-  const x0 = 46, cy = H * 0.5, R = (D / 2) * k, X = (mm) => x0 + mm * k;
+  const k = Math.min((W - 90) / L, (H - 170) / (D + 2 * finSpan));
+  const x0 = 46, cy = H * 0.6, R = (D / 2) * k, X = (mm) => x0 + mm * k;
   const look = BODY_LOOK[r.material] || BODY_LOOK.paper;
   // тень
   ctx.save(); ctx.filter = "blur(7px)"; ctx.fillStyle = "rgba(16,33,63,.15)"; ctx.fillRect(X(Ln * 0.3), cy + R + finSpan * k * 0.6, (L - Ln * 0.3) * k, 8); ctx.restore();
@@ -308,17 +309,21 @@ export function drawRocket(cv, cfg, rm, rmBurn) {
   marker(rm.cg, "cg", `ЦТ ${Math.round(rm.cg)} мм`, true);
   marker(rm.cp, "cp", `ЦД ${Math.round(rm.cp)} мм`, false);
   if (rmBurn) { ctx.fillStyle = "rgba(16,33,63,.35)"; ctx.beginPath(); ctx.arc(X(rmBurn.cg), cy - R - 9, 3, 0, 7); ctx.fill(); }
-  // запас устойчивости между маркерами
+  // подписи в углах, как на виде ракеты в OpenRocket
   const stab = Math.min(rm.stab, rmBurn ? rmBurn.stab : rm.stab), ok = stab >= 1.5;
-  const y = cy - R - finSpan * k - 22;
-  if (Math.abs(rm.cp - rm.cg) * k > 30) {
-    ctx.strokeStyle = ok ? "#1fa971" : "#e5484d"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(X(rm.cg), y); ctx.lineTo(X(rm.cp), y); ctx.stroke();
-    for (const xx of [X(rm.cg), X(rm.cp)]) { ctx.beginPath(); ctx.moveTo(xx, y - 5); ctx.lineTo(xx, y + 5); ctx.stroke(); }
+  const f1 = (x, d = 0) => x.toFixed(d).replace(".", ",");
+  ctx.save(); ctx.font = `12px ${FONT}`; ctx.fillStyle = INK; ctx.textBaseline = "top"; ctx.textAlign = "left";
+  const left = [["Ракета", true], [`Длина ${f1(L / 10)} см, макс. диаметр ${D} мм`], [`Масса ${f1(rm.m)} г с двигателем`],
+    [`Устойчивость: ${f1(stab, 2)} кал.`, false, ok ? "#14855a" : "#c62f34"], [`ЦТ: ${f1(rm.cg)} мм`], [`ЦД: ${f1(rm.cp)} мм`]];
+  left.forEach(([t, b, c], i) => { ctx.font = `${b ? 600 : 400} 12px ${FONT}`; ctx.fillStyle = c || INK; ctx.fillText(t, 12, 10 + i * 15); });
+  if (pred) {
+    ctx.textAlign = "right";
+    const right = [`Апогей: ${f1(pred.apogee)} м`, `Макс. скорость: ${f1(pred.maxV)} м/с`, `Макс. ускорение: ${f1(pred.maxAccel / 9.80665, 1)} g`, `Сход с направляющей: ${f1(pred.vRail, 1)} м/с`];
+    right.forEach((t, i) => { ctx.font = `400 12px ${FONT}`; ctx.fillStyle = INK; ctx.fillText(t, W - 12, 10 + i * 15); });
   }
-  note(ctx, `${stab.toFixed(2).replace(".", ",")} калибра`, (X(rm.cg) + X(rm.cp)) / 2, y - 7, { size: 12.5, weight: 800, color: ok ? "#14855a" : "#c62f34", align: "center" });
+  ctx.restore();
   // размеры
   dim(ctx, X(0), H - 18, X(L), H - 18, `${(L / 10).toFixed(0)} см`);
   dim(ctx, X(L) + 16, cy - R, X(L) + 16, cy + R, `Ø ${D}`, { side: 1 });
-  note(ctx, `${Math.round(rm.m)} г на старте`, 14, 22, { size: 13, weight: 700, color: INK });
 }
 const MOTOR_LABEL = "РД1-100-7М";

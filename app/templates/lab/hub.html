@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}{{ t('labhub.title') }}{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ static_v('css/labhub.css') }}">{% endblock %}
+{% block content %}
+<div class="hub">
+  <header class="hub-head">
+    <h1>{{ t('labhub.title') }}</h1>
+    <p>{{ t('labhub.subtitle') }}</p>
+  </header>
+  {% for group in ['robotics', 'space'] %}
+  <section class="hub-group" aria-labelledby="hub-{{ group }}">
+    <h2 id="hub-{{ group }}">{{ t('labhub.group_' ~ group) }}</h2>
+    <ul class="hub-list">
+      {% for r in rows if r.group == group %}
+      <li class="hub-item">
+        <a class="hub-link" href="{{ url_for(r.endpoint) }}">
+          <span class="hub-art hub-art-{{ r.key }}" aria-hidden="true">{% include "lab/_art.html" %}</span>
+          <span class="hub-text">
+            <span class="hub-name">{{ t('labhub.' ~ r.key ~ '.name') }}</span>
+            <span class="hub-desc">{{ t('labhub.' ~ r.key ~ '.desc') }}</span>
+          </span>
+          <span class="hub-meta">
+            {% if r.total %}
+            <span class="hub-count">{{ t('labhub.tasks', done=r.done, total=r.total) }}</span>
+            <span class="hub-bar"><i style="width: {{ (100 * r.done / r.total)|round|int }}%"></i></span>
+            {% endif %}
+            <span class="hub-open">{{ t('labhub.open') }}</span>
+          </span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+  {% endfor %}
+</div>
+{% endblock %}

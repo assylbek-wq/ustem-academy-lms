@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% from "_macros.html" import page_header with context %}
+{% from "lab/_bar.html" import lab_bar with context %}
 {% block title %}{{ t('spikesim.title') }}{% endblock %}
-{% block head %}<link rel="stylesheet" href="{{ static_v('css/spikesim.css') }}">{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ static_v('css/labhub.css') }}"><link rel="stylesheet" href="{{ static_v('css/spikesim.css') }}">{% endblock %}
 {% block content %}
-{{ page_header(t('spikesim.title'), t('spikesim.subtitle'), icon='🧱') }}
+{{ lab_bar(t('labhub.spike.name')) }}
 <div class="spike-sim-{{ preset }}"></div>
 <p class="help mt-3">{{ t('spikesim.help') }}</p>
 {% endblock %}
