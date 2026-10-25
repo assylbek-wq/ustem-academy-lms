@@ -1,0 +1,40 @@
+{
+ "title": "Запись на борт и сверка",
+ "task": "По правилам WSO данные пишутся на борт, а после полета их сравнивают с принятой телеметрией (FLT5). В этой сборке нет накопителя. Добавьте модуль microSD в конструкторе и записывайте каждую строку телеметрии в файл: sd.write(line).",
+ "config": {
+  "items": [
+   "frame-print",
+   "obc-stm32",
+   "bat-18650",
+   "eps-bms",
+   "radio-lora",
+   "ant-whip433",
+   "bme280",
+   "gs-whip433"
+  ],
+  "radioMode": "sf7",
+  "txDbm": 14
+ },
+ "python": "from sat import *\n\nn = 0\nwhile True:\n    line = \"%d,%.2f,%.2f\" % (n, bme.pressure(), bme.temperature())\n    radio.send(line)\n    n += 1\n    sleep(1)\n",
+ "tab": "flight",
+ "checks": [
+  {
+   "type": "no_error",
+   "label": "Программа работает без ошибок"
+  },
+  {
+   "type": "sd_min",
+   "n": 300,
+   "label": "На борт записано не меньше 300 строк"
+  },
+  {
+   "type": "sd_match",
+   "share": 0.95,
+   "label": "95% принятых пакетов совпадают с записью на борту"
+  },
+  {
+   "type": "unique_packets",
+   "label": "У каждого пакета свой номер"
+  }
+ ]
+}

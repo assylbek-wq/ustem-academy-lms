@@ -182,6 +182,7 @@ def _badges(user: User, facts: Facts, want: dict) -> list[str]:
         "sim-5": len(facts.sims) >= 5,
         "spike-master": all(p in facts.sims for p in sim_presets("spike-")),
         "ftc-master": all(p in facts.sims for p in sim_presets("ftc-")),
+        "cubesat-master": all(p in facts.sims for p in sim_presets("cubesat-")),
         "certified": bool(facts.certs),
         "team": any(r.endswith((":registered",)) for r in want),
         "first-event": any(r.endswith((":scrimmage", ":qual-played", ":nat-played", ":played")) for r in want),

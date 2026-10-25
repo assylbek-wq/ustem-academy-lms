@@ -18,7 +18,8 @@ from ..services import connect, game, storage
 bp = Blueprint("game", __name__)
 
 STATIC = Path(__file__).resolve().parents[1] / "static"
-SIM_DIRS = {"spike-": ("spikesim/presets", ""), "ftc-": ("ftcsim/presets", ""), "lab-": ("lab/presets", "lab-")}
+SIM_DIRS = {"spike-": ("spikesim/presets", ""), "ftc-": ("ftcsim/presets", ""), "cubesat-": ("cubesat/presets", ""),
+            "lab-": ("lab/presets", "lab-")}
 
 
 def _flash_badges(codes: list[str]) -> None:
@@ -60,7 +61,7 @@ def setup():
         if request.form.get("courses_only") and not want:
             return redirect(url_for("learn.catalog") if not gpaths.for_user(g.user) else url_for("game.journey_index"))
         return redirect(url_for("game.journey_index"))
-    auto = {p["key"] for p in season if any(gpaths.program_matches(p, c) for c in gpaths.connect_programs(g.user))}
+    auto = {p["key"] for c in gpaths.connect_programs(g.user) for p in gpaths.best_matches(season, c)}
     courses = [p for p in gpaths.for_user(g.user) if p["kind"] == "course"]
     return render_template("game/setup.html", season=season, chosen=chosen, auto=auto, courses=courses)
 
@@ -102,6 +103,8 @@ def sim_url(preset: str) -> str:
         return url_for("lab.spike", preset=preset)
     if preset.startswith("ftc-"):
         return url_for("lab.ftc", preset=preset)
+    if preset.startswith("cubesat-"):
+        return url_for("lab.cubesat", preset=preset)
     return url_for("lab.index", preset=preset.removeprefix("lab-"))
 
 

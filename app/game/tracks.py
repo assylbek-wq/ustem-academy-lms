@@ -282,11 +282,88 @@ WSO = {
     ],
 }
 
+def _cubesat(preset, ru, kk, en):
+    return sim(preset, ml("Симулятор: " + ru, "Симулятор: " + kk, "Simulator: " + en))
+
+
+# CubeSat 1U: регламент WSO, глава 13 (масса до 800 г, своя наземная станция, полет на привязном аэростате)
+WSO_CUBESAT = {
+    "code": "wso-cubesat", "programs": ["WSO_CUBESAT"], "color": "#1e40af",
+    "title": ml("WSO: CubeSat 1U", "WSO: CubeSat 1U", "WSO: CubeSat 1U"),
+    "season": ml("Олимпиада 2026-2027, категория CubeSat", "Олимпиада 2026-2027, CubeSat санаты", "Olympiad 2026-2027, CubeSat category"),
+    "sim_url": "/lab/cubesat?preset=",
+    "stages": [
+        {"code": "start", "icon": "flag", "title": ml("Старт", "Басы", "Start"), "steps": [
+            LINK,
+            self_step("rules", 30, ml("Прочитать главу CubeSat в регламенте", "Регламенттегі CubeSat тарауын оқу", "Read the CubeSat chapter of the rules"),
+                      ml("Требования 1U, предстартовая проверка и лист оценки финала.", "1U талаптары, ұшу алдындағы тексеру және финалдың бағалау парағы.",
+                         "1U requirements, pre-launch inspection and the final score sheet.")),
+            _cubesat("cubesat-build", "соберите CubeSat 1U", "CubeSat 1U құрастырыңыз", "build a CubeSat 1U"),
+        ]},
+        {"code": "team", "icon": "team", "title": ml("Команда", "Команда", "Team"), "steps": [
+            connect("team", 150, ml("Команда CubeSat в USTEM Connect", "USTEM Connect-тегі CubeSat командасы", "CubeSat team in USTEM Connect"),
+                    ml("Тренер создает команду в категории CubeSat и собирает состав.", "Жаттықтырушы CubeSat санатында команда құрып, құрамды жинайды.",
+                       "The coach creates a team in the CubeSat category and builds the roster."), "team"),
+            connect("approved", 200, ml("Заявка на олимпиаду одобрена", "Олимпиадаға өтінім мақұлданды", "Olympiad application approved"),
+                    ml("Команда попала в возрастную группу и допущена.", "Команда жас тобына кіріп, жіберілді.", "The team fits an age group and is admitted."),
+                    "approved"),
+        ]},
+        {"code": "design", "icon": "chip", "title": ml("Проект спутника", "Серік жобасы", "Satellite design"), "steps": [
+            self_step("mission", 40, ml("Миссия и полезная нагрузка", "Миссия және пайдалы жүктеме", "Mission and payload"),
+                      ml("Что спутник измеряет в полете и зачем.", "Серік ұшуда нені және не үшін өлшейді.", "What the satellite measures in flight and why.")),
+            _cubesat("cubesat-budget", "бюджеты массы и энергии", "масса мен энергия бюджеттері", "mass and power budgets"),
+            _cubesat("cubesat-link", "бюджет радиолинии", "радиожелі бюджеті", "radio link budget"),
+            self_step("parts", 60, ml("Закупили компоненты", "Компоненттер сатып алынды", "Components purchased"),
+                      ml("Фото компонентов: компьютер, радио, датчики, аккумулятор с защитой.", "Компоненттер суреті: компьютер, радио, датчиктер, қорғалған аккумулятор.",
+                         "Photo of the parts: computer, radio, sensors, protected battery."), photo=True),
+        ]},
+        {"code": "software", "icon": "code", "title": ml("Бортовая программа", "Борттық бағдарлама", "Flight software"), "steps": [
+            _cubesat("cubesat-telemetry", "первая телеметрия", "алғашқы телеметрия", "first telemetry"),
+            _cubesat("cubesat-sd", "запись на борт и сверка", "бортқа жазу және салыстыру", "on-board log and match"),
+            _cubesat("cubesat-altitude", "высота по давлению", "қысым бойынша биіктік", "altitude from pressure"),
+            self_step("station", 60, ml("Своя наземная станция принимает пакеты", "Өз жер станциясы пакеттерді қабылдайды", "Own ground station receives packets"),
+                      ml("Скриншот программы приема с живой телеметрией.", "Тірі телеметриясы бар қабылдау бағдарламасының скриншоты.",
+                         "A screenshot of the receiving software with live telemetry."), photo=True),
+        ]},
+        {"code": "selection", "icon": "book", "title": ml("Отбор", "Іріктеу", "Selection"), "steps": [
+            self_step("docs", 80, ml("Техническая документация", "Техникалық құжаттама", "Technical documentation"),
+                      ml("Описание миссии, схема, бюджеты массы и энергии, план испытаний.", "Миссия сипаттамасы, сызба, масса мен энергия бюджеттері, сынақ жоспары.",
+                         "Mission, diagram, mass and power budgets, test plan.")),
+            self_step("step", 60, ml("3D-модель STEP и видео", "STEP 3D-моделі және бейне", "STEP 3D model and video"),
+                      ml("Модель спутника и видео о проекте сданы в Connect.", "Серік моделі мен жоба туралы бейне Connect-ке тапсырылды.",
+                         "The satellite model and project video are submitted in Connect.")),
+        ]},
+        {"code": "tests", "icon": "box", "title": ml("Испытания", "Сынақтар", "Tests"), "steps": [
+            self_step("bench", 60, ml("Стендовые испытания", "Стендтік сынақтар", "Bench tests"),
+                      ml("Полный цикл работы на столе от аккумулятора: время, связь, запись.", "Үстелде аккумулятордан толық жұмыс циклы: уақыт, байланыс, жазу.",
+                         "A full run on the bench from the battery: time, link, logging."), photo=True),
+            self_step("range", 60, ml("Проверка связи на дальности", "Қашықтықта байланысты тексеру", "Range test"),
+                      ml("Пакеты доходят с расстояния не меньше 1 км.", "Пакеттер кемінде 1 км қашықтықтан жетеді.", "Packets arrive from at least 1 km away.")),
+        ]},
+        {"code": "final", "icon": "podium", "title": ml("Финал", "Финал", "Final"), "steps": [
+            _cubesat("cubesat-mission", "финальная миссия", "финалдық миссия", "final mission"),
+            connect("played", 400, ml("Выступили в финале", "Финалда өнер көрсеттік", "Competed in the final"),
+                    ml("Команду отметили на регистрации в день финала.", "Финал күні команда тіркеуде белгіленді.", "The team was checked in on the final day."),
+                    "played"),
+            self_step("flight", 80, ml("Спутник отлетал на аэростате", "Серік аэростатпен ұшты", "The satellite flew on the aerostat"),
+                      ml("Фото на старте и график принятой телеметрии.", "Стартта түскен сурет және қабылданған телеметрия графигі.",
+                         "A launch photo and a chart of the received telemetry."), photo=True),
+        ]},
+        {"code": "results", "icon": "trophy", "title": ml("Итоги", "Қорытынды", "Results"), "steps": [
+            connect("award", 600, ml("Награда олимпиады", "Олимпиада марапаты", "Olympiad award"),
+                    ml("Место или награда категории.", "Орын не санат марапаты.", "A place or category award."), "award"),
+            connect("advanced", 800, ml("Прошли на следующий уровень", "Келесі деңгейге өттік", "Advanced to the next level"),
+                    ml("Отметка «проходит дальше» в итогах.", "Қорытындыдағы «әрі қарай өтеді» белгісі.", "Marked as advancing in the results."), "advanced"),
+        ]},
+    ],
+}
+
 # Пути, которые создаются при первом запуске; дальше их правят в Студии (Студия -> Пути)
 SEED_PATHS = [
     {**TRACKS["fll"], "programs": [TRACKS["fll"]["program"]]},
     {**TRACKS["ftc"], "programs": [TRACKS["ftc"]["program"]]},
     WSO,
+    WSO_CUBESAT,
 ]
 
 # Звания тренера по опыту
@@ -314,6 +391,8 @@ BADGES: dict[str, dict] = {
                      "desc": ml("Все задания симулятора SPIKE Prime.", "SPIKE Prime симуляторының барлық тапсырмасы.", "Every SPIKE Prime simulator task.")},
     "ftc-master": {"tier": "gold", "glyph": "robot", "title": ml("Мастер FTC", "FTC шебері", "FTC master"),
                    "desc": ml("Все задания симулятора FTC.", "FTC симуляторының барлық тапсырмасы.", "Every FTC simulator task.")},
+    "cubesat-master": {"tier": "gold", "glyph": "chip", "title": ml("Мастер CubeSat", "CubeSat шебері", "CubeSat master"),
+                       "desc": ml("Все задания симулятора CubeSat.", "CubeSat симуляторының барлық тапсырмасы.", "Every CubeSat simulator task.")},
     "certified": {"tier": "silver", "glyph": "medal", "title": ml("Сертифицирован", "Сертификатталған", "Certified"),
                   "desc": ml("Получен первый сертификат уровня.", "Алғашқы деңгей сертификаты алынды.", "Earned a first level certificate.")},
     "team": {"tier": "bronze", "glyph": "team", "title": ml("Своя команда", "Өз командам", "Own team"),
@@ -348,9 +427,9 @@ def all_steps(track: dict):
 
 
 def sim_presets(prefix: str) -> list[str]:
-    """Все задания симулятора с этим префиксом (для значков «Мастер SPIKE», «Мастер FTC»)."""
+    """Все задания симулятора с этим префиксом (для значков «Мастер SPIKE», «Мастер FTC», «Мастер CubeSat»)."""
     from pathlib import Path
-    folder = {"spike-": "spikesim/presets", "ftc-": "ftcsim/presets"}[prefix]
+    folder = {"spike-": "spikesim/presets", "ftc-": "ftcsim/presets", "cubesat-": "cubesat/presets"}[prefix]
     return sorted(p.stem for p in (Path(__file__).resolve().parents[1] / "static" / folder).glob(f"{prefix}*.json")
                   if "sandbox" not in p.stem)
 

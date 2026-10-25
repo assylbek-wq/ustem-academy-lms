@@ -45,6 +45,14 @@ USTEM Academy - LMS для подготовки учителей. Flask + SQLAlc
   Задания: `python3 assets/lab/spike_presets.py` -> `app/static/spikesim/presets/*.json`. В уроке блок
   `<div class="spike-sim-ИМЯ"></div>` (задание `spike-ИМЯ`), песочница `/lab/spike`. Сквозная проверка:
   `python3 tests/e2e/spike_solutions.py http://localhost:5080` и `--negative`.
+- Конструктор и симулятор CubeSat 1U (WSO, глава 13 регламента): исходники `assets/lab/cubesat/` (`catalog.js` - модули,
+  `model.js` - масса, стек плат, энергия, радиолиния, предстартовая проверка, `flight.js` - аэростат и атмосфера,
+  `pyapi.js` - модуль `sat` для MicroPython, `runner.js` - полет в виртуальном времени и оценка FLT, `checks.js` -
+  проверки заданий, `ui.js` + `worker.js` - интерфейс), сборка `bash deploy/build-lab.sh` -> `app/static/js/cubesatsim.js`,
+  `cubesatworker.js` (MicroPython берется из `static/spikesim/`). Задания: `python3 assets/lab/cubesat_presets.py` ->
+  `app/static/cubesat/presets/*.json`. В уроке блок `<div class="cubesat-sim-ИМЯ"></div>` (задание `cubesat-ИМЯ`),
+  песочница `/lab/cubesat`. Сквозная проверка без браузера: `node tests/e2e/cubesat_solutions.mjs` и `--negative`.
+  Путь `wso-cubesat` (программа Connect `WSO_CUBESAT`) открывается вместо общего WSO: самый точный путь по коду программы.
 - Геймификация для тренеров («Мой путь»): общий опыт, звания, значки, серия дней и рейтинг считаются от любого курса
   (`services/game.py`, опыт пересчитывается из фактов функцией `refresh`, не начисляйте его вручную). Пути
   (`app/game/paths.py`): сезоны программ и рост тренера хранятся в `journey_paths`, их собирает методист в Студии

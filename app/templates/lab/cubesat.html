@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% from "_macros.html" import page_header with context %}
+{% block title %}{{ t('cubesat.title') }}{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ static_v('css/cubesat.css') }}">{% endblock %}
+{% block content %}
+{{ page_header(t('cubesat.title'), t('cubesat.subtitle'), icon='🛰️') }}
+<div class="cubesat-sim-{{ preset }}"></div>
+<p class="help mt-3">{{ t('cubesat.help') }}</p>
+{% endblock %}
+{% block scripts %}<script src="{{ static_v('js/cubesatsim.js') }}" defer></script>{% endblock %}

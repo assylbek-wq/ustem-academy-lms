@@ -47,7 +47,7 @@
       <div class="kit-task">
         <h3>{{ t('kit.task') }}: {{ k.task.title }}</h3>
         <p>{{ k.task.text }}</p>
-        {% if k.task.sim %}<a class="btn-secondary btn-sm" href="{{ url_for('lab.spike' if k.task.sim.startswith('spike-') else 'lab.ftc', preset=k.task.sim) }}" target="_blank" rel="noopener">{{ ic('target', 'w-4 h-4') }} {{ t('kit.open_sim') }}</a>{% endif %}
+        {% if k.task.sim %}<a class="btn-secondary btn-sm" href="{{ url_for('lab.spike' if k.task.sim.startswith('spike-') else 'lab.cubesat' if k.task.sim.startswith('cubesat-') else 'lab.ftc', preset=k.task.sim) }}" target="_blank" rel="noopener">{{ ic('target', 'w-4 h-4') }} {{ t('kit.open_sim') }}</a>{% endif %}
       </div>
       {% endif %}
     </div>

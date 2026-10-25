@@ -1,0 +1,58 @@
+{
+ "title": "Финальная миссия",
+ "task": "Финал WSO: аэростат поднимет спутник на 1000 м и подержит 5 минут. Миссия: профиль атмосферы (высота и температура по слоям) и не меньше 8 снимков выше 500 м.\nДоработайте сборку (камере нужен ESP32 или Raspberry Pi), напишите программу и наберите не меньше 34 из 40 баллов за работу в полете (FLT).",
+ "config": {
+  "items": [
+   "frame-print",
+   "obc-stm32",
+   "bat-18650",
+   "eps-bms",
+   "radio-lora",
+   "ant-whip433",
+   "bme280",
+   "sd",
+   "gs-whip433"
+  ],
+  "radioMode": "sf7",
+  "txDbm": 14
+ },
+ "python": "from sat import *\n\nn = 0\nwhile True:\n    line = \"%d,%.1f,%.2f,%.2f\" % (n, time(), bme.pressure(), bme.temperature())\n    sd.write(line)\n    radio.send(line)\n    n += 1\n    sleep(1)\n",
+ "flight": {
+  "altMax": 1000,
+  "ascent": 4,
+  "descent": 4
+ },
+ "tab": "build",
+ "mission": {
+  "photos": 8
+ },
+ "checks": [
+  {
+   "type": "inspect_all",
+   "label": "Предстартовая проверка пройдена"
+  },
+  {
+   "type": "no_error",
+   "label": "Программа работает без ошибок"
+  },
+  {
+   "type": "alive",
+   "label": "Спутник работает до посадки"
+  },
+  {
+   "type": "photos_high",
+   "n": 8,
+   "label": "Не меньше 8 снимков выше 500 м"
+  },
+  {
+   "type": "profile",
+   "points": 9,
+   "label": "Профиль атмосферы по всей высоте"
+  },
+  {
+   "type": "flt_min",
+   "points": 34,
+   "label": "Работа в полете: не меньше 34 из 40"
+  }
+ ]
+}

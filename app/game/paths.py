@@ -16,7 +16,7 @@ from .tracks import SEED_PATHS, ml
 
 ICONS = ["flag", "team", "box", "robot", "code", "bulb", "swords", "flag-race", "podium", "globe", "trophy", "chip", "book"]
 COURSE_COLORS = {"fll-challenge": "#e5322d", "ftc": "#f27c1c", "arduino": "#0e9f6e", "first": "#0085ff"}
-SIM_RE = re.compile(r'class="(spike-sim|ftc-sim|lab-preset)-([a-z0-9-]+)"')
+SIM_RE = re.compile(r'class="(spike-sim|ftc-sim|cubesat-sim|lab-preset)-([a-z0-9-]+)"')
 
 
 def seed() -> None:
@@ -89,6 +89,14 @@ def program_matches(path: dict, program_code: str) -> bool:
     return any(program_code == c or program_code.startswith(c + "_") for c in path.get("programs") or [])
 
 
+def best_matches(paths: list[dict], program_code: str) -> list[dict]:
+    """Пути для программы Connect, самые точные: для WSO_CUBESAT - путь CubeSat, если он есть, иначе общий WSO."""
+    def depth(p):
+        return max((len(c) for c in p.get("programs") or [] if program_code == c or program_code.startswith(c + "_")), default=-1)
+    best = max((depth(p) for p in paths), default=-1)
+    return [p for p in paths if best >= 0 and depth(p) == best]
+
+
 def connect_programs(user) -> set[str]:
     return {t.get("program") for t in (user.connect_snapshot or {}).get("teams", []) if t.get("program")}
 
@@ -105,8 +113,8 @@ def for_user(user) -> list[dict]:
             out.append(path)
 
     db_paths = published_db_paths()
-    for p in db_paths:
-        if any(program_matches(p, c) for c in progs):
+    for c in sorted(progs):
+        for p in best_matches(db_paths, c):
             add({**p, "auto": "connect"})
     for key in chosen:
         if not key.startswith("c-"):
