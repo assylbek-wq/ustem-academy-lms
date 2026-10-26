@@ -113,3 +113,27 @@
   .sp-hubstate, .sp-btn-copy { display: none; }
   .sp-project { max-width: 160px; }
 }
+/* поле сезона BIOGLOW: часы матча и табло судьи */
+.sp-fieldpick { padding: 3px 6px; font-size: 12.5px; }
+.sp-clock { font: 700 15px/1 ui-monospace, Menlo, Consolas, monospace; background: #111; color: #4ade80; padding: 4px 8px; border-radius: 5px; letter-spacing: .04em; }
+.sp-clock.low { color: #f87171; }
+.sp-score-total { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 2px 8px; border-bottom: 2px solid var(--ink); margin-bottom: 4px; font-weight: 700; }
+.sp-score-total b { font-size: 24px; font-variant-numeric: tabular-nums; }
+.sp-mis { border-bottom: 1px solid #f0f0f0; }
+.sp-mis summary { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto 30px; gap: 6px; align-items: baseline; padding: 5px 2px; cursor: pointer; list-style: none; font-size: 13px; }
+.sp-mis summary::-webkit-details-marker { display: none; }
+.sp-mis summary i { font-style: normal; font-weight: 700; color: #fff; background: #b91c1c; border-radius: 4px; text-align: center; font-size: 11.5px; padding: 1px 0; }
+.sp-mis summary span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sp-mis summary b { font-variant-numeric: tabular-nums; text-align: right; }
+.sp-mis summary em { font-style: normal; color: var(--muted); font-size: 12px; }
+.sp-mis.got summary b { color: var(--go); }
+.sp .sp-mis ul { list-style: none; margin: 0 0 6px 32px; padding: 0; }
+.sp-mis li { font-size: 12.5px; color: var(--muted); padding: 1px 0 1px 16px; position: relative; }
+.sp-mis li::before { content: "○"; position: absolute; left: 0; }
+.sp-mis li.ok { color: var(--ink); }
+.sp-mis li.ok::before { content: "●"; color: var(--go); }
+.sp-mis-x { display: flex; justify-content: space-between; font-size: 13px; padding: 5px 2px; border-bottom: 1px solid #f0f0f0; color: var(--muted); }
+.sp-mis-x b { color: var(--ink); }
+.sp-check { display: flex; gap: 6px; align-items: center; font-size: 13px; margin: 10px 0 6px; }
+.sp-docks { display: grid; gap: 6px; margin: 6px 0 8px; }
+.sp-docks label { display: grid; grid-template-columns: 70px minmax(0, 1fr); gap: 8px; align-items: center; font-size: 13px; }

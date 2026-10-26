@@ -13,6 +13,7 @@ const IMAGES = {
 
 export async function runProgram({ code, preset, speed = 1, loadMicroPython, wasmUrl, post, onSim, now = () => performance.now() }) {
   const sim = new Robot(preset);
+  if (sim.field) await sim.field.load(preset.matUrl || String(wasmUrl || "").replace(/micropython\.wasm$/, "bioglow/mat.jpg"));
   if (onSim) onSim(sim);
   let stopped = false, wall0 = now();
   const timers = [];
@@ -36,14 +37,19 @@ export async function runProgram({ code, preset, speed = 1, loadMicroPython, was
 
   const P = (i) => { const n = PORT_NAMES[i]; if (n === undefined) throw new Error("Неизвестный порт: " + i); return n; };
   const wait = (ms) => new Promise((resolve) => timers.push({ t: sim.t + Math.max(0, ms) / 1000, resolve }));
-  const wrap = (fn) => (...a) => { catchUp(); return fn(...a); };
+  // поле сезона: матч 2:30, после сигнала робот останавливается, а программа завершается
+  const wrap = (fn) => (...a) => {
+    catchUp();
+    if (sim.matchOver) throw new Error("SystemExit: время матча 2:30 вышло");
+    return fn(...a);
+  };
   const stopMode = (m) => (m === 0 || m === 4 ? "coast" : "brake");
   const steer = (s) => Robot.steer(s);
 
   const api = {
     now: () => { catchUp(); return Math.round(sim.t * 1000); },
-    sleep: (ms) => { catchUp(); return wait(ms); },
-    tick: () => { catchUp(); return wait(DT * 1000); },
+    sleep: wrap((ms) => wait(ms)),
+    tick: wrap(() => wait(DT * 1000)),
     // моторы
     m_run: wrap((p, v, a) => sim.motorRun(P(p), v, a)),
     m_stop: wrap((p, mode) => sim.motorStop(P(p), stopMode(mode))),

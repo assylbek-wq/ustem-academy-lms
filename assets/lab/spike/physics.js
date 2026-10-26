@@ -2,6 +2,10 @@
 // пара моторов как motor_pair SPIKE 3, гироскоп хаба, датчики цвета, расстояния и силы, ящик и рычаг.
 // Без DOM: работает в Web Worker и в Node для тестов.
 import { MAT_W, MAT_H, sampleSpot, reflectionOf, spikeColorOf, distToPoly, LINE_CURVE } from "./mat.js";
+import { Bioglow } from "./bioglow.js";
+
+// пятно датчика цвета для поля с рисунком (как sampleSpot в mat.js, но реже: рисунок и так сглажен)
+const SPOT16 = Array.from({ length: 16 }, (_, i) => { const r = 7 * Math.sqrt((i + 0.5) / 16), a = i * 2.399963; return [r * Math.cos(a), r * Math.sin(a)]; });
 
 export const WHEEL_D = 56;                       // мм
 export const MM_PER_DEG = Math.PI * WHEEL_D / 360;
@@ -53,6 +57,15 @@ export class Robot {
     this.trail = [[this.pose.x, this.pose.y]]; this.trailT = 0;
     this.maxLineDist = 0;
     this.events = [];
+    this.field = preset.field === "bioglow" ? new Bioglow(preset) : null;
+    this.speedMm = 0;
+  }
+
+  spot(x, y) {
+    if (!this.field) return sampleSpot(x, y);
+    let r = 0, g = 0, b = 0;
+    for (const [dx, dy] of SPOT16) { const c = this.field.colorAt(x + dx, y + dy); r += c[0]; g += c[1]; b += c[2]; }
+    return [r / 16, g / 16, b / 16];
   }
 
   device(port) { return this.ports[port]; }
@@ -145,9 +158,9 @@ export class Robot {
     if (!String(this.ports[port] || "").startsWith(kind)) throw new Error(`На порту ${port} нет устройства «${kind}» (там: ${this.ports[port] || "пусто"})`);
   }
 
-  reflection(port) { this.needDevice(port, "color"); const q = this.sensorPoint(port); return reflectionOf(sampleSpot(q.x, q.y)); }
-  color(port) { this.needDevice(port, "color"); const q = this.sensorPoint(port); return spikeColorOf(sampleSpot(q.x, q.y)); }
-  rgbi(port) { this.needDevice(port, "color"); const q = this.sensorPoint(port); const c = sampleSpot(q.x, q.y); return [...c.map((v) => Math.round(v * 4)), Math.round((c[0] + c[1] + c[2]) * 4 / 3)]; }
+  reflection(port) { this.needDevice(port, "color"); const q = this.sensorPoint(port); return reflectionOf(this.spot(q.x, q.y)); }
+  color(port) { this.needDevice(port, "color"); const q = this.sensorPoint(port); return spikeColorOf(this.spot(q.x, q.y)); }
+  rgbi(port) { this.needDevice(port, "color"); const q = this.sensorPoint(port); const c = this.spot(q.x, q.y); return [...c.map((v) => Math.round(v * 4)), Math.round((c[0] + c[1] + c[2]) * 4 / 3)]; }
 
   distance(port) {
     this.needDevice(port, "distance");
@@ -160,6 +173,7 @@ export class Robot {
       const dx = o.x - c.x, dy = o.y - c.y, b = dx * fx + dy * fy, cc = dx * dx + dy * dy - c.r * c.r, disc = b * b - cc;
       if (disc >= 0) { const t = -b - Math.sqrt(disc); if (t > 0) best = Math.min(best, t); }
     }
+    if (this.field) best = Math.min(best, this.field.raycast(o.x, o.y, fx, fy));
     return best > 2000 ? -1 : Math.round(best);
   }
 
@@ -172,6 +186,7 @@ export class Robot {
       const q = this.local2world(BODY.front, r);
       best = Math.min(best, q.x, q.y, MAT_W - q.x, MAT_H - q.y);
       if (this.box) best = Math.min(best, Math.hypot(q.x - this.box.x, q.y - this.box.y) - this.box.r);
+      if (this.field) best = Math.min(best, this.field.raycast(this.local2world(BODY.front - 5, r).x, this.local2world(BODY.front - 5, r).y, -Math.sin(this.pose.h), Math.cos(this.pose.h)) - 5);
     }
     return best;
   }
@@ -182,6 +197,12 @@ export class Robot {
   // ─── Шаг физики ───
   step(dt = DT) {
     this.t += dt;
+    if (this.field && !this.matchOver && this.t >= (this.preset.matchTime || 150)) {
+      this.matchOver = true;
+      for (const m of Object.values(this.motors)) { this.cancelJob(m); m.cmd = 0; m.decel = 12000; }
+      if (this.pairJob) { const r = this.pairJob.resolve; this.pairJob = null; r && r(3); }
+      this.events.push({ toast: "Время матча вышло" });
+    }
     // пара моторов на градусы
     const pj = this.pairJob;
     if (pj) {
@@ -223,6 +244,7 @@ export class Robot {
     if (L && String(this.ports.A).startsWith("motor")) vl = -L.vel * MM_PER_DEG * (1 - this.drift / 2);
     if (R && String(this.ports.B).startsWith("motor")) vr = R.vel * MM_PER_DEG * (1 + this.drift / 2);
     const v = (vl + vr) / 2, w = (vr - vl) / TRACK;
+    this.speedMm = v;
     const old = { ...p };
     p.h += w * dt;
     p.x += -Math.sin(p.h) * v * dt; p.y += Math.cos(p.h) * v * dt;
@@ -246,6 +268,12 @@ export class Robot {
         p.h += clamp(d, -1, 1) * Math.min(1, dt * 15);
       }
     }
+    // модели поля: упор в твердые части, срабатывания миссий, свободные предметы
+    if (this.field) {
+      this.field.collide(this, BODY);
+      this.field.update(this, BODY, dt);
+      for (const e of this.field.events.splice(0)) this.events.push({ toast: e });
+    }
     // ящик
     if (this.box) this.pushBox(old);
     // рычаг: опускается навесным на моторе C
@@ -256,6 +284,21 @@ export class Robot {
       const d = Math.hypot(tip.x - this.lever.x, tip.y - this.lever.y);
       if (this.lever.up && d < 70 && ang > 60) { this.lever.up = false; this.lever.flips++; this.events.push("lever"); }
     }
+  }
+
+  // круглый предмет (семя, метка, модель): корпус робота выталкивает его наружу; true, если сдвинул
+  pushCircle(b) {
+    const p = this.pose, dx = b.x - p.x, dy = b.y - p.y;
+    const f = dx * -Math.sin(p.h) + dy * Math.cos(p.h), r = dx * Math.cos(p.h) + dy * Math.sin(p.h);
+    const cf = clamp(f, -BODY.back, BODY.front), cr = clamp(r, -BODY.half, BODY.half);
+    const ddf = f - cf, ddr = r - cr, d = Math.hypot(ddf, ddr);
+    if (d >= b.r) return false;
+    let nf, nr;
+    if (d < 1e-6) { nf = f >= 0 ? BODY.front + b.r : -BODY.back - b.r; nr = r; }
+    else { nf = cf + ddf / d * b.r; nr = cr + ddr / d * b.r; }
+    const w = this.local2world(nf, nr);
+    b.x = w.x; b.y = w.y;
+    return true;
   }
 
   pushBox() {
@@ -284,6 +327,7 @@ export class Robot {
       box: this.box && { x: this.box.x, y: this.box.y }, lever: this.lever && { up: this.lever.up, flips: this.lever.flips },
       sensors: Object.fromEntries(PORTS.filter((p) => String(this.ports[p]) === "color").map((p) => [p, this.sensorPoint(p)])),
       maxLineDist: this.maxLineDist, yaw: this.yawDeci(),
+      field: this.field ? this.field.snapshot() : null,
     };
   }
 }
@@ -310,6 +354,10 @@ export function evalChecks(checks, cs, st, ctx) {
     else if (c.type === "lever") s.ok = !!st.lever && !st.lever.up;
     else if (c.type === "code_has") s.ok = new RegExp(c.re).test(ctx.code || "");
     else if (c.type === "finished" && end) s.ok = ctx.finished;
+    else if (c.type === "mission" && st.field) { const r = st.field.score.rows.find((x) => x.m === c.m); s.ok = !!r && r.pts >= (c.min || 1) && (!c.end || end); }
+    else if (c.type === "mission_keep" && end && st.field) { const r = st.field.score.rows.find((x) => x.m === c.m); s.ok = !!r && r.pts >= c.min; }
+    else if (c.type === "score_total" && st.field) s.ok = st.field.score.total >= c.min && (!c.end || end);
+    else if (c.type === "home_end" && end) { const hx = c.side === "right" ? MAT_W - 181 : 181; s.ok = Math.hypot(st.pose.x - hx, st.pose.y) <= 482 - 40; }
   });
   return checks.length > 0 && checks.every((_, i) => cs[i] && cs[i].ok);
 }

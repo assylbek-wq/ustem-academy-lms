@@ -354,6 +354,177 @@ SOLUTIONS = {
 }
 
 
+# ─── Поле сезона BIOGLOW (2026-2027): assets/lab/spike/bioglow.js ───
+# Координаты на столе: x от левого борта (мат начинается с x = 181), y от борта домов. Курс в программе:
+# 0 - к дальнему борту, 90 - вправо (плюс - по часовой стрелке, как motion_sensor в SPIKE 3).
+BIO_START = {"x": 330, "y": 150, "h": 0}
+
+NAV = """from hub import port, motion_sensor
+import motor, motor_pair, runloop, math
+
+PAIR = motor_pair.PAIR_1
+DEG_PER_MM = 360 / (3.1416 * 56)   # колесо 56 мм
+X, Y = 330.0, 150.0                # где робот сейчас (мм на столе)
+
+
+def heading():
+    # курс по гироскопу: 0 - к дальнему борту, 90 - вправо
+    return -motion_sensor.tilt_angles()[0] / 10
+
+
+async def turn_to(h, max_speed=400):
+    # поворот на месте до курса h (градусы)
+    while True:
+        e = (h - heading() + 540) % 360 - 180
+        if abs(e) <= 0.6:
+            break
+        sp = int(min(max_speed, max(50, abs(e) * 7)))
+        if e > 0:
+            motor_pair.move_tank(PAIR, sp, -sp)
+        else:
+            motor_pair.move_tank(PAIR, -sp, sp)
+        await runloop.sleep_ms(5)
+    motor_pair.stop(PAIR)
+
+
+async def fwd(mm, speed=600):
+    # проехать mm вперед (минус - назад) и запомнить, где оказались
+    global X, Y
+    await motor_pair.move_for_degrees(PAIR, int(mm * DEG_PER_MM), 0, velocity=speed,
+                                      acceleration=2000, deceleration=2000)
+    h = math.radians(heading())
+    X += mm * math.sin(h)
+    Y += mm * math.cos(h)
+
+
+async def go(x, y):
+    # доехать до точки (x, y): повернуть к ней и проехать по прямой
+    dx, dy = x - X, y - Y
+    await turn_to(math.degrees(math.atan2(dx, dy)))
+    await fwd(math.sqrt(dx * dx + dy * dy))
+
+
+def setpos(x, y):
+    # после упора в модель робот знает, где стоит
+    global X, Y
+    X, Y = x, y
+
+
+async def arm(p=port.C):
+    # опустить навесное и поднять обратно
+    await motor.run_for_degrees(p, 90, 700)
+    await motor.run_for_degrees(p, -90, 700)
+"""
+
+
+def bio_prog(body: str) -> str:
+    return NAV + "\n\nasync def main():\n    motor_pair.pair(PAIR, port.A, port.B)\n" + body + "\n\nrunloop.run(main())\n"
+
+
+def bio(title, task, checks, start_body, **extra):
+    return {"title": title, "mode": "python", "field": "bioglow", "start": BIO_START, "task": task,
+            "python": bio_prog(start_body), "blocks": None, "checks": checks, **extra}
+
+
+KEEP10 = {"type": "mission_keep", "m": 10, "min": 20, "label": "Хрупкие микроэкосистемы целы (20 очков)"}
+FINISHED = {"type": "finished", "label": "Программа завершилась без ошибок"}
+
+BIO_RUNS = {
+    "m13": """    # M13: ключевой вид на ферму, молодые деревья
+    await go(365, 300); await turn_to(90); await fwd(480)
+    await fwd(-60); await go(915, 147); await turn_to(29); await fwd(407); await arm(); await fwd(-150)
+""",
+    "m02": """    # M02: семена
+    await go(820, 330); await turn_to(0); await fwd(60); await fwd(-60)
+""",
+    "m03": """    # M03: камень
+    await go(520, 661); await turn_to(-90); await fwd(110); setpos(426, Y); await fwd(-60)
+""",
+    "m04": """    # M04: листья
+    await go(496, 965); await turn_to(-90); await arm()
+    await fwd(-70); await arm()
+""",
+    "m05": """    # M05: корни
+    await go(587, 880); await turn_to(0); await fwd(110); setpos(X, 981); await fwd(-100)
+""",
+    "m0809": """    # M09 платформа, M08 лиана, M09 фотоловушка и семечко
+    await go(686, 847); await turn_to(0); await arm()
+    await go(759, 800); await turn_to(0); await arm()
+    await go(833, 862); await turn_to(0); await arm()
+    await go(803, 812); await turn_to(0); await arm()
+""",
+    "m01": """    # M01: дрон и карта
+    await go(650, 700); await go(600, 450); await go(900, 300)
+    await go(1100, 135); await turn_to(90); await fwd(150); setpos(1195, 135); await fwd(-61); await arm()
+""",
+    "m11": """    # M11: окно в прошлое
+    await go(1408, 415); await turn_to(45); await arm()
+""",
+    "m0607": """    # M06 муравей, M07 мицелий
+    await go(1720, 430); await go(1787, 848); await turn_to(0); await arm()
+    await go(1843, 900); await turn_to(0); await fwd(120); setpos(X, 967); await fwd(-100)
+""",
+    "m15": """    # M15 на доке «Шахта»: люк, навес, окно сада
+    await go(1868, 852); await turn_to(40); await arm()
+    await go(1908, 799); await turn_to(40); await arm()
+    await go(1926, 871); await turn_to(40); await fwd(55); await fwd(-55)
+""",
+    "m12": """    # M12: подпорка и стяжка
+    await go(1862, 757); await turn_to(90); await arm()
+    await go(1906, 712); await turn_to(90); await arm()
+    await go(1922, 546); await turn_to(90); await arm()
+""",
+}
+
+PRESETS.update({
+    "spike-bio-field": {**bio("Поле BIOGLOW: свободный заезд",
+        "Поле сезона BIOGLOW, все 15 миссий. Робот стоит в левой зоне запуска. Функции go(x, y), turn_to(курс), fwd(мм) "
+        "и arm() уже написаны: координаты в мм, x от левого борта (мат начинается с 181), y от борта домов.\n"
+        "Очки матча считаются на вкладке «Табло».",
+        [], "    await go(330, 450)\n    await arm()\n")},
+    "spike-bio-rock": bio("M03 Переворот камня",
+        "Камень лежит у левого края мата на высоте y = 661. Подъедьте справа на той же высоте, повернитесь влево "
+        "(курс -90) и толкните камень корпусом: флажок исследования опустится (20 очков).\n"
+        "Не задевайте домики паука и улитки (M10).",
+        [{"type": "mission", "m": 3, "min": 20, "label": "Флажок исследования опущен (M03, 20 очков)"}, KEEP10, FINISHED],
+        "    await go(520, 450)\n    # допишите: доехать до (520, 661), повернуть на курс -90 и толкнуть камень\n"),
+    "spike-bio-roots": bio("M05 Разрастающиеся корни",
+        "Корни у дальнего борта, x = 587. Подъезжайте снизу (курс 0) и толкайте: неглубоко - 10 очков, до упора - 20.\n"
+        "После упора робот знает, где стоит: setpos(X, 981).",
+        [{"type": "mission", "m": 5, "min": 20, "end": True, "label": "Корень вытянут полностью (M05, 20 очков)"}, KEEP10, FINISHED],
+        "    await go(587, 700)\n    await turn_to(0)\n    # допишите: подъехать к корням и толкнуть их до упора\n"),
+    "spike-bio-tree": bio("M08 и M09: дерево и платформа",
+        "У большого дерева четыре дела для навесного на моторе C: поднять платформу, опустить лиану, поставить "
+        "фотоловушку и стряхнуть семечко. Навесное достает на 200 мм вперед от центра робота, когда опускается.\n"
+        "Точки для центра робота (курс 0): платформа (686, 847), лиана (759, 800), фотоловушка (833, 862), семечко (803, 812).",
+        [{"type": "mission", "m": 8, "min": 30, "label": "Лиана касается мата (M08, 30 очков)"},
+         {"type": "mission", "m": 9, "min": 30, "end": True, "label": "Платформа, фотоловушка и семечко (M09, 30 очков)"}, KEEP10, FINISHED],
+        "    await go(686, 847)\n    await turn_to(0)\n    await arm()\n    # допишите: лиана, фотоловушка, семечко\n"),
+    "spike-bio-elder": bio("M12 Лесной старейшина",
+        "Справа старое дерево (центр 2121, 757) и столбик (2122, 546). Поднимите подпорку навесным (20 очков), "
+        "снимите стяжку с дерева и наденьте на столбик (еще 10). Подсказка: подпорку цепляют с точки (1862, 757), "
+        "стяжку - с (1906, 712), столбик - с (1922, 546), курс 90.",
+        [{"type": "mission", "m": 12, "min": 30, "end": True, "label": "Подпорка поднята, стяжка на столбике (M12, 30 очков)"}, KEEP10, FINISHED],
+        "    await go(1720, 430)\n    # допишите: подпорка, стяжка, столбик\n"),
+    "spike-bio-match": bio("Матч BIOGLOW: 2 минуты 30 секунд",
+        "Полный матч Robot Game: соберите не меньше 300 очков за 2:30. В счет уже входят 6 жетонов точности (50) "
+        "и инспекция оборудования (20), а M10 дает 20, пока домики целы.\n"
+        "Планируйте заезд как команда FLL: порядок миссий, путь без столкновений, запас по времени. Блоки заездов "
+        "готовы в уроках курса, соберите их в одну программу.",
+        [{"type": "score_total", "min": 300, "label": "Не меньше 300 очков"}, KEEP10, FINISHED],
+        "    await go(330, 450)\n    # соберите заезды: камень, корни, дерево, дрон, окно, муравейник, старейшина...\n"),
+})
+
+SOLUTIONS.update({
+    "spike-bio-rock": {"python": bio_prog(BIO_RUNS["m03"]), "seconds": 25},
+    "spike-bio-roots": {"python": bio_prog(BIO_RUNS["m05"]), "seconds": 25},
+    "spike-bio-tree": {"python": bio_prog(BIO_RUNS["m0809"]), "seconds": 45},
+    "spike-bio-elder": {"python": bio_prog("    await go(1720, 430)\n" + BIO_RUNS["m12"]), "seconds": 45},
+    "spike-bio-match": {"python": bio_prog("".join(BIO_RUNS[k] for k in ["m13", "m02", "m03", "m04", "m05", "m0809", "m01", "m11", "m0607", "m15", "m12"])),
+                        "seconds": 152},
+})
+
+
 def write() -> list[Path]:
     OUT.mkdir(parents=True, exist_ok=True)
     paths = []

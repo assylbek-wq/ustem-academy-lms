@@ -1,5 +1,5 @@
 // Симулятор SPIKE Prime: блоки и Python прямо на странице урока, виртуальный робот на тренировочном мате FLL.
-import { localize, trPreset, trCode, tr, onReady } from "../i18n/index.js";
+import { localize, trPreset, trCode, tr, onReady, KK } from "../i18n/index.js";
 import { EditorView, basicSetup } from "codemirror";
 import { python } from "@codemirror/lang-python";
 import { keymap } from "@codemirror/view";
@@ -8,6 +8,10 @@ import { createWorkspace, loadBlocks, saveBlocks, workspaceToPython, Blockly } f
 import { MAT_W, MAT_H, drawMat } from "./mat.js";
 import { BODY, SENSOR_POS, DEFAULT_ROBOT, evalChecks } from "./physics.js";
 import { explainError } from "./runner.js";
+import { Bioglow, drawBioglow, MISSIONS, DOCKS, DEFAULT_DOCKS } from "./bioglow.js";
+
+const BIO_START = { x: 330, y: 150, h: 0 };
+const MATCH_S = 150;
 
 const SCRIPT_SRC = (document.currentScript && document.currentScript.src) || "/static/js/spikesim.js";
 const WORKER_URL = SCRIPT_SRC.replace(/spikesim\.js/, "spikeworker.js");
@@ -113,15 +117,20 @@ class SpikeSim {
     this.taskBox = h("div", { class: "sp-task" });
     this.robotBox = h("div", { class: "sp-robot" });
     this.helpBox = h("div", { class: "sp-help" });
-    const bar = h("div", { class: "sp-tabbar", role: "tablist" }, tab("task", "Задание"), tab("robot", "Робот"), tab("help", "Справка"));
+    this.scoreBox = h("div", { class: "sp-score" });
+    const bar = h("div", { class: "sp-tabbar", role: "tablist" }, tab("task", "Задание"), tab("score", "Табло"), tab("robot", "Робот"), tab("help", "Справка"));
+    this.tabs.score.pane = h("div", { class: "sp-pane" }, this.scoreBox);
     this.tabs.task.pane = h("div", { class: "sp-pane" }, this.taskBox);
     this.tabs.robot.pane = h("div", { class: "sp-pane" }, this.robotBox);
     this.tabs.help.pane = h("div", { class: "sp-pane" }, this.helpBox);
     const side = h("aside", { class: "sp-side" },
-      h("div", { class: "sp-sec-h" }, h("span", {}, "Тренировочное поле"), this.hud),
+      h("div", { class: "sp-sec-h" }, this.fieldTitle = h("span", {}, "Тренировочное поле"), this.fieldPick = h("select", { class: "sp-select sp-fieldpick", title: "Поле", "aria-label": "Поле", hidden: true, onchange: (e) => this.setField(e.target.value) },
+        h("option", { value: "training" }, "Тренировочное поле"), h("option", { value: "bioglow" }, "BIOGLOW 2026-2027")), this.clock = h("span", { class: "sp-clock", hidden: true }), this.hud),
       this.field,
       h("div", { class: "sp-hubrow" }, hub, h("div", { class: "sp-ports-live" }, h("div", { class: "sp-sec-h" }, h("span", {}, "Порты")), this.portsBox)),
-      h("div", { class: "sp-info" }, bar, this.tabs.task.pane, this.tabs.robot.pane, this.tabs.help.pane));
+      h("div", { class: "sp-info" }, bar, this.tabs.task.pane, this.tabs.score.pane, this.tabs.robot.pane, this.tabs.help.pane));
+    this.matImg = new Image(); this.matImg.src = MP_BASE + "bioglow/mat.jpg"; this.matImg.onload = () => this.draw();
+    this.labels = true;
     r.append(tb, h("div", { class: "sp-body" }, editor, side));
 
     this.ws = createWorkspace(this.blocksDiv, () => { this.save(); if (!this.preview.hidden) this.updatePreview(); });
@@ -214,6 +223,14 @@ class SpikeSim {
     let pd = null;
     try { pd = await (await fetch(`/static/spikesim/presets/${this.presetName}.json`, { cache: "no-cache" })).json(); trPreset(pd); } catch (e) { pd = null; }
     this.pd = pd || { title: "Свободная тренировка", checks: [], mode: "blocks" };
+    this.basePd = this.pd;
+    this.free = !(this.pd.checks && this.pd.checks.length);
+    let fieldSaved = null;
+    try { fieldSaved = JSON.parse(localStorage.getItem(this.storageKey + ":field") || "null"); } catch (e) { fieldSaved = null; }
+    if (this.free && fieldSaved && fieldSaved.field === "bioglow" && this.pd.field !== "bioglow") this.pd = this.bioPreset(fieldSaved.docks);
+    else if (this.free && fieldSaved && fieldSaved.docks && this.pd.field === "bioglow") this.pd = { ...this.pd, docks: fieldSaved.docks };
+    this.fieldPick.hidden = !this.free;
+    this.applyField();
     this.titleEl.textContent = this.pd.title || "Свободная тренировка";
     let saved = null;
     try { saved = JSON.parse(localStorage.getItem(this.storageKey) || "null"); } catch (e) { saved = null; }
@@ -224,6 +241,63 @@ class SpikeSim {
     this.resetState();
     this.renderTask(); this.renderRobot();
     this.loaded = true;
+  }
+
+  bioPreset(docks) {
+    const b = this.basePd;
+    if (b.field === "bioglow") return { ...b, docks: docks || b.docks };
+    return { ...b, field: "bioglow", box: null, lever: null, marks: [], start: BIO_START, docks: docks || { ...DEFAULT_DOCKS } };
+  }
+
+  setField(kind, docks) {
+    this.stop(true);
+    this.pd = kind === "bioglow" ? this.bioPreset(docks) : this.basePd;
+    try { localStorage.setItem(this.storageKey + ":field", JSON.stringify({ field: kind, docks: this.pd.docks || null })); } catch (e) { /* ничего */ }
+    this.applyField(); this.resetState(); this.renderTask(); this.resize();
+  }
+
+  applyField() {
+    this.bio = this.pd.field === "bioglow";
+    this.fieldPick.value = this.bio ? "bioglow" : "training";
+    this.fieldTitle.hidden = this.free;
+    this.fieldTitle.textContent = this.bio ? "Поле BIOGLOW" : "Тренировочное поле";
+    this.clock.hidden = !this.bio;
+    this.tabs.score.b.hidden = !this.bio;
+    if (!this.bio && !this.tabs.score.pane.hidden) this.showTab("task");
+    this.scoreKey = null;
+  }
+
+  /** Табло матча: очки по книге правил, как у судьи */
+  renderScore() {
+    if (!this.bio) return;
+    const fs = this.state && this.state.field;
+    if (!fs) return;
+    const key = JSON.stringify(fs.score.rows.map((r) => [r.pts, r.parts.map((x) => x[1])])) + JSON.stringify(fs.docks) + this.labels;
+    if (key === this.scoreKey) return;
+    this.scoreKey = key;
+    const box = this.scoreBox, sc = fs.score;
+    const name = (m) => { const x = MISSIONS.find((q) => q.id === m) || {}; return (KK ? x.kk : x.ru) || ""; };
+    const head = h("div", { class: "sp-score-total" }, h("span", {}, "Итого"), h("b", {}, String(sc.total)));
+    const rows = sc.rows.map((r) => h("details", { class: "sp-mis" + (r.pts > 0 ? " got" : "") },
+      h("summary", {}, h("i", {}, String(r.m).padStart(2, "0")), h("span", {}, name(r.m)), h("b", {}, `${r.pts}`), h("em", {}, `/${r.max}`)),
+      h("ul", {}, ...r.parts.map(([t, ok, pts]) => h("li", { class: ok ? "ok" : "" }, t, pts ? ` (${pts})` : "")))));
+    const extra = [h("div", { class: "sp-mis-x" }, h("span", {}, "Жетоны точности: 6 из 6"), h("b", {}, "50")),
+      h("div", { class: "sp-mis-x" }, h("span", {}, "Инспекция оборудования"), h("b", {}, "20"))];
+    const docks = h("div", { class: "sp-docks" }, h("p", { class: "sp-muted" }, "Сменные доки: какая модель стоит на каждом. В турнире расстановку объявляют перед матчем."),
+      ...Object.keys(DOCKS).map((d) => h("label", {}, h("span", {}, DOCKS[d].ru),
+        h("select", { class: "sp-select", disabled: !this.free || null, onchange: (e) => this.setDock(d, +e.target.value) },
+          ...[13, 14, 15].map((m) => h("option", { value: m, selected: fs.docks[d] === m || null }, `${m} ${name(m)}`))))));
+    const lab = h("label", { class: "sp-check" }, h("input", { type: "checkbox", checked: this.labels || null, onchange: (e) => { this.labels = e.target.checked; this.draw(); } }), "Номера миссий на поле");
+    box.replaceChildren(head, ...rows, ...extra, lab, docks,
+      h("p", { class: "sp-muted" }, "Очки считаются по книге правил Robot Game. Механика моделей упрощена: модель срабатывает, когда робот толкает нужную часть или опускает и поднимает навесное в нужном месте."));
+  }
+
+  setDock(dock, m) {
+    const docks = { ...(this.pd.docks || DEFAULT_DOCKS) }, other = Object.keys(docks).find((k) => docks[k] === m);
+    if (other) docks[other] = docks[dock];
+    docks[dock] = m;
+    this.setField("bioglow", docks);
+    this.showTab("score");
   }
 
   save() {
@@ -246,10 +320,12 @@ class SpikeSim {
   }
 
   resetState() {
-    const st = this.pd.start || { x: 190, y: 150, h: -90 };
+    const st = this.pd.start || (this.bio ? BIO_START : { x: 190, y: 150, h: -90 });
     this.start = { x: st.x, y: st.y, h: (st.h || 0) * Math.PI / 180 };
     this.state = { t: 0, pose: { ...this.start }, motors: {}, matrix: { text: "" }, box: this.pd.box ? { ...this.pd.box } : null,
-      lever: this.pd.lever ? { up: true, flips: 0 } : null, sensors: {}, maxLineDist: 0 };
+      lever: this.pd.lever ? { up: true, flips: 0 } : null, sensors: {}, maxLineDist: 0,
+      field: this.bio ? new Bioglow(this.pd).snapshot() : null };
+    this.scoreKey = null;
     this.trail = [];
     this.checkState = []; this.renderChecks();
   }
@@ -299,6 +375,7 @@ class SpikeSim {
     else if (m.type === "print") { this.prints.push(m.line); this.log(m.line); }
     else if (m.type === "beep") { this.beeps++; beep(m.freq, m.ms, m.vol); }
     else if (m.type === "event" && m.event === "lever") this.toast("Рычаг опущен!", "ok");
+    else if (m.type === "event" && m.event && m.event.toast) this.toast(m.event.toast, /!|Слишком|вышло/.test(m.event.toast) ? "" : "ok");
     else if (m.type === "done") {
       if (m.error && !/SystemExit/.test(m.error)) this.finish(false, m.error); else this.finish(true);
     }
@@ -345,7 +422,8 @@ class SpikeSim {
   renderTask() {
     const pd = this.pd, box = this.taskBox; box.innerHTML = "";
     box.append(h("h4", {}, pd.title || "Свободная тренировка"));
-    for (const line of (pd.task || "Тренировочный мат USTEM 2362 x 1143 мм, как поле FLL Challenge. Пишите программу блоками или на Python и нажимайте «Запуск».").split("\n")) box.append(h("p", {}, line));
+    const deftask = this.bio ? "Поле FIRST LEGO League Challenge сезона BIOGLOW (2026-2027): мат с 15 миссиями, по бокам зоны хранения. Матч 2 минуты 30 секунд, очки на вкладке «Табло»." : null;
+    for (const line of (pd.task || deftask || "Тренировочный мат USTEM 2362 x 1143 мм, как поле FLL Challenge. Пишите программу блоками или на Python и нажимайте «Запуск».").split("\n")) box.append(h("p", {}, line));
     this.checkList = h("ul", { class: "sp-checklist" });
     this.doneEl = h("div", { class: "sp-done", hidden: true }, "Задание выполнено! Отметьте урок как пройденный.");
     if (pd.checks && pd.checks.length) box.append(h("p", { class: "sp-muted" }, "Проверка идет во время запуска. Каждый запуск начинает проверку заново."), this.checkList, this.doneEl);
@@ -410,7 +488,7 @@ class SpikeSim {
     if (this.running && performance.now() - this.lastMsg > 3000) {
       this.finish(false, "Программа зависла: цикл без await и без обращения к моторам или датчикам. Добавьте в цикл await runloop.sleep_ms(10).");
     }
-    this.draw(); this.drawMatrix(); this.renderPorts();
+    this.draw(); this.drawMatrix(); this.renderPorts(); this.renderScore();
     requestAnimationFrame(() => this.loop());
   }
 
@@ -441,9 +519,12 @@ class SpikeSim {
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = "#8b5e34"; ctx.fillRect(0, 0, W, H);           // борта стола
     ctx.setTransform(s, 0, 0, -s, 80 * s, H - 80 * s);              // мм, y вверх
-    drawMat(ctx, (t, x, y) => this.text(ctx, t, x, y, 26, "rgba(15,23,42,.5)"));
-    // шкала линейки
-    for (let k = 0; k <= 10; k += 5) this.text(ctx, `${k * 10}`, 450 + k * 100, 160, 22, "#334155");
+    if (this.bio) drawBioglow(ctx, st && st.field, this.matImg, { labels: this.labels });
+    else {
+      drawMat(ctx, (t, x, y) => this.text(ctx, t, x, y, 26, "rgba(15,23,42,.5)"));
+      // шкала линейки
+      for (let k = 0; k <= 10; k += 5) this.text(ctx, `${k * 10}`, 450 + k * 100, 160, 22, "#334155");
+    }
     if (!st) return;
     // ящик и рычаг
     if (st.box) {
@@ -474,6 +555,11 @@ class SpikeSim {
     const p = st.pose, yaw = -((p.h - this.start.h) * 180 / Math.PI);
     const n = ((yaw + 180) % 360 + 360) % 360 - 180;
     this.hud.textContent = `x ${Math.round(p.x)} мм  y ${Math.round(p.y)} мм  угол ${n.toFixed(1)}°`;
+    if (this.bio) {
+      const left = Math.max(0, MATCH_S - (st.t || 0)), txt = `${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, "0")}`;
+      if (this.clock.textContent !== txt) this.clock.textContent = txt;
+      this.clock.classList.toggle("low", left < 30);
+    }
   }
 
   drawRobot(ctx, st) {
@@ -499,11 +585,13 @@ class SpikeSim {
     }
     if (ports.D === "distance") { ctx.fillStyle = "#0f172a"; ctx.fillRect(-26, BODY.front - 14, 52, 16); }
     // рука на моторе C: проекция сверху
-    const c = st.motors && st.motors.C;
-    if (c !== undefined) {
+    for (const [port, off, col] of [["C", 0, "#ea580c"], ["D", 40, "#0d9488"]]) {
+      const c = st.motors && st.motors[port];
+      if (c === undefined || (port === "D" && !this.bio)) continue;
       const reach = 110 * Math.sin(Math.max(0, Math.min(180, c)) * Math.PI / 180);
-      ctx.strokeStyle = "#ea580c"; ctx.lineWidth = 14; ctx.lineCap = "round";
-      ctx.beginPath(); ctx.moveTo(0, BODY.front - 6); ctx.lineTo(0, BODY.front + Math.max(8, reach)); ctx.stroke(); ctx.lineCap = "butt";
+      ctx.strokeStyle = col; ctx.lineWidth = 14; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(off, BODY.front - 6); ctx.lineTo(off, BODY.front + Math.max(8, reach)); ctx.stroke(); ctx.lineCap = "butt";
+      if (c >= 60) { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(off, BODY.front + reach, 11, 0, Math.PI * 2); ctx.fill(); }
     }
     // стрелка вперед
     ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.moveTo(0, 30); ctx.lineTo(-14, 6); ctx.lineTo(14, 6); ctx.closePath(); ctx.fill();

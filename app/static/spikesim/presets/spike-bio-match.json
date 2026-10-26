@@ -1,0 +1,30 @@
+{
+ "title": "Матч BIOGLOW: 2 минуты 30 секунд",
+ "mode": "python",
+ "field": "bioglow",
+ "start": {
+  "x": 330,
+  "y": 150,
+  "h": 0
+ },
+ "task": "Полный матч Robot Game: соберите не меньше 300 очков за 2:30. В счет уже входят 6 жетонов точности (50) и инспекция оборудования (20), а M10 дает 20, пока домики целы.\nПланируйте заезд как команда FLL: порядок миссий, путь без столкновений, запас по времени. Блоки заездов готовы в уроках курса, соберите их в одну программу.",
+ "python": "from hub import port, motion_sensor\nimport motor, motor_pair, runloop, math\n\nPAIR = motor_pair.PAIR_1\nDEG_PER_MM = 360 / (3.1416 * 56)   # колесо 56 мм\nX, Y = 330.0, 150.0                # где робот сейчас (мм на столе)\n\n\ndef heading():\n    # курс по гироскопу: 0 - к дальнему борту, 90 - вправо\n    return -motion_sensor.tilt_angles()[0] / 10\n\n\nasync def turn_to(h, max_speed=400):\n    # поворот на месте до курса h (градусы)\n    while True:\n        e = (h - heading() + 540) % 360 - 180\n        if abs(e) <= 0.6:\n            break\n        sp = int(min(max_speed, max(50, abs(e) * 7)))\n        if e > 0:\n            motor_pair.move_tank(PAIR, sp, -sp)\n        else:\n            motor_pair.move_tank(PAIR, -sp, sp)\n        await runloop.sleep_ms(5)\n    motor_pair.stop(PAIR)\n\n\nasync def fwd(mm, speed=600):\n    # проехать mm вперед (минус - назад) и запомнить, где оказались\n    global X, Y\n    await motor_pair.move_for_degrees(PAIR, int(mm * DEG_PER_MM), 0, velocity=speed,\n                                      acceleration=2000, deceleration=2000)\n    h = math.radians(heading())\n    X += mm * math.sin(h)\n    Y += mm * math.cos(h)\n\n\nasync def go(x, y):\n    # доехать до точки (x, y): повернуть к ней и проехать по прямой\n    dx, dy = x - X, y - Y\n    await turn_to(math.degrees(math.atan2(dx, dy)))\n    await fwd(math.sqrt(dx * dx + dy * dy))\n\n\ndef setpos(x, y):\n    # после упора в модель робот знает, где стоит\n    global X, Y\n    X, Y = x, y\n\n\nasync def arm(p=port.C):\n    # опустить навесное и поднять обратно\n    await motor.run_for_degrees(p, 90, 700)\n    await motor.run_for_degrees(p, -90, 700)\n\n\nasync def main():\n    motor_pair.pair(PAIR, port.A, port.B)\n    await go(330, 450)\n    # соберите заезды: камень, корни, дерево, дрон, окно, муравейник, старейшина...\n\n\nrunloop.run(main())\n",
+ "blocks": null,
+ "checks": [
+  {
+   "type": "score_total",
+   "min": 300,
+   "label": "Не меньше 300 очков"
+  },
+  {
+   "type": "mission_keep",
+   "m": 10,
+   "min": 20,
+   "label": "Хрупкие микроэкосистемы целы (20 очков)"
+  },
+  {
+   "type": "finished",
+   "label": "Программа завершилась без ошибок"
+  }
+ ]
+}
