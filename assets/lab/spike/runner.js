@@ -61,6 +61,8 @@ export async function runProgram({ code, preset, speed = 1, loadMicroPython, was
     m_reset: wrap((p, pos) => { const m = sim.motor(P(p)); m.offset = m.pos - pos; }),
     m_abspos: wrap((p) => { const v = Math.round(sim.motor(P(p)).pos) % 360; return ((v + 540) % 360) - 180; }),
     m_vel: wrap((p) => Math.round(sim.motor(P(p)).vel)),
+    // motor.info(port): (id устройства, наибольшая скорость, град/с), как берет приложение SPIKE для блоков
+    m_info: wrap((p) => { const m = sim.motor(P(p)); return [{ large: 49, medium: 48, small: 65 }[m.kind] || 49, m.max]; }),
     // пара
     p_pair: wrap((pair, a, b) => { sim.pairs[pair] = [P(a), P(b)]; sim.motor(P(a)); sim.motor(P(b)); }),
     p_unpair: wrap((pair) => { delete sim.pairs[pair]; }),
@@ -92,10 +94,13 @@ export async function runProgram({ code, preset, speed = 1, loadMicroPython, was
     matrix_pixel: wrap((x, y, i) => { const px = sim.matrix.pixels ? [...sim.matrix.pixels] : new Array(25).fill(0); if (x >= 0 && x < 5 && y >= 0 && y < 5) px[y * 5 + x] = i; sim.matrix = { text: "", image: null, pixels: px }; }),
     matrix_get: wrap((x, y) => (sim.matrix.pixels ? sim.matrix.pixels[y * 5 + x] || 0 : 0)),
     matrix_show: wrap((px) => { sim.matrix = { text: "", image: null, pixels: Array.from(px).slice(0, 25) }; }),
+    // ошибка в подпрограмме из блоков (wb.py): текст с трассировкой для консоли
+    fail: (text) => { failText = String(text); },
     beep: wrap((f, d, v) => { sim.beeps.push(f); post({ type: "beep", freq: f, ms: d / speed, vol: v }); return wait(d); }),
   };
 
   const out = [];
+  let failText = null;
   const mp = await loadMicroPython({ url: wasmUrl, heapsize: 4 * 1024 * 1024, pystack: 4096,
     stdout: (l) => { sim.prints.push(l); post({ type: "print", line: l }); }, stderr: (l) => out.push(l), linebuffer: true });
   try { mp.FS.mkdir("/lib"); } catch (e) { /* уже есть */ }
@@ -111,6 +116,7 @@ export async function runProgram({ code, preset, speed = 1, loadMicroPython, was
   } catch (e) {
     error = String(e && e.message || e) + (out.length ? "\n" + out.join("\n") : "");
   }
+  if (!error && failText) error = failText;
   // программа закончилась: моторы останавливаются, как на хабе
   catchUp();
   for (const p of PORTS) if (sim.motors[p]) { sim.cancelJob(sim.motors[p]); sim.motors[p].cmd = 0; sim.motors[p].decel = 12000; }

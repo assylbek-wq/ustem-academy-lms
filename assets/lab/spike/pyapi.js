@@ -1,7 +1,11 @@
 // Модули SPIKE 3 для MicroPython симулятора. Имена и параметры как в приложении LEGO Education SPIKE 3:
 // hub (port, motion_sensor, light_matrix, button, sound, light), motor, motor_pair, color_sensor,
 // distance_sensor, force_sensor, color, runloop. Внутри все вызывает модуль _sim (JavaScript).
+// wb.py (wbpy.js) - общая часть программ из блоков SPIKE (Word Blocks).
+import { WB_PY } from "./wbpy.js";
+
 export const PY_FILES = {
+  "wb.py": WB_PY,
   "hub.py": `
 import _sim
 
@@ -17,6 +21,12 @@ port = _Port()
 
 
 class _Motion:
+    TOP = 0
+    FRONT = 1
+    RIGHT = 2
+    BOTTOM = 3
+    BACK = 4
+    LEFT = 5
     TAPPED = 0
     DOUBLE_TAPPED = 1
     SHAKEN = 2
@@ -225,6 +235,10 @@ def set_duty_cycle(port, pwm):
 
 def get_duty_cycle(port):
     return 0
+
+
+def info(port):
+    return tuple(_sim.m_info(port))
 `,
   "motor_pair.py": `
 import _sim

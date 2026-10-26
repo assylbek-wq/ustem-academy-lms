@@ -8,6 +8,7 @@ import { createWorkspace, loadBlocks, saveBlocks, workspaceToPython, Blockly } f
 import { MAT_W, MAT_H, drawMat } from "./mat.js";
 import { evalChecks, OBJ_R } from "./physics.js";
 import { robotModel } from "./robots.js";
+import { Spike3D } from "./view3d.js";
 import { explainError } from "./runner.js";
 import { Bioglow, drawBioglow, MISSIONS, DOCKS, DEFAULT_DOCKS } from "./bioglow.js";
 
@@ -104,7 +105,11 @@ class SpikeSim {
     this.canvas = h("canvas", { class: "sp-canvas" });
     this.hud = h("div", { class: "sp-hud" });
     this.toastBox = h("div", { class: "sp-toasts", "aria-live": "polite" });
-    this.field = h("div", { class: "sp-field" }, this.canvas, this.toastBox);
+    this.box3d = h("div", { class: "sp-3d", hidden: true });
+    const vbtn = (mode, label) => h("button", { type: "button", class: "sp-vbtn", "data-v": mode, onclick: () => this.setView(mode) }, label);
+    this.btnFollow = h("button", { type: "button", class: "sp-vbtn sp-follow", hidden: true, title: "Камера следует за роботом", onclick: () => { const on = this.v3d && this.v3d.follow(!this.following); this.following = !!on; this.btnFollow.classList.toggle("on", this.following); } }, "Следить");
+    this.viewBar = h("div", { class: "sp-viewbar" }, h("div", { class: "sp-vseg" }, vbtn("2d", "2D"), vbtn("3d", "3D")), this.btnFollow);
+    this.field = h("div", { class: "sp-field" }, this.canvas, this.box3d, this.viewBar, this.toastBox);
     this.matrix = h("div", { class: "sp-matrix" }, ...Array.from({ length: 25 }, () => h("i")));
     this.matrixText = h("div", { class: "sp-mtext" });
     const hbtn = (which, label) => {
@@ -257,6 +262,9 @@ class SpikeSim {
     this.resetState();
     this.renderTask(); this.renderRobot();
     this.loaded = true;
+    let v = "2d";
+    try { v = localStorage.getItem("spike:view") || "2d"; } catch (e) { /* ничего */ }
+    this.setView(v);
   }
 
   bioPreset(docks) {
@@ -337,6 +345,28 @@ class SpikeSim {
     this.loaded = false; this.load();
   }
 
+  /** Вид поля: 2D сверху (как план) или живой 3D-вид стола, моделей и робота */
+  setView(mode) {
+    this.view = mode;
+    try { localStorage.setItem("spike:view", mode); } catch (e) { /* ничего */ }
+    const is3d = mode === "3d";
+    this.canvas.hidden = is3d; this.box3d.hidden = !is3d; this.btnFollow.hidden = !is3d;
+    for (const b of this.viewBar.querySelectorAll("[data-v]")) b.classList.toggle("on", b.dataset.v === mode);
+    if (is3d) {
+      const hgt = this.canvas.style.height || "300px";
+      this.box3d.style.height = hgt;
+      if (!this.v3d) { this.v3d = new Spike3D(this.box3d, { matUrl: MP_BASE + "bioglow/mat.jpg" }); this.sceneKey = null; }
+      this.sync3d(true);
+    } else this.resize();
+  }
+
+  sync3d(force) {
+    if (!this.v3d || this.view !== "3d" || !this.pd) return;
+    const key = JSON.stringify([this.pd.title, this.pd.field, this.pd.docks, this.model && this.model.name, this.runId]);
+    if (force || key !== this.sceneKey) { this.sceneKey = key; this.v3d.setScene(this.pd, this.model); }
+    if (this.state) this.v3d.update(this.state);
+  }
+
   resetState() {
     const st = this.pd.start || (this.bio ? BIO_START : { x: 190, y: 150, h: -90 });
     this.start = { x: st.x, y: st.y, h: (st.h || 0) * Math.PI / 180 };
@@ -347,6 +377,7 @@ class SpikeSim {
     this.scoreKey = null;
     this.trail = [];
     this.checkState = []; this.renderChecks();
+    this.sync3d(true);
   }
 
   download() {
@@ -501,6 +532,7 @@ class SpikeSim {
     if (!w) return;
     const hgt = Math.round(w * (MAT_H + 160) / (MAT_W + 160));
     this.canvas.width = Math.round(w * dpr); this.canvas.height = Math.round(hgt * dpr); this.canvas.style.height = hgt + "px";
+    this.box3d.style.height = Math.max(hgt, 260) + "px";
     this.draw();
   }
 
@@ -509,7 +541,8 @@ class SpikeSim {
     if (this.running && performance.now() - this.lastMsg > 3000) {
       this.finish(false, "Программа зависла: цикл без await и без обращения к моторам или датчикам. Добавьте в цикл await runloop.sleep_ms(10).");
     }
-    this.draw(); this.drawMatrix(); this.renderPorts(); this.renderScore();
+    if (this.view === "3d") this.sync3d(); else this.draw();
+    this.drawMatrix(); this.renderPorts(); this.renderScore();
     requestAnimationFrame(() => this.loop());
   }
 
