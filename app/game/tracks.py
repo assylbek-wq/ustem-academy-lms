@@ -474,6 +474,8 @@ BADGES: dict[str, dict] = {
                        "desc": ml("Все задания симулятора CubeSat.", "CubeSat симуляторының барлық тапсырмасы.", "Every CubeSat simulator task.")},
     "cansat-master": {"tier": "gold", "glyph": "flag-race", "title": ml("Мастер CanSat", "CanSat шебері", "CanSat master"),
                       "desc": ml("Все задания симулятора CanSat.", "CanSat симуляторының барлық тапсырмасы.", "Every CanSat simulator task.")},
+    "unitree-master": {"tier": "gold", "glyph": "chip", "title": ml("Мастер Unitree", "Unitree шебері", "Unitree master"),
+                       "desc": ml("Все задания симулятора Go2 и G1 в MuJoCo.", "MuJoCo-дағы Go2 және G1 симуляторының барлық тапсырмасы.", "Every Go2 and G1 MuJoCo simulator task.")},
     "certified": {"tier": "silver", "glyph": "medal", "title": ml("Сертифицирован", "Сертификатталған", "Certified"),
                   "desc": ml("Получен первый сертификат уровня.", "Алғашқы деңгей сертификаты алынды.", "Earned a first level certificate.")},
     "team": {"tier": "bronze", "glyph": "team", "title": ml("Своя команда", "Өз командам", "Own team"),
@@ -510,7 +512,7 @@ def all_steps(track: dict):
 def sim_presets(prefix: str) -> list[str]:
     """Все задания симулятора с этим префиксом (для значков «Мастер SPIKE», «Мастер FTC», «Мастер CubeSat»)."""
     from pathlib import Path
-    folder = {"spike-": "spikesim/presets", "ftc-": "ftcsim/presets", "cubesat-": "cubesat/presets", "cansat-": "cansat/presets"}[prefix]
+    folder = {"spike-": "spikesim/presets", "ftc-": "ftcsim/presets", "cubesat-": "cubesat/presets", "cansat-": "cansat/presets", "robot-": "robots/presets"}[prefix]
     return sorted(p.stem for p in (Path(__file__).resolve().parents[1] / "static" / folder).glob(f"{prefix}*.json")
                   if "sandbox" not in p.stem)
 

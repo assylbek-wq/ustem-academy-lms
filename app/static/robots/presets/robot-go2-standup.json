@@ -1,0 +1,30 @@
+{
+ "robot": "go2",
+ "mode": "sport",
+ "start": {
+  "pose": "lie"
+ },
+ "limit": 8,
+ "title": "Go2: встать и лечь",
+ "task": "Go2 включен и лежит. В спортивном режиме им управляет встроенный контроллер, а программа отдает команды, как пульт: StandUp, StandDown, Move.\n\nПоднимите робота, подержите стоя 2 секунды и положите обратно.",
+ "hint": "sport.StandUp(), затем robot.sleep(3), затем sport.StandDown() и еще robot.sleep(2), чтобы робот успел лечь.",
+ "python": "from unitree import *\n\nrobot = Robot()\nsport = SportClient()\n\nprint(\"робот лежит\")\n# напишите команды здесь\n",
+ "checks": [
+  {
+   "type": "height",
+   "min": 0.24,
+   "hold": 2,
+   "text": "Робот стоит не меньше 2 с (корпус выше 0,24 м)"
+  },
+  {
+   "type": "below",
+   "z": 0.15,
+   "from": 5,
+   "text": "В конце робот лег (корпус ниже 0,15 м)"
+  },
+  {
+   "type": "upright",
+   "text": "Робот не упал"
+  }
+ ]
+}

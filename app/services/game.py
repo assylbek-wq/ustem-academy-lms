@@ -184,6 +184,7 @@ def _badges(user: User, facts: Facts, want: dict) -> list[str]:
         "ftc-master": all(p in facts.sims for p in sim_presets("ftc-")),
         "cubesat-master": all(p in facts.sims for p in sim_presets("cubesat-")),
         "cansat-master": all(p in facts.sims for p in sim_presets("cansat-")),
+        "unitree-master": all(p in facts.sims for p in sim_presets("robot-")),
         "certified": bool(facts.certs),
         "team": any(r.endswith((":registered",)) for r in want),
         "first-event": any(r.endswith((":scrimmage", ":qual-played", ":nat-played", ":played")) for r in want),

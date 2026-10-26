@@ -1,0 +1,7 @@
+mujoco.js, mujoco.wasm - MuJoCo 3.17 WebAssembly bindings (@mujoco/mujoco), Google DeepMind.
+Licensed under the Apache License, Version 2.0: https://www.apache.org/licenses/LICENSE-2.0
+Source: https://github.com/google-deepmind/mujoco/tree/main/wasm
+
+go2/, g1/ - models from MuJoCo Menagerie (https://github.com/google-deepmind/mujoco_menagerie),
+Unitree Robotics, BSD-3-Clause (see LICENSE in each folder). Meshes simplified, G1 actuators changed to
+torque motors by assets/lab/robots/prepare_models.py.

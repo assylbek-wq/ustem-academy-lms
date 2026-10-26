@@ -1,0 +1,41 @@
+{
+ "robot": "go2",
+ "mode": "sport",
+ "start": {
+  "pose": "lie"
+ },
+ "limit": 12,
+ "world": {
+  "marks": [
+   {
+    "pos": [
+     2,
+     0
+    ],
+    "r": 0.3
+   }
+  ]
+ },
+ "title": "Go2: дойти до метки",
+ "task": "Желтая метка лежит в 2 метрах впереди. Командой Move(vx, vy, vyaw) задается скорость: vx вперед в м/с, vy вбок, vyaw - поворот в рад/с. Робот идет, пока не придет StopMove().\n\nДоведите Go2 до метки и остановите его на ней.",
+ "hint": "Путь = скорость × время. При vx = 0,5 м/с до метки 4 секунды. После StopMove() дайте роботу секунду, чтобы остановиться.",
+ "python": "from unitree import *\n\nrobot = Robot()\nsport = SportClient()\n\nsport.StandUp()\nrobot.sleep(1.5)\n\nsport.Move(0.3, 0, 0)\nrobot.sleep(1)\nsport.StopMove()\n",
+ "checks": [
+  {
+   "type": "zone",
+   "x": 2,
+   "y": 0,
+   "r": 0.3,
+   "text": "В конце робот стоит на метке"
+  },
+  {
+   "type": "still",
+   "v": 0.08,
+   "text": "Робот остановился"
+  },
+  {
+   "type": "upright",
+   "text": "Робот не упал"
+  }
+ ]
+}

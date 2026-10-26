@@ -1,0 +1,63 @@
+{
+ "robot": "g1",
+ "mode": "low",
+ "start": {
+  "pose": "stand"
+ },
+ "hold": true,
+ "hang": true,
+ "limit": 8,
+ "title": "G1: помахать рукой",
+ "task": "G1 висит на страховочном подвесе, как на стенде при первой настройке. Моторы держат стойку с усилениями из примера Unitree.\n\nПоднимите правую руку в сторону и помашите предплечьем: не меньше 3 взмахов с размахом больше 40 градусов.",
+ "hint": "Правое плечо в сторону: q[RightShoulderRoll] = -1.2. Локоть по синусу: q[RightElbow] = 0.5 + 0.5 * math.sin(2 * math.pi * t). Отправляйте send(q) каждые 0,02 с.",
+ "python": "from unitree import *\n\nrobot = Robot()\ncmd = LowCmd()\nst = robot.read()\nq0 = [st.motor_state[i].q for i in range(NUM_MOTOR)]   # стартовая стойка\n\n# усиления из примера unitree_sdk2 g1_low_level_example\nKP = [60, 60, 60, 100, 40, 40,  60, 60, 60, 100, 40, 40,  60, 40, 40] + [40] * 14\nKD = [1, 1, 1, 2, 1, 1,  1, 1, 1, 2, 1, 1,  1, 1, 1] + [1] * 14\n\ndef send(q, tau=None):\n    for i in range(NUM_MOTOR):\n        m = cmd.motor_cmd[i]\n        m.q = q[i]\n        m.dq = 0.0\n        m.kp = KP[i]\n        m.kd = KD[i]\n        m.tau = tau[i] if tau else 0.0\n    robot.write(cmd)\n\nimport math\n\nt = 0.0\nwhile t < 7:\n    q = list(q0)\n    # поднимите руку и помашите\n    send(q)\n    robot.sleep(0.02)\n    t = robot.time()\n",
+ "checks": [
+  {
+   "type": "wave",
+   "joint": 25,
+   "amp": 0.7,
+   "count": 3,
+   "from": 0.5,
+   "text": "Три взмаха правым локтем (RightElbow) с размахом больше 40°"
+  },
+  {
+   "type": "pose",
+   "joints": [
+    23
+   ],
+   "target": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    -1.2,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "tol": 0.3,
+   "text": "В конце правая рука поднята в сторону (RightShoulderRoll около -1,2)"
+  }
+ ]
+}

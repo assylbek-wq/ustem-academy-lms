@@ -1,0 +1,30 @@
+{
+ "robot": "go2",
+ "mode": "low",
+ "start": {
+  "pose": "lie"
+ },
+ "limit": 8,
+ "title": "Go2: сидеть",
+ "task": "Составьте свою позу: робот встает, а потом садится, как собака: задние лапы сложены, передние почти прямые, нос поднят. Тангаж корпуса (наклон вперед-назад) берите из IMU.\n\nУдержите робота сидя 2 секунды: нос поднят хотя бы на 20 градусов.",
+ "hint": "Тангаж отрицательный, когда нос поднят. Попробуйте передние thigh около 0,3, calf -1,0, задние thigh около 1,9, calf -2,6.",
+ "python": "from unitree import *\n\nrobot = Robot()\ncmd = LowCmd()\n\n# позы из примера unitree_sdk2 go2_stand_example (порядок моторов FR, FL, RR, RL; в каждой ноге hip, thigh, calf)\nLIE = [0.0, 1.36, -2.65, 0.0, 1.36, -2.65, -0.2, 1.36, -2.65, 0.2, 1.36, -2.65]\nSTAND = [0.0, 0.67, -1.3, 0.0, 0.67, -1.3, 0.0, 0.67, -1.3, 0.0, 0.67, -1.3]\n\ndef move(target, seconds, kp=60, kd=5):\n    \"\"\"Плавно перевести все 12 моторов из текущих углов в target за seconds секунд.\"\"\"\n    st = robot.read()\n    start = [st.motor_state[i].q for i in range(12)]\n    n = int(seconds / 0.02)\n    for k in range(n + 1):\n        s = k / n\n        for i in range(12):\n            m = cmd.motor_cmd[i]\n            m.q = (1 - s) * start[i] + s * target[i]\n            m.dq = 0.0\n            m.kp = kp\n            m.kd = kd\n            m.tau = 0.0\n        robot.write(cmd)\n        robot.sleep(0.02)\n\nSIT = list(STAND)   # измените углы ног\n\nmove(STAND, 2)\nmove(SIT, 2)\nrobot.sleep(3)\nprint(\"тангаж, градусы:\", robot.read().imu_state.rpy[1] * 57.3)\n",
+ "checks": [
+  {
+   "type": "rp",
+   "axis": "pitch",
+   "max": -20,
+   "hold": 2,
+   "text": "Нос поднят на 20 градусов и больше не меньше 2 с"
+  },
+  {
+   "type": "smooth",
+   "maxdq": 4,
+   "text": "Плавно: скорость суставов не выше 4 рад/с"
+  },
+  {
+   "type": "upright",
+   "text": "Робот не упал"
+  }
+ ]
+}

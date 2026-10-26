@@ -1,0 +1,65 @@
+{
+ "robot": "g1",
+ "mode": "low",
+ "start": {
+  "pose": "stand"
+ },
+ "hold": true,
+ "limit": 8,
+ "title": "G1: руки вперед",
+ "task": "Итоговое задание по G1. Робот вытягивает обе руки вперед, как будто держит коробку. Центр масс уходит вперед на 4 см, и одной жесткости ног уже не хватает: нужен еще баланс по IMU.\n\nПоднимите обе руки вперед за 3 секунды (ShoulderPitch -1,5, Elbow 1,3: у G1 ноль локтя - рука, согнутая под прямым углом) и стойте до конца задания.",
+ "hint": "Соедините жесткую стойку (задание «Стойка без подвеса») и момент по IMU (задание «Баланс по IMU»). Руки поднимайте плавно: q = (1 - s) * q0 + s * up.",
+ "python": "from unitree import *\n\nrobot = Robot()\ncmd = LowCmd()\nst = robot.read()\nq0 = [st.motor_state[i].q for i in range(NUM_MOTOR)]   # стартовая стойка\n\n# усиления из примера unitree_sdk2 g1_low_level_example\nKP = [60, 60, 60, 100, 40, 40,  60, 60, 60, 100, 40, 40,  60, 40, 40] + [40] * 14\nKD = [1, 1, 1, 2, 1, 1,  1, 1, 1, 2, 1, 1,  1, 1, 1] + [1] * 14\n\ndef send(q, tau=None):\n    for i in range(NUM_MOTOR):\n        m = cmd.motor_cmd[i]\n        m.q = q[i]\n        m.dq = 0.0\n        m.kp = KP[i]\n        m.kd = KD[i]\n        m.tau = tau[i] if tau else 0.0\n    robot.write(cmd)\n\nup = list(q0)\nup[LeftShoulderPitch] = -1.5\nup[RightShoulderPitch] = -1.5\nup[LeftElbow] = 1.3\nup[RightElbow] = 1.3\n\nn = 300\nfor k in range(n + 1):\n    s = k / n\n    send([(1 - s) * q0[i] + s * up[i] for i in range(NUM_MOTOR)])\n    robot.sleep(0.01)\nwhile True:\n    send(up)\n    robot.sleep(0.01)\n",
+ "checks": [
+  {
+   "type": "pose",
+   "joints": [
+    15,
+    22
+   ],
+   "target": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    -1.5,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    -1.5,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "tol": 0.2,
+   "text": "Обе руки вытянуты вперед"
+  },
+  {
+   "type": "height",
+   "min": 0.74,
+   "hold": 7,
+   "text": "Робот стоит все задание (таз выше 0,74 м)"
+  },
+  {
+   "type": "upright",
+   "text": "Робот не упал"
+  }
+ ]
+}

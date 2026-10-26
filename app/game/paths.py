@@ -16,7 +16,7 @@ from .tracks import SEED_PATHS, ml
 
 ICONS = ["flag", "team", "box", "robot", "code", "bulb", "swords", "flag-race", "podium", "globe", "trophy", "chip", "book"]
 COURSE_COLORS = {"fll-challenge": "#e5322d", "ftc": "#f27c1c", "arduino": "#0e9f6e", "first": "#0085ff"}
-SIM_RE = re.compile(r'class="(spike-sim|ftc-sim|cubesat-sim|cansat-sim|lab-preset)-([a-z0-9-]+)"')
+SIM_RE = re.compile(r'class="(spike-sim|ftc-sim|cubesat-sim|cansat-sim|robot-sim|lab-preset)-([a-z0-9-]+)"')
 
 
 def seed() -> None:

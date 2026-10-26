@@ -1,4 +1,4 @@
-"""Лаборатория: макетная плата, симулятор схем и Arduino Uno (компиляция на сервере, запуск в браузере)."""
+"""Лаборатория: макетная плата и Arduino Uno (компиляция на сервере), симуляторы SPIKE, FTC, спутников WSO и роботов Unitree."""
 from __future__ import annotations
 
 import re
@@ -17,6 +17,7 @@ SPIKE_DIR = Path(__file__).resolve().parents[1] / "static" / "spikesim" / "prese
 FTC_DIR = Path(__file__).resolve().parents[1] / "static" / "ftcsim" / "presets"
 CUBESAT_DIR = Path(__file__).resolve().parents[1] / "static" / "cubesat" / "presets"
 CANSAT_DIR = Path(__file__).resolve().parents[1] / "static" / "cansat" / "presets"
+ROBOT_DIR = Path(__file__).resolve().parents[1] / "static" / "robots" / "presets"
 _hits: dict[int, deque] = defaultdict(deque)
 
 
@@ -37,6 +38,7 @@ LABS = [
     {"key": "arduino", "group": "robotics", "endpoint": "lab.arduino", "solved": "lab-", "dir": "lab/presets", "glob": "*.json"},
     {"key": "spike", "group": "robotics", "endpoint": "lab.spike", "solved": "spike-", "dir": "spikesim/presets", "glob": "spike-*.json"},
     {"key": "ftc", "group": "robotics", "endpoint": "lab.ftc", "solved": "ftc-", "dir": "ftcsim/presets", "glob": "ftc-*.json"},
+    {"key": "robots", "group": "robotics", "endpoint": "lab.robots", "solved": "robot-", "dir": "robots/presets", "glob": "robot-*.json"},
     {"key": "cubesat", "group": "space", "endpoint": "lab.cubesat", "solved": "cubesat-", "dir": "cubesat/presets", "glob": "cubesat-*.json"},
     {"key": "cansat", "group": "space", "endpoint": "lab.cansat", "solved": "cansat-", "dir": "cansat/presets", "glob": "cansat-*.json"},
 ]
@@ -105,6 +107,17 @@ def cansat():
     if not re.fullmatch(r"cansat-[a-z0-9-]{1,40}", preset or "") or not (CANSAT_DIR / f"{preset}.json").exists():
         preset = "cansat-sandbox"
     return render_template("lab/sat.html", kind="cansat", preset=preset.removeprefix("cansat-"))
+
+
+@bp.route("/lab/robots")
+@login_required
+def robots():
+    """Unitree Go2 и G1 на MuJoCo (WebAssembly): программа на MicroPython с API как unitree_sdk2."""
+    preset = request.args.get("preset", "")
+    if not re.fullmatch(r"robot-[a-z0-9-]{1,40}", preset or "") or not (ROBOT_DIR / f"{preset}.json").exists():
+        preset = "robot-g1-sandbox" if request.args.get("robot") == "g1" else "robot-go2-sandbox"
+    robot = "g1" if preset.startswith("robot-g1") else "go2"
+    return render_template("lab/robots.html", preset=preset.removeprefix("robot-"), robot=robot)
 
 
 @bp.route("/lab/compile", methods=["POST"])

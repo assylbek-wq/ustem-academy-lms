@@ -1,0 +1,44 @@
+{
+ "robot": "g1",
+ "mode": "low",
+ "start": {
+  "pose": "stand"
+ },
+ "hold": true,
+ "limit": 8,
+ "title": "G1: баланс по IMU",
+ "task": "Жесткие суставы - не единственный путь. Настоящие роботы оставляют суставы мягкими (так безопаснее и тише), а равновесие держат обратной связью: IMU в тазу меряет наклон, контроллер добавляет момент.\n\nОставьте kp ног не выше 100 (как в примере Unitree) и удержите G1 6 секунд: добавляйте момент tau в голеностопы и бедра против тангажа и скорости наклона.",
+ "hint": "Каждые 0,01 с читайте pitch = st.imu_state.rpy[1] и gy = st.imu_state.gyroscope[1]. Голеностопам (4 и 10) tau = 100 * pitch + 10 * gy, бедрам (0 и 6) tau = 50 * pitch + 5 * gy.",
+ "python": "from unitree import *\n\nrobot = Robot()\ncmd = LowCmd()\nst = robot.read()\nq0 = [st.motor_state[i].q for i in range(NUM_MOTOR)]   # стартовая стойка\n\n# усиления из примера unitree_sdk2 g1_low_level_example\nKP = [60, 60, 60, 100, 40, 40,  60, 60, 60, 100, 40, 40,  60, 40, 40] + [40] * 14\nKD = [1, 1, 1, 2, 1, 1,  1, 1, 1, 2, 1, 1,  1, 1, 1] + [1] * 14\n\ndef send(q, tau=None):\n    for i in range(NUM_MOTOR):\n        m = cmd.motor_cmd[i]\n        m.q = q[i]\n        m.dq = 0.0\n        m.kp = KP[i]\n        m.kd = KD[i]\n        m.tau = tau[i] if tau else 0.0\n    robot.write(cmd)\n\nwhile True:\n    st = robot.read()\n    roll, pitch, yaw = st.imu_state.rpy\n    gx, gy, gz = st.imu_state.gyroscope\n    tau = [0.0] * NUM_MOTOR\n    # добавьте момент против наклона\n    send(q0, tau)\n    robot.sleep(0.01)\n",
+ "checks": [
+  {
+   "type": "height",
+   "min": 0.74,
+   "hold": 6,
+   "text": "Робот стоит 6 с (таз выше 0,74 м)"
+  },
+  {
+   "type": "kpmax",
+   "joints": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11
+   ],
+   "max": 100,
+   "text": "kp ног не выше 100"
+  },
+  {
+   "type": "upright",
+   "text": "Робот не упал"
+  }
+ ]
+}

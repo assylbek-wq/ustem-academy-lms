@@ -1,0 +1,35 @@
+{
+ "robot": "go2",
+ "mode": "low",
+ "start": {
+  "pose": "lie"
+ },
+ "limit": 10,
+ "title": "Go2: приседания по формуле",
+ "task": "Обратная кинематика: по нужной точке стопы найти углы суставов. В программе есть функция ik() по теореме косинусов и pose(), которая считает все 12 углов из высот стоп.\n\nСделайте два приседания: опустите корпус до 0,2 м и поднимите до 0,32 м. В конце робот должен стоять высоко.",
+ "hint": "Высота корпуса H задает стопы: pose([(0, -H)] * 4). Меняйте H по синусу или по шагам и отправляйте send(pose(...), 60, 5) каждые 0,02 с.",
+ "python": "from unitree import *\n\nrobot = Robot()\ncmd = LowCmd()\n\n# позы из примера unitree_sdk2 go2_stand_example (порядок моторов FR, FL, RR, RL; в каждой ноге hip, thigh, calf)\nLIE = [0.0, 1.36, -2.65, 0.0, 1.36, -2.65, -0.2, 1.36, -2.65, 0.2, 1.36, -2.65]\nSTAND = [0.0, 0.67, -1.3, 0.0, 0.67, -1.3, 0.0, 0.67, -1.3, 0.0, 0.67, -1.3]\nimport math\n\nL = 0.213               # длина бедра и голени Go2, м\nHIP = 0.0955            # смещение бедра вбок от оси сустава hip, м\nSIDE = [-1, 1, -1, 1]   # FR, FL, RR, RL: правая нога -1, левая +1\n\n\ndef ik(x, y, z, side):\n    \"\"\"Обратная задача для ноги: точка стопы (x вперед, y влево, z вверх) в осях бедра -> углы hip, thigh, calf.\"\"\"\n    l1 = HIP * side\n    d = math.sqrt(max(y * y + z * z - l1 * l1, 1e-6))   # длина ноги в ее плоскости\n    q0 = math.atan2(z, y) - math.atan2(-d, l1)          # hip: отвести ногу вбок\n    r = min(math.sqrt(x * x + d * d), 2 * L * 0.999)    # от бедра до стопы\n    c = (r * r - 2 * L * L) / (2 * L * L)               # теорема косинусов для колена\n    q2 = -math.acos(max(-1.0, min(1.0, c)))             # calf: колено сгибается назад\n    q1 = math.atan2(-x, d) - q2 / 2                      # thigh: направить ногу на стопу\n    return q0, q1, q2\n\n\ndef pose(feet):\n    \"\"\"feet - четыре пары (x, z) для FR, FL, RR, RL. Возвращает 12 углов.\"\"\"\n    q = []\n    for leg in range(4):\n        x, z = feet[leg]\n        q.extend(ik(x, HIP * SIDE[leg], z, SIDE[leg]))\n    return q\n\n\ndef send(q, kp, kd):\n    for i in range(12):\n        m = cmd.motor_cmd[i]\n        m.q = q[i]\n        m.dq = 0.0\n        m.kp = kp\n        m.kd = kd\n        m.tau = 0.0\n    robot.write(cmd)\n\n# встать плавно\nst = robot.read()\nstart = [st.motor_state[i].q for i in range(12)]\ntarget = pose([(0.0, -0.3)] * 4)\nfor k in range(101):\n    s = k / 100\n    send([(1 - s) * start[i] + s * target[i] for i in range(12)], 60, 5)\n    robot.sleep(0.02)\n\n# здесь приседания: меняйте высоту H от 0,3 до 0,2 и обратно\nrobot.sleep(6)\n",
+ "checks": [
+  {
+   "type": "below",
+   "z": 0.22,
+   "text": "Корпус опускался ниже 0,22 м"
+  },
+  {
+   "type": "height",
+   "min": 0.3,
+   "hold": 1,
+   "from": 7,
+   "text": "В конце робот стоит (корпус выше 0,3 м)"
+  },
+  {
+   "type": "code",
+   "re": "pose\\(|ik\\(",
+   "text": "Углы считаются через ik() или pose()"
+  },
+  {
+   "type": "upright",
+   "text": "Робот не упал"
+  }
+ ]
+}

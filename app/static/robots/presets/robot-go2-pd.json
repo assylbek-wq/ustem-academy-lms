@@ -1,0 +1,40 @@
+{
+ "robot": "go2",
+ "mode": "low",
+ "start": {
+  "pose": "lie"
+ },
+ "limit": 8,
+ "title": "Go2: подбор kp и kd",
+ "task": "Мотор считает момент tau = kp * (q - q_изм) + kd * (dq - dq_изм). Малый kp - сустав мягкий и проседает под весом, малый kd - робот качается.\n\nВ стартовой программе усиления слишком малы: робот не может встать. Подберите kp и kd так, чтобы он стоял высоко и суставы thigh и calf отставали от цели меньше чем на 0,035 рад.",
+ "hint": "Откройте вкладку «Графики» и выберите сустав 1 FR_1: видно, как угол отстает от цели. С kp = 60 из примера Unitree ошибка около 0,05 рад: ошибка обратно пропорциональна kp.",
+ "python": "from unitree import *\n\nrobot = Robot()\ncmd = LowCmd()\n\n# позы из примера unitree_sdk2 go2_stand_example (порядок моторов FR, FL, RR, RL; в каждой ноге hip, thigh, calf)\nLIE = [0.0, 1.36, -2.65, 0.0, 1.36, -2.65, -0.2, 1.36, -2.65, 0.2, 1.36, -2.65]\nSTAND = [0.0, 0.67, -1.3, 0.0, 0.67, -1.3, 0.0, 0.67, -1.3, 0.0, 0.67, -1.3]\n\ndef move(target, seconds, kp=8, kd=0.5):\n    \"\"\"Плавно перевести все 12 моторов из текущих углов в target за seconds секунд.\"\"\"\n    st = robot.read()\n    start = [st.motor_state[i].q for i in range(12)]\n    n = int(seconds / 0.02)\n    for k in range(n + 1):\n        s = k / n\n        for i in range(12):\n            m = cmd.motor_cmd[i]\n            m.q = (1 - s) * start[i] + s * target[i]\n            m.dq = 0.0\n            m.kp = kp\n            m.kd = kd\n            m.tau = 0.0\n        robot.write(cmd)\n        robot.sleep(0.02)\n\nmove(STAND, 2)\nrobot.sleep(5)\n",
+ "checks": [
+  {
+   "type": "height",
+   "min": 0.31,
+   "hold": 3,
+   "text": "Робот стоит не меньше 3 с (корпус выше 0,31 м)"
+  },
+  {
+   "type": "track",
+   "joints": [
+    1,
+    2,
+    4,
+    5,
+    7,
+    8,
+    10,
+    11
+   ],
+   "tol": 0.035,
+   "from": 3,
+   "text": "Ошибка суставов thigh и calf меньше 0,035 рад"
+  },
+  {
+   "type": "upright",
+   "text": "Робот не упал"
+  }
+ ]
+}

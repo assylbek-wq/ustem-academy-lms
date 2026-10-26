@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% from "lab/_bar.html" import lab_bar with context %}
+{% block title %}{{ t('robots.title') }}{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ static_v('css/labhub.css') }}"><link rel="stylesheet" href="{{ static_v('css/robots.css') }}">{% endblock %}
+{% block content %}
+{{ lab_bar(t('labhub.robots.name')) }}
+<nav class="rl-pick" aria-label="{{ t('robots.pick') }}">
+  <a href="{{ url_for('lab.robots', robot='go2') }}"{% if robot == 'go2' %} aria-current="page"{% endif %}>Unitree Go2</a>
+  <a href="{{ url_for('lab.robots', robot='g1') }}"{% if robot == 'g1' %} aria-current="page"{% endif %}>Unitree G1</a>
+</nav>
+<div class="robot-sim-{{ preset }}"></div>
+<p class="help mt-3">{{ t('robots.help') }}</p>
+{% endblock %}
+{% block scripts %}<script src="{{ static_v('js/robotsim.js') }}" defer></script>{% endblock %}

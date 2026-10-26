@@ -242,9 +242,10 @@ def ensure_all() -> list[str]:
     return created
 
 
-from . import arduino_basics, canopy_2026, ftc_start_2026, spike_prime_fll  # noqa: E402
+from . import arduino_basics, canopy_2026, ftc_start_2026, spike_prime_fll, unitree_mujoco  # noqa: E402
 
 register(canopy_2026)
 register(ftc_start_2026)
 register(arduino_basics)
 register(spike_prime_fll)
+register(unitree_mujoco)

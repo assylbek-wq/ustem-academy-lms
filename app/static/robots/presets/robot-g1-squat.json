@@ -1,0 +1,31 @@
+{
+ "robot": "g1",
+ "mode": "low",
+ "start": {
+  "pose": "stand"
+ },
+ "hold": true,
+ "limit": 8,
+ "title": "G1: присед",
+ "task": "Присед - согласованное движение трех суставов каждой ноги: бедро вперед, колено назад в два раза больше, голеностоп возвращает стопу горизонтально. Тогда стопы стоят плоско, а таз опускается почти вертикально.\n\nПрисядьте до высоты таза 0,65 м и плавно встаньте. В конце G1 должен стоять.",
+ "hint": "Для обеих ног (0 и 6): q[leg] = -d, q[leg + 3] = 2 * d, q[leg + 4] = -d. Глубина d до 0,7 рад. Возьмите жесткую стойку из прошлого задания.",
+ "python": "from unitree import *\n\nrobot = Robot()\ncmd = LowCmd()\nst = robot.read()\nq0 = [st.motor_state[i].q for i in range(NUM_MOTOR)]   # стартовая стойка\n\n# усиления из примера unitree_sdk2 g1_low_level_example\nKP = [60, 60, 60, 100, 40, 40,  60, 60, 60, 100, 40, 40,  60, 40, 40] + [40] * 14\nKD = [1, 1, 1, 2, 1, 1,  1, 1, 1, 2, 1, 1,  1, 1, 1] + [1] * 14\n\ndef send(q, tau=None):\n    for i in range(NUM_MOTOR):\n        m = cmd.motor_cmd[i]\n        m.q = q[i]\n        m.dq = 0.0\n        m.kp = KP[i]\n        m.kd = KD[i]\n        m.tau = tau[i] if tau else 0.0\n    robot.write(cmd)\n\nimport math\n\nt = 0.0\nwhile True:\n    d = 0.0   # глубина приседа, рад\n    q = list(q0)\n    for leg in (0, 6):\n        q[leg + 0] = -d       # бедро\n        q[leg + 3] = 2 * d    # колено\n        q[leg + 4] = -d       # голеностоп\n    send(q)\n    robot.sleep(0.01)\n    t = robot.time()\n",
+ "checks": [
+  {
+   "type": "below",
+   "z": 0.65,
+   "text": "Таз опускался ниже 0,65 м"
+  },
+  {
+   "type": "height",
+   "min": 0.74,
+   "hold": 1.5,
+   "from": 6,
+   "text": "В конце робот стоит (таз выше 0,74 м)"
+  },
+  {
+   "type": "upright",
+   "text": "Робот не упал"
+  }
+ ]
+}

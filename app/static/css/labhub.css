@@ -18,6 +18,7 @@
 .hub-art-ftc { background: #fdeee4; color: #c2410c; }
 .hub-art-cubesat { background: #e8eefb; color: #1e40af; }
 .hub-art-cansat { background: #f1ecfb; color: #6d28d9; }
+.hub-art-robots { background: #eceff3; color: #334155; }
 .hub-text { display: grid; gap: 2px; min-width: 0; }
 .hub-name { font-weight: 600; font-size: 15.5px; color: #0f172a; }
 .hub-desc { color: #64748b; font-size: 13.5px; line-height: 1.45; }

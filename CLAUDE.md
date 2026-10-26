@@ -61,6 +61,15 @@ USTEM Academy - LMS для подготовки учителей. Flask + SQLAlc
   `<div class="cansat-sim-ИМЯ"></div>`, песочницы `/lab/cubesat`, `/lab/cansat`. Сквозная проверка без браузера:
   `node tests/e2e/sat_solutions.mjs` и `--negative`. Пути `wso-cubesat` и `wso-cansat` (программы Connect `WSO_CUBESAT`,
   `WSO_CANSAT`) открываются вместо общего WSO: самый точный путь по коду программы.
+- Роботы Unitree на MuJoCo (`/lab/robots`, Go2 и G1): физика MuJoCo 3 WASM (`@mujoco/mujoco`, копируется в
+  `app/static/robots/mujoco.*`), модели Menagerie упакованы в `app/static/robots/<робот>/<робот>.pack` скриптом
+  `python3 assets/lab/robots/prepare_models.py <mujoco_menagerie>` (сетки .msh, у G1 приводы position -> motor, LICENSE Unitree
+  рядом обязателен). Исходники `assets/lab/robots/` (`engine.js` - физика, моторы ПД 500 Гц, SportClient Go2 с рысью из
+  `gait.js`, запись; `pyapi.js` - модуль `unitree` как unitree_sdk2: LowCmd, LowState, SportClient; `vm.js`, `checks.js`,
+  `worker.js`, `view.js` - Three.js, `ui.js`), сборка `bash deploy/build-lab.sh` -> `robotsim.js`, `robotworker.js`.
+  Задания: `python3 assets/lab/robot_presets.py` -> `app/static/robots/presets/robot-*.json`, в уроке
+  `<div class="robot-sim-ИМЯ"></div>`. Курс `app/content/unitree_mujoco.py` (slug `unitree-mujoco`). Сквозная проверка без
+  браузера: `node tests/e2e/robot_solutions.mjs` и `--negative`.
 - Геймификация для тренеров («Мой путь»): общий опыт, звания, значки, серия дней и рейтинг считаются от любого курса
   (`services/game.py`, опыт пересчитывается из фактов функцией `refresh`, не начисляйте его вручную). Пути
   (`app/game/paths.py`): сезоны программ и рост тренера хранятся в `journey_paths`, их собирает методист в Студии
