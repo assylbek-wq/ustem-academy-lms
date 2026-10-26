@@ -7,6 +7,7 @@
 set -e
 cd "$(dirname "$0")/../assets/lab"
 [ -d node_modules ] || npm install --no-audit --no-fund
+node i18n/merge.mjs  # казахский словарь симуляторов -> app/static/lab/i18n/kk.json
 npx esbuild lab.js --bundle --minify --format=iife --target=es2020 --outfile=../../app/static/js/lab.js
 npx esbuild ftc/sim.js --bundle --minify --format=iife --target=es2020 --outfile=../../app/static/js/ftcsim.js
 npx esbuild spike/ui.js --bundle --minify --format=iife --target=es2020 --outfile=../../app/static/js/spikesim.js

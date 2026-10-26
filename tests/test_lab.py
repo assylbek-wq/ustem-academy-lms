@@ -105,3 +105,16 @@ class CompileTest(AppTestCase):
         for name, sol in lab_presets.SOLUTIONS.items():
             if sol.get("code"):
                 self.assertGreater(arduino.compile_sketch(sol["code"])["size"], 100, name)
+
+
+class KazakhLabDictTest(unittest.TestCase):
+    def test_dictionary_is_valid(self):
+        import json, re
+        from pathlib import Path
+        d = json.loads((Path(__file__).resolve().parents[1] / "app/static/lab/i18n/kk.json").read_text(encoding="utf-8"))
+        self.assertGreater(len(d), 1500)
+        for ru, kk in d.items():
+            self.assertTrue(kk.strip(), ru)
+            self.assertEqual(len(re.findall(r"\{\d*\}", ru)), len(re.findall(r"\{\d*\}", kk)), ru)
+            self.assertEqual(sorted(re.findall(r"%\d", ru)), sorted(re.findall(r"%\d", kk)), ru)
+            self.assertNotIn("\u2014", kk, ru)

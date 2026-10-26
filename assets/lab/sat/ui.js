@@ -1,6 +1,7 @@
 // Лаборатория спутников WSO: конструктор, бортовая программа на MicroPython, полет и разбор.
 // Один интерфейс для CubeSat 1U и CanSat. Встраивается в урок блоками <div class="cubesat-sim-ИМЯ"></div>
 // и <div class="cansat-sim-ИМЯ"></div>, песочницы /lab/cubesat и /lab/cansat.
+import { localize, trPreset, trCode, tr, onReady } from "../i18n/index.js";
 import { EditorView, basicSetup } from "codemirror";
 import { python } from "@codemirror/lang-python";
 import { keymap } from "@codemirror/view";
@@ -119,7 +120,7 @@ class SatLab {
   // ─────────────── Данные ───────────────
   async load() {
     let pd = null;
-    try { pd = await (await fetch(`/static/${this.kind}/presets/${this.presetName}.json`, { cache: "no-cache" })).json(); } catch (e) { pd = null; }
+    try { pd = await (await fetch(`/static/${this.kind}/presets/${this.presetName}.json`, { cache: "no-cache" })).json(); trPreset(pd); } catch (e) { pd = null; }
     this.pd = pd || { title: "Свободная сборка", checks: [], config: this.K.emptyConfig(), python: "from sat import *\n", free_flight: true };
     let saved = null;
     try { saved = JSON.parse(localStorage.getItem(this.storageKey) || "null"); } catch (e) { saved = null; }
@@ -618,7 +619,8 @@ function mount() {
     const wrap = document.createElement("div");
     node.replaceWith(wrap);
     instances.push(new SatLab(wrap, { kind: m[1], preset: `${m[1]}-${m[2].replace(new RegExp("^" + m[1] + "-"), "")}` }));
+    localize(wrap);
   }
 }
-if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount); else mount();
+onReady(mount);
 window.USTEMSat = { SatLab, mount, instances };

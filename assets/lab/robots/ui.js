@@ -1,6 +1,7 @@
 // Лаборатория роботов Unitree Go2 и G1 на MuJoCo. Слева задание, программа на MicroPython (API как unitree_sdk2),
 // графики и справка; справа окно MuJoCo с записью запуска или ручным пультом.
 // Встраивается в урок блоком <div class="robot-sim-ИМЯ"></div>, песочница /lab/robots.
+import { localize, trPreset, trCode, tr, onReady } from "../i18n/index.js";
 import { EditorView, basicSetup } from "codemirror";
 import { python } from "@codemirror/lang-python";
 import { keymap } from "@codemirror/view";
@@ -44,7 +45,7 @@ class RobotLab {
     this.root.className = "rl"; this.root.innerHTML = "";
     this.root.append(h("div", { class: "rl-loading" }, "Загрузка симулятора..."));
     let pd;
-    try { pd = await (await fetch(`${STATIC}robots/presets/${this.presetName}.json`, { cache: "no-cache" })).json(); } catch (e) { pd = null; }
+    try { pd = await (await fetch(`${STATIC}robots/presets/${this.presetName}.json`, { cache: "no-cache" })).json(); trPreset(pd); } catch (e) { pd = null; }
     if (!pd) { this.root.innerHTML = ""; this.root.append(h("div", { class: "rl-loading" }, "Задание не найдено: " + this.presetName)); return; }
     this.pd = pd; this.R = ROBOTS[pd.robot];
     this.build();
@@ -461,7 +462,8 @@ function mount() {
     const wrap = document.createElement("div");
     node.replaceWith(wrap);
     instances.push(new RobotLab(wrap, { preset: "robot-" + m[1].replace(/^robot-/, "") }));
+    localize(wrap);
   }
 }
-if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount); else mount();
+onReady(mount);
 window.USTEMRobots = { RobotLab, mount, instances };

@@ -38,7 +38,7 @@ const PWM_UNO = new Set(["3", "5", "6", "9", "10", "11"]);
 const uno = {
   title: "Arduino Uno R3", group: "Платы", w: 29 * P, h: 21 * P, layer: 0, board: "uno", mcuKind: "avr", vcc: 5, kind3d: "board", lang: "cpp",
   desc: "ATmega328P, 16 МГц, 32 КБ flash, 2 КБ ОЗУ. 14 цифровых выводов (6 с ШИМ ~), 6 аналоговых входов, I2C на A4/A5, светодиод L на выводе 13.",
-  pins: () => [...UNO_TOP.map(([n, x]) => ({ name: n, x: x * P, y: P, title: n === "SCL" || n === "SDA" ? n + " (то же, что A" + (n === "SDA" ? 4 : 5) + ")" : PWM_UNO.has(n) ? "D" + n + " ~ШИМ" : undefined })),
+  pins: () => [...UNO_TOP.map(([n, x]) => ({ name: n, x: x * P, y: P, title: n === "SCL" || n === "SDA" ? (n === "SDA" ? "SDA (то же, что A4)" : "SCL (то же, что A5)") : PWM_UNO.has(n) ? "D" + n + " ~ШИМ" : undefined })),
     ...UNO_BOT.map(([n, x]) => ({ name: n, x: x * P, y: 20 * P }))],
   mcuPin: (name) => (/^(\d+|A\d)$/.test(name) ? name : name === "SDA" ? "A4" : name === "SCL" ? "A5" : null),
   render(g, part) {

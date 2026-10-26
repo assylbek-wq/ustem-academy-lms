@@ -4,6 +4,7 @@ import * as Blockly from "blockly/core";
 import "blockly/blocks";
 import * as Ru from "blockly/msg/ru";
 import { pythonGenerator as G, Order } from "blockly/python";
+import { tr, KK } from "../i18n/index.js";
 
 Blockly.setLocale(Ru);
 
@@ -78,11 +79,22 @@ const DEFS = [
   { type: "spike_stop", message0: "остановить программу", previousStatement: null, colour: C.control },
 ];
 
-Blockly.common.defineBlocksWithJsonArray(DEFS.map((d) => {
-  const c = JSON.parse(JSON.stringify(d));
-  for (const k of ["args0", "args1"]) (c[k] || []).forEach((a) => { delete a._shadow; delete a._shadowText; });
-  return c;
-}));
+// Блоки определяем при первом создании рабочей области: к этому времени загружен словарь казахского языка
+let defined = false;
+function defineOnce() {
+  if (defined) return; defined = true;
+  if (KK) for (const [k, v] of Object.entries(Blockly.Msg)) if (typeof v === "string") Blockly.Msg[k] = tr(v);
+  Blockly.common.defineBlocksWithJsonArray(DEFS.map((d) => {
+    const c = JSON.parse(JSON.stringify(d));
+    for (const k of ["message0", "message1", "tooltip"]) if (typeof c[k] === "string") c[k] = tr(c[k]);
+    for (const k of ["args0", "args1"]) (c[k] || []).forEach((a) => {
+      delete a._shadow; delete a._shadowText;
+      if (Array.isArray(a.options)) a.options = a.options.map(([t, v]) => [typeof t === "string" ? tr(t) : t, v]);
+    });
+    return c;
+  }));
+  if (KK) for (const c of TOOLBOX.contents) if (c.name) c.name = tr(c.name);
+}
 
 // Набор блоков с подставленными числами (shadow), как в SPIKE
 function shadowsFor(type) {
@@ -246,6 +258,7 @@ const THEME = Blockly.Theme.defineTheme("ustem", { base: Blockly.Themes.Classic,
   componentStyles: { workspaceBackgroundColour: "#f8fafc", toolboxBackgroundColour: "#ffffff", flyoutBackgroundColour: "#f1f5f9", flyoutOpacity: 1 } });
 
 export function createWorkspace(el, onChange) {
+  defineOnce();
   const ws = Blockly.inject(el, {
     toolbox: TOOLBOX, trashcan: true, scrollbars: true, sounds: false, renderer: "zelos",
     zoom: { controls: true, wheel: false, startScale: 0.8, maxScale: 2, minScale: 0.4, scaleSpeed: 1.15 },

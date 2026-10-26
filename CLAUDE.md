@@ -78,6 +78,13 @@ USTEM Academy - LMS для подготовки учителей. Flask + SQLAlc
   Задания: `python3 assets/lab/robot_presets.py` -> `app/static/robots/presets/robot-*.json`, в уроке
   `<div class="robot-sim-ИМЯ"></div>`. Курс `app/content/unitree_mujoco.py` (slug `unitree-mujoco`). Сквозная проверка без
   браузера: `node tests/e2e/robot_solutions.mjs` и `--negative`.
+- Казахский язык симуляторов (`<html lang="kk">`): строки в коде остаются русскими, перевод в словаре
+  `assets/lab/i18n/kk.json` (ru -> kk; правила и термины - `i18n/GLOSSARY.md`, без калек). `i18n/index.js`:
+  `localize(root)` переводит текст и подписи внутри симулятора (MutationObserver), canvas и confirm, `trPreset`/`trCode` -
+  комментарии в стартовом коде, `onReady(mount)` - запуск после загрузки словаря; блоки SPIKE переводятся при создании.
+  Добавили или изменили русскую строку интерфейса - `node assets/lab/i18n/extract.mjs` (создаст `i18n/todo-*.json` с
+  новыми строками), переведите в `i18n/kk-<что-то>.json` ({ru: kk}), затем `bash deploy/build-lab.sh` (сводит словарь,
+  проверяет `{}` и `%1`, кладет в `app/static/lab/i18n/kk.json`).
 - Геймификация для тренеров («Мой путь»): общий опыт, звания, значки, серия дней и рейтинг считаются от любого курса
   (`services/game.py`, опыт пересчитывается из фактов функцией `refresh`, не начисляйте его вручную). Пути
   (`app/game/paths.py`): сезоны программ и рост тренера хранятся в `journey_paths`, их собирает методист в Студии

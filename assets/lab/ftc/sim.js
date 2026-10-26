@@ -1,4 +1,5 @@
 // Симулятор FTC для курса «FTC с нуля»: поле, Driver Hub, конструктор робота, код на Java и автопроверка.
+import { localize, trPreset, trCode, tr, onReady } from "../i18n/index.js";
 import { EditorView, basicSetup } from "codemirror";
 import { java } from "@codemirror/lang-java";
 import { keymap } from "@codemirror/view";
@@ -191,7 +192,7 @@ class FtcSim {
   // ─────────────── Данные ───────────────
   async load() {
     let pd = null;
-    try { pd = await (await fetch(`/static/ftcsim/presets/${this.presetName}.json`, { cache: "no-cache" })).json(); } catch (e) { pd = null; }
+    try { pd = await (await fetch(`/static/ftcsim/presets/${this.presetName}.json`, { cache: "no-cache" })).json(); trPreset(pd); } catch (e) { pd = null; }
     this.presetData = pd || { title: "Свободная тренировка", robot: DEFAULT_ROBOT, code: "", checks: [] };
     let saved = null;
     try { saved = JSON.parse(localStorage.getItem(this.storageKey) || "null"); } catch (e) { saved = null; }
@@ -708,7 +709,8 @@ function mount() {
     const wrap = document.createElement("div");
     node.replaceWith(wrap);
     instances.push(new FtcSim(wrap, { preset }));
+    localize(wrap);
   }
 }
-if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount); else mount();
+onReady(mount);
 window.USTEMFtc = { FtcSim, mount, instances };

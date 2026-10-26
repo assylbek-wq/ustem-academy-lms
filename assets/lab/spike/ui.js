@@ -1,4 +1,5 @@
 // Симулятор SPIKE Prime: блоки и Python прямо на странице урока, виртуальный робот на тренировочном мате FLL.
+import { localize, trPreset, trCode, tr, onReady } from "../i18n/index.js";
 import { EditorView, basicSetup } from "codemirror";
 import { python } from "@codemirror/lang-python";
 import { keymap } from "@codemirror/view";
@@ -211,7 +212,7 @@ class SpikeSim {
   // ─────────────── Данные ───────────────
   async load() {
     let pd = null;
-    try { pd = await (await fetch(`/static/spikesim/presets/${this.presetName}.json`, { cache: "no-cache" })).json(); } catch (e) { pd = null; }
+    try { pd = await (await fetch(`/static/spikesim/presets/${this.presetName}.json`, { cache: "no-cache" })).json(); trPreset(pd); } catch (e) { pd = null; }
     this.pd = pd || { title: "Свободная тренировка", checks: [], mode: "blocks" };
     this.titleEl.textContent = this.pd.title || "Свободная тренировка";
     let saved = null;
@@ -533,7 +534,8 @@ function mount() {
     const wrap = document.createElement("div");
     node.replaceWith(wrap);
     instances.push(new SpikeSim(wrap, { preset }));
+    localize(wrap);
   }
 }
-if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount); else mount();
+onReady(mount);
 window.USTEMSpike = { SpikeSim, mount, instances };

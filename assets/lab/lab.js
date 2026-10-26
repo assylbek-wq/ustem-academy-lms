@@ -1,5 +1,6 @@
 // Лаборатория электроники USTEM: макетная плата, 60+ деталей, платы Arduino Uno, Nano, Mega 2560 (C++),
 // Raspberry Pi Pico, ESP32, micro:bit (MicroPython), расчет цепи, протоколы устройств, 3D-вид и примеры.
+import { localize, trPreset, trCode, tr, onReady } from "./i18n/index.js";
 import { EditorView, basicSetup } from "codemirror";
 import { cpp } from "@codemirror/lang-cpp";
 import { python } from "@codemirror/lang-python";
@@ -272,7 +273,7 @@ class Lab {
   async load() {
     let presetData = null;
     if (this.preset) {
-      try { presetData = await (await fetch(`${STATIC}lab/presets/${this.preset}.json`, { cache: "no-cache" })).json(); } catch (e) { presetData = null; }
+      try { presetData = await (await fetch(`${STATIC}lab/presets/${this.preset}.json`, { cache: "no-cache" })).json(); trPreset(presetData); } catch (e) { presetData = null; }
     }
     this.presetData = presetData;
     let saved = null;
@@ -1035,7 +1036,13 @@ class Lab {
 }
 
 const instances = [];
+let codeLocalized = false;
 function mount() {
+  if (!codeLocalized) { // примеры и стартовый код на языке страницы (комментарии и строки)
+    codeLocalized = true;
+    for (const ex of EXAMPLES) ex.code = trCode(ex.code, { strings: true });
+    for (const k of Object.keys(DEFAULT_CODE)) DEFAULT_CODE[k] = trCode(DEFAULT_CODE[k], { strings: true });
+  }
   for (const node of document.querySelectorAll(".lab-embed, [class*='lab-preset-']")) {
     if (node.dataset.mounted) continue;
     node.dataset.mounted = "1";
@@ -1044,7 +1051,8 @@ function mount() {
     const wrap = document.createElement("div");
     node.replaceWith(wrap);
     instances.push(new Lab(wrap, { preset, storageKey: preset ? "lab:" + preset : "lab:sandbox2", compileUrl: document.body.dataset.labCompile || "/lab/compile" }));
+    localize(wrap);
   }
 }
-if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount); else mount();
+onReady(mount);
 window.USTEMLab = { Lab, mount, instances, PARTS, EXAMPLES };
