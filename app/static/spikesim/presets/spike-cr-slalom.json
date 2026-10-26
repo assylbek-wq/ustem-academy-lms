@@ -1,0 +1,54 @@
+{
+ "title": "Тренировочный лагерь 1: объезд препятствий",
+ "task": "Объедьте три метки змейкой и остановитесь в фиолетовом круге справа. Метки трогать нельзя.\nПодсказка: спланируйте путь на листе псевдокода, затем подбирайте углы и расстояния.",
+ "mode": "python",
+ "robot": "driving-base",
+ "start": {
+  "x": 190,
+  "y": 200,
+  "h": -90
+ },
+ "objects": [
+  {
+   "kind": "marker",
+   "x": 650,
+   "y": 200
+  },
+  {
+   "kind": "marker",
+   "x": 900,
+   "y": 380
+  },
+  {
+   "kind": "marker",
+   "x": 1150,
+   "y": 200
+  }
+ ],
+ "marks": [
+  {
+   "x": 1400,
+   "y": 260,
+   "r": 90,
+   "label": "финиш"
+  }
+ ],
+ "python": "from hub import port, motion_sensor, light_matrix, sound, button\nimport motor, motor_pair, color_sensor, distance_sensor, color, runloop\n\nPAIR = motor_pair.PAIR_1\nDEG_PER_CM = 360 / 17.5\n\n\nasync def main():\n    motor_pair.pair(PAIR, port.C, port.D)\n    await motor_pair.move_for_degrees(PAIR, int(25 * DEG_PER_CM), 0, velocity=300)\n\n\nrunloop.run(main())\n",
+ "checks": [
+  {
+   "type": "pose_end",
+   "x": 1400,
+   "y": 260,
+   "tol": 90,
+   "label": "Робот в круге финиша"
+  },
+  {
+   "type": "no_touch",
+   "label": "Ни одна метка не задета"
+  },
+  {
+   "type": "finished",
+   "label": "Программа завершилась без ошибок"
+  }
+ ]
+}

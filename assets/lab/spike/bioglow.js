@@ -244,8 +244,9 @@ export class Bioglow {
   }
 
   toolTip(robot, BODY, port, ang) {
-    const reach = 110 * Math.sin(Math.max(0, Math.min(180, ang)) * Math.PI / 180);
-    return robot.local2world(BODY.front + Math.max(10, reach), port === "D" ? 40 : 0);
+    const t = (robot.model && robot.model.tools[port]) || { off: port === "D" ? 40 : 0, reach: 110 };
+    const reach = t.reach * Math.sin(Math.max(0, Math.min(180, ang)) * Math.PI / 180);
+    return robot.local2world(BODY.front + Math.max(10, reach), t.off);
   }
 
   update(robot, BODY, dt) {
@@ -255,10 +256,10 @@ export class Bioglow {
     for (let r = -BODY.half + 10; r <= BODY.half - 10; r += 15) front.push(robot.local2world(BODY.front, r));
     // навесное на моторах C и D
     const toolEvents = [];
-    for (const port of ["C", "D"]) {
+    for (const port of Object.keys((robot.model && robot.model.tools) || { C: 1, D: 1 })) {
       const m = robot.motors[port];
       if (!m || !String(robot.ports[port]).startsWith("motor")) continue;
-      const tl = this.tools[port], a = m.pos, tip = this.toolTip(robot, BODY, port, a);
+      const tl = (this.tools[port] ||= { down: false, tip: null }), a = m.pos, tip = this.toolTip(robot, BODY, port, a);
       // опустили (угол 60 и больше) - событие «down» там, где кончик коснулся; подняли (30 и меньше) - «up» там,
       // где кончик был ниже всего (за эту точку навесное зацепило деталь)
       const depth = Math.sin(Math.max(0, Math.min(180, a)) * Math.PI / 180);

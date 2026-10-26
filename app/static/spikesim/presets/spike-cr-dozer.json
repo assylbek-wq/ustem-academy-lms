@@ -1,0 +1,52 @@
+{
+ "title": "Продвинутая база: отвал и ящики",
+ "task": "Урок «Time for an Upgrade»: на порту C отвал бульдозера. Опустите отвал (мотор C на 90 градусов) и сдвиньте оба ящика в серую зону ящика справа внизу.",
+ "mode": "python",
+ "robot": "advanced",
+ "start": {
+  "x": 300,
+  "y": 220,
+  "h": -90
+ },
+ "objects": [
+  {
+   "id": "crate1",
+   "kind": "crate",
+   "x": 1050,
+   "y": 190
+  },
+  {
+   "id": "crate2",
+   "kind": "crate",
+   "x": 1200,
+   "y": 250
+  }
+ ],
+ "python": "from hub import port, motion_sensor, light_matrix, sound, button\nimport motor, motor_pair, color_sensor, distance_sensor, color, runloop\n\nPAIR = motor_pair.PAIR_1\nDEG_PER_CM = 360 / 27.63\n\n\nasync def main():\n    motor_pair.pair(PAIR, port.A, port.E)\n    await motor.run_for_degrees(port.C, 90, 500)\n\n\nrunloop.run(main())\n",
+ "checks": [
+  {
+   "type": "obj_zone",
+   "id": "crate1",
+   "zone": {
+    "x0": 1600,
+    "y0": 120,
+    "x1": 1850,
+    "y1": 320
+   },
+   "end": true,
+   "label": "Первый ящик в зоне"
+  },
+  {
+   "type": "obj_zone",
+   "id": "crate2",
+   "zone": {
+    "x0": 1600,
+    "y0": 120,
+    "x1": 1850,
+    "y1": 320
+   },
+   "end": true,
+   "label": "Второй ящик в зоне"
+  }
+ ]
+}

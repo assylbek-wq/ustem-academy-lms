@@ -1,0 +1,31 @@
+{
+ "title": "Тренировочный лагерь 3: по линии до финиша",
+ "task": "Датчик B стоит на верхнем краю кривой линии. Проедьте по краю до зеленого финиша. Способ из урока LEGO: зигзаг (на черном - одно колесо, на белом - другое) или плавнее - P-регулятор по отражению.",
+ "mode": "python",
+ "robot": "driving-base",
+ "start": {
+  "x": 375,
+  "y": 650,
+  "h": -90
+ },
+ "trackLine": "B",
+ "python": "from hub import port, motion_sensor, light_matrix, sound, button\nimport motor, motor_pair, color_sensor, distance_sensor, color, runloop\n\nPAIR = motor_pair.PAIR_1\nDEG_PER_CM = 360 / 17.5\n\n\nasync def main():\n    motor_pair.pair(PAIR, port.C, port.D)\n    await motor_pair.move_for_degrees(PAIR, int(100 * DEG_PER_CM), 0, velocity=300)\n\n\nrunloop.run(main())\n",
+ "checks": [
+  {
+   "type": "sensor_on",
+   "port": "B",
+   "zone": {
+    "x0": 1870,
+    "y0": 810,
+    "x1": 2000,
+    "y1": 940
+   },
+   "label": "Датчик B на зеленом финише"
+  },
+  {
+   "type": "line_track",
+   "max": 40,
+   "label": "Не сходил с линии дальше 4 см"
+  }
+ ]
+}

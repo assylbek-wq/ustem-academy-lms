@@ -6,7 +6,8 @@ import { keymap } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
 import { createWorkspace, loadBlocks, saveBlocks, workspaceToPython, Blockly } from "./blocks.js";
 import { MAT_W, MAT_H, drawMat } from "./mat.js";
-import { BODY, SENSOR_POS, DEFAULT_ROBOT, evalChecks } from "./physics.js";
+import { evalChecks, OBJ_R } from "./physics.js";
+import { robotModel } from "./robots.js";
 import { explainError } from "./runner.js";
 import { Bioglow, drawBioglow, MISSIONS, DOCKS, DEFAULT_DOCKS } from "./bioglow.js";
 
@@ -38,7 +39,9 @@ const FONT = {
 };
 
 const PORT_TITLES = { "motor:large": "большой мотор", "motor:medium": "средний мотор", color: "датчик цвета", distance: "датчик расстояния", force: "датчик силы", "": "пусто" };
-const ROLE = { A: "левое колесо", B: "правое колесо", C: "навесное (рука)", D: "навесное 2", E: "левый датчик", F: "правый датчик" };
+// цвета датчика цвета SPIKE (номера как color.BLACK...): для плитки порта и рисунка
+const SPIKE_CSS = { 0: "#1a1a1a", 1: "#d8009b", 2: "#691ff0", 3: "#0090f5", 4: "#77e8ff", 5: "#00b4af", 6: "#00a845", 7: "#fad549", 8: "#fcac00", 9: "#ff000c", 10: "#ffffff", "-1": "#cccccc" };
+const SPIKE_NAME = { 0: "черный", 1: "фиолетовый", 2: "пурпурный", 3: "синий", 4: "голубой", 5: "бирюзовый", 6: "зеленый", 7: "желтый", 8: "оранжевый", 9: "красный", 10: "белый", "-1": "нет цвета" };
 
 let audio = null;
 function beep(freq, ms, vol) {
@@ -111,8 +114,13 @@ class SpikeSim {
       return b;
     };
     this.hubCenter = h("button", { type: "button", class: "sp-hbtn sp-hcenter", title: "Центральная кнопка: запуск и стоп", "aria-label": "Центральная кнопка хаба", onclick: () => (this.running ? this.stop() : this.run()) });
-    const hub = h("div", { class: "sp-hub" }, this.matrix, this.matrixText, h("div", { class: "sp-hbtns" }, hbtn("left", "◀"), this.hubCenter, hbtn("right", "▶")));
-    this.portsBox = h("div", { class: "sp-portgrid" });
+    // хаб SPIKE Prime сверху: порты A, C, E слева, B, D, F справа, матрица 5 x 5 и три кнопки, как на настоящем
+    this.portEls = {};
+    const portCol = (list, side) => h("div", { class: "sp-pcol sp-pcol-" + side }, ...list.map((p) => (this.portEls[p] = h("div", { class: "sp-pt" }))));
+    const hub = h("div", { class: "sp-hub" }, h("i", { class: "sp-hub-bt", title: "Кнопка Bluetooth" }), this.matrix, this.matrixText,
+      h("div", { class: "sp-hbtns" }, hbtn("left", "◀"), this.hubCenter, hbtn("right", "▶")));
+    this.gyroBox = h("div", { class: "sp-gyro" });
+    this.portsBox = h("div", { class: "sp-hubdash" }, portCol(["A", "C", "E"], "l"), hub, portCol(["B", "D", "F"], "r"));
     const tab = (id, title) => { const b = h("button", { type: "button", class: "sp-tab", role: "tab", onclick: () => this.showTab(id) }, title); this.tabs[id] = { b }; return b; };
     this.taskBox = h("div", { class: "sp-task" });
     this.robotBox = h("div", { class: "sp-robot" });
@@ -127,7 +135,7 @@ class SpikeSim {
       h("div", { class: "sp-sec-h" }, this.fieldTitle = h("span", {}, "Тренировочное поле"), this.fieldPick = h("select", { class: "sp-select sp-fieldpick", title: "Поле", "aria-label": "Поле", hidden: true, onchange: (e) => this.setField(e.target.value) },
         h("option", { value: "training" }, "Тренировочное поле"), h("option", { value: "bioglow" }, "BIOGLOW 2026-2027")), this.clock = h("span", { class: "sp-clock", hidden: true }), this.hud),
       this.field,
-      h("div", { class: "sp-hubrow" }, hub, h("div", { class: "sp-ports-live" }, h("div", { class: "sp-sec-h" }, h("span", {}, "Порты")), this.portsBox)),
+      h("div", { class: "sp-hubrow" }, h("div", { class: "sp-sec-h" }, this.hubTitle = h("span", {}, "Хаб"), this.gyroBox), this.portsBox),
       h("div", { class: "sp-info" }, bar, this.tabs.task.pane, this.tabs.score.pane, this.tabs.robot.pane, this.tabs.help.pane));
     this.matImg = new Image(); this.matImg.src = MP_BASE + "bioglow/mat.jpg"; this.matImg.onload = () => this.draw();
     this.labels = true;
@@ -171,20 +179,28 @@ class SpikeSim {
     }
   }
 
-  /** Живые показания портов, как панель хаба в приложении */
+  /** Живые показания портов, как панель хаба в приложении SPIKE: устройство и значение на каждом порту */
   renderPorts() {
-    const ports = { ...DEFAULT_ROBOT, ...((this.pd && this.pd.robot) || {}) }, st = this.state || {};
-    const key = JSON.stringify([st.motors, st.yaw, Object.keys(st.sensors || {})]);
+    const model = this.model || robotModel(this.pd || {}), st = this.state || {}, rd = st.readings || {};
+    const key = JSON.stringify([rd, st.yaw, model.name]);
     if (key === this.portsKey) return;
     this.portsKey = key;
-    this.portsBox.replaceChildren(...["A", "B", "C", "D", "E", "F"].map((p) => {
-      const d = String(ports[p] || "");
-      let v = "-";
-      if (d.startsWith("motor") && st.motors && st.motors[p] !== undefined) v = `${st.motors[p]}°`;
-      else if (d === "color" && st.sensors && st.sensors[p]) v = "цвет";
-      const short = { "motor:large": "мотор L", "motor:medium": "мотор M", color: "цвет", distance: "дальномер", force: "сила" };
-      return h("div", { class: "sp-port" + (d ? "" : " empty") }, h("b", {}, p), h("span", { title: PORT_TITLES[d] || "" }, d ? (short[d] || d) : "пусто"), h("em", {}, d ? v : ""));
-    }), h("div", { class: "sp-port sp-port-yaw" }, h("b", {}, "Yaw"), h("span", {}, "гироскоп"), h("em", {}, st.yaw !== undefined ? `${(-st.yaw / 10).toFixed(0)}°` : "-")));
+    const short = { "motor:large": "Большой мотор", "motor:medium": "Средний мотор", color: "Датчик цвета", distance: "Датчик расстояния", force: "Датчик силы" };
+    for (const p of ["A", "B", "C", "D", "E", "F"]) {
+      const d = String(model.ports[p] || ""), r = rd[p] || {};
+      const kids = [h("b", { class: "sp-pt-l" }, p)];
+      if (!d) kids.push(h("span", { class: "sp-pt-d" }, "пусто"));
+      else {
+        kids.push(h("span", { class: "sp-pt-d", title: model.roles[p] || "" }, short[d] || d));
+        if (d.startsWith("motor")) kids.push(h("em", {}, r.pos !== undefined ? `${r.pos}°` : "0°"), h("small", {}, r.vel !== undefined ? `${Math.round(r.vel / 6)} об/мин` : ""));
+        else if (d === "color") kids.push(h("em", {}, h("i", { class: "sp-sw", style: `background:${SPIKE_CSS[r.color ?? -1]}` }), r.refl !== undefined ? `${r.refl}%` : "-"), h("small", {}, SPIKE_NAME[r.color ?? -1]));
+        else if (d === "distance") kids.push(h("em", {}, r.dist === undefined || r.dist < 0 ? "-" : `${(r.dist / 10).toFixed(1).replace(".", ",")} см`));
+        else if (d === "force") kids.push(h("em", {}, `${((r.force || 0) / 10).toFixed(1).replace(".", ",")} Н`));
+      }
+      this.portEls[p].className = "sp-pt" + (d ? " on" : " empty");
+      this.portEls[p].replaceChildren(...kids);
+    }
+    this.gyroBox.textContent = st.yaw !== undefined ? `рыскание ${(-st.yaw / 10).toFixed(0)}°` : "";
   }
 
   setMode(mode) {
@@ -257,6 +273,8 @@ class SpikeSim {
   }
 
   applyField() {
+    this.model = robotModel(this.pd);
+    if (this.hubTitle) this.hubTitle.textContent = this.model.title;
     this.bio = this.pd.field === "bioglow";
     this.fieldPick.value = this.bio ? "bioglow" : "training";
     this.fieldTitle.hidden = this.free;
@@ -324,7 +342,8 @@ class SpikeSim {
     this.start = { x: st.x, y: st.y, h: (st.h || 0) * Math.PI / 180 };
     this.state = { t: 0, pose: { ...this.start }, motors: {}, matrix: { text: "" }, box: this.pd.box ? { ...this.pd.box } : null,
       lever: this.pd.lever ? { up: true, flips: 0 } : null, sensors: {}, maxLineDist: 0,
-      field: this.bio ? new Bioglow(this.pd).snapshot() : null };
+      field: this.bio ? new Bioglow(this.pd).snapshot() : null,
+      objects: (this.pd.objects || []).map((o, i) => ({ id: o.id || o.kind + i, kind: o.kind, x: o.x, y: o.y, r: o.r || OBJ_R[o.kind] || 25 })) };
     this.scoreKey = null;
     this.trail = [];
     this.checkState = []; this.renderChecks();
@@ -441,13 +460,15 @@ class SpikeSim {
   }
 
   renderRobot() {
-    const ports = { ...DEFAULT_ROBOT, ...(this.pd.robot || {}) };
+    const m = this.model;
+    const pair = m.drive;
     this.robotBox.innerHTML = "";
-    this.robotBox.append(h("p", { class: "sp-muted" }, "Робот курса: приводная база на колесах 56 мм, расстояние между колесами 112 мм. Пара моторов в программе: motor_pair.pair(PAIR, port.A, port.B)."),
+    this.robotBox.append(h("h4", {}, m.title),
+      h("p", { class: "sp-muted" }, `Колеса ${m.wheel} мм (${(Math.PI * m.wheel / 10).toFixed(1).replace(".", ",")} см за оборот), расстояние между колесами ${Math.round(m.track)} мм. Пара моторов: motor_pair.pair(motor_pair.PAIR_1, port.${pair[0]}, port.${pair[1]}), в блоках «установить моторы для движения ${pair[0]}+${pair[1]}».`),
       h("table", { class: "sp-ports" }, h("tr", {}, h("th", {}, "Порт"), h("th", {}, "Устройство"), h("th", {}, "Назначение")),
-        ...Object.entries(ports).map(([p, d]) => h("tr", {}, h("td", {}, p), h("td", {}, PORT_TITLES[d] || d || "пусто"), h("td", {}, d ? ROLE[p] : "")))),
+        ...["A", "B", "C", "D", "E", "F"].map((p) => { const d = m.ports[p] || ""; return h("tr", {}, h("td", {}, p), h("td", {}, PORT_TITLES[d] || d || "пусто"), h("td", {}, d ? (m.roles[p] || "") : "")); })),
       this.pd.drift ? h("p", { class: "sp-warn" }, `У этого робота правое колесо чуть больше левого (${(this.pd.drift * 100).toFixed(1).replace(".", ",")}%): без гироскопа он уходит в сторону, как настоящий.`) : null,
-      h("p", { class: "sp-muted" }, "Скорость в блоках - проценты (100% = 1000 градусов в секунду), в Python - градусы в секунду."));
+      h("p", { class: "sp-muted" }, "Скорость в блоках - проценты от наибольшей скорости мотора (большой 1050, средний 1110 градусов в секунду), в Python - градусы в секунду."));
   }
 
   renderHelp() {
@@ -550,6 +571,7 @@ class SpikeSim {
       ctx.strokeStyle = "rgba(8,145,178,.7)"; ctx.lineWidth = 5; ctx.setLineDash([12, 10]);
       ctx.beginPath(); this.trail.forEach((p, i) => (i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]))); ctx.stroke(); ctx.setLineDash([]);
     }
+    this.drawObjects(ctx, st);
     this.drawRobot(ctx, st);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     const p = st.pose, yaw = -((p.h - this.start.h) * 180 / Math.PI);
@@ -563,39 +585,90 @@ class SpikeSim {
   }
 
   drawRobot(ctx, st) {
-    const p = st.pose, ports = { ...DEFAULT_ROBOT, ...(this.pd.robot || {}) };
+    const p = st.pose, m = this.model || robotModel(this.pd), B = m.body, rd = st.readings || {};
+    const wheelR = m.wheel / 2, wx = m.track / 2;
     ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.h);
     // в системе робота: вперед +y, вправо +x
-    ctx.fillStyle = "rgba(0,0,0,.18)"; ctx.fillRect(-BODY.half + 8, -BODY.back - 8, BODY.half * 2, BODY.front + BODY.back);
-    ctx.fillStyle = "#e2e8f0"; ctx.strokeStyle = "#334155"; ctx.lineWidth = 5;
-    ctx.beginPath(); ctx.roundRect(-BODY.half, -BODY.back, BODY.half * 2, BODY.front + BODY.back, 18); ctx.fill(); ctx.stroke();
-    // колеса
-    ctx.fillStyle = "#111827";
-    for (const sx of [-1, 1]) { ctx.beginPath(); ctx.roundRect(sx * (BODY.half + 2) - (sx > 0 ? 0 : 22), -28, 22, 56, 6); ctx.fill(); }
-    // хаб с матрицей
-    ctx.fillStyle = "#facc15"; ctx.strokeStyle = "#a16207"; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.roundRect(-46, -60, 92, 110, 12); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = "#1e293b"; ctx.fillRect(-30, -20, 60, 60);
-    // датчики цвета
-    for (const port of ["E", "F"]) {
-      if (ports[port] !== "color") continue;
-      const sp = (this.pd.sensorPos && this.pd.sensorPos[port]) || SENSOR_POS[port];
-      ctx.fillStyle = "#2563eb"; ctx.fillRect(sp[1] - 12, sp[0] - 12, 24, 24);
-      ctx.strokeStyle = "rgba(220,38,38,.9)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(sp[1], sp[0], 7, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = "rgba(0,0,0,.2)"; ctx.beginPath(); ctx.roundRect(-B.half + 10, -B.back - 10, B.half * 2, B.front + B.back, 16); ctx.fill();
+    // рама из балок Technic
+    ctx.fillStyle = m.name === "advanced" ? "#3b2a63" : "#e5e7eb"; ctx.strokeStyle = "#1f2937"; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.roundRect(-B.half, -B.back, B.half * 2, B.front + B.back, 14); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "rgba(0,0,0,.18)";
+    for (let y = -B.back + 8; y < B.front - 4; y += 16) for (const x of [-B.half + 8, B.half - 8]) { ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill(); }
+    // колеса и моторы привода
+    const wheelW = m.wheel > 70 ? 32 : 22;
+    for (const sx of [-1, 1]) {
+      ctx.fillStyle = "#111827"; ctx.beginPath(); ctx.roundRect(sx * wx - wheelW / 2, -wheelR, wheelW, wheelR * 2, 6); ctx.fill();
+      ctx.strokeStyle = "#4b5563"; ctx.lineWidth = 2;
+      for (let k = -wheelR + 6; k < wheelR; k += 8) { ctx.beginPath(); ctx.moveTo(sx * wx - wheelW / 2, k); ctx.lineTo(sx * wx + wheelW / 2, k); ctx.stroke(); }
+      const mw = 26, ml = m.wheel > 70 ? 64 : 48;
+      ctx.fillStyle = m.name === "advanced" ? "#f8fafc" : "#e0f2fe"; ctx.strokeStyle = "#64748b"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.roundRect(sx * (wx - wheelW / 2 - mw / 2 - 3) - mw / 2, -ml / 2, mw, ml, 6); ctx.fill(); ctx.stroke();
     }
-    if (ports.D === "distance") { ctx.fillStyle = "#0f172a"; ctx.fillRect(-26, BODY.front - 14, 52, 16); }
-    // рука на моторе C: проекция сверху
-    for (const [port, off, col] of [["C", 0, "#ea580c"], ["D", 40, "#0d9488"]]) {
-      const c = st.motors && st.motors[port];
-      if (c === undefined || (port === "D" && !this.bio)) continue;
-      const reach = 110 * Math.sin(Math.max(0, Math.min(180, c)) * Math.PI / 180);
-      ctx.strokeStyle = col; ctx.lineWidth = 14; ctx.lineCap = "round";
-      ctx.beginPath(); ctx.moveTo(off, BODY.front - 6); ctx.lineTo(off, BODY.front + Math.max(8, reach)); ctx.stroke(); ctx.lineCap = "butt";
-      if (c >= 60) { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(off, BODY.front + reach, 11, 0, Math.PI * 2); ctx.fill(); }
+    // хаб: 88 x 56 мм, желтый корпус, белая лицевая панель, матрица 5 x 5
+    ctx.save(); ctx.translate(m.hub.r, m.hub.f);
+    if (!m.hub.along) ctx.rotate(Math.PI / 2);
+    ctx.fillStyle = "#ffd500"; ctx.strokeStyle = "#a16207"; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.roundRect(-28, -44, 56, 88, 10); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#f8fafc"; ctx.beginPath(); ctx.roundRect(-22, -36, 44, 72, 7); ctx.fill();
+    const px = (st.matrix && st.matrix.pixels) || null;
+    for (let i = 0; i < 25; i++) {
+      const cx = (i % 5) - 2, cy = 2 - Math.floor(i / 5);
+      ctx.fillStyle = px && px[i] > 0 ? "#fff7cc" : "#1f2937";
+      ctx.fillRect(cx * 7 - 2.6, cy * 7 + 6 - 2.6, 5.2, 5.2);
     }
-    // стрелка вперед
-    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.moveTo(0, 30); ctx.lineTo(-14, 6); ctx.lineTo(14, 6); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#111"; ctx.beginPath(); ctx.arc(0, -22, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = this.running ? "#22c55e" : "#f8fafc"; ctx.lineWidth = 1.5; ctx.stroke();
     ctx.restore();
+    // датчики цвета (снизу, видно световое пятно) и датчик расстояния
+    for (const [port, dev] of Object.entries(m.ports)) {
+      const sp = m.sensors[port];
+      if (!sp) continue;
+      if (dev === "color") {
+        ctx.fillStyle = "#111827"; ctx.beginPath(); ctx.roundRect(sp[1] - 11, sp[0] - 11, 22, 22, 4); ctx.fill();
+        const c = rd[port] ? SPIKE_CSS[rd[port].color] : "#fff";
+        ctx.fillStyle = c; ctx.beginPath(); ctx.arc(sp[1], sp[0], 5.5, 0, Math.PI * 2); ctx.fill();
+      } else if (dev === "distance") {
+        ctx.fillStyle = "#111827"; ctx.beginPath(); ctx.roundRect(sp[1] - 24, sp[0] - 8, 48, 16, 6); ctx.fill();
+        ctx.fillStyle = "#e5e7eb"; for (const sx of [-1, 1]) { ctx.beginPath(); ctx.arc(sp[1] + sx * 12, sp[0] + 1, 5, 0, Math.PI * 2); ctx.fill(); }
+      }
+    }
+    // навесное
+    const TOOLC = { arm: "#ea580c", dozer: "#f59e0b", lift: "#0d9488" };
+    for (const [port, t] of Object.entries(m.tools)) {
+      const a = st.motors && st.motors[port];
+      if (a === undefined) continue;
+      const reach = t.reach * Math.sin(Math.max(0, Math.min(180, a)) * Math.PI / 180), col = TOOLC[t.kind] || "#ea580c";
+      if (t.kind === "dozer") {
+        ctx.fillStyle = col; ctx.strokeStyle = "#78350f"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.roundRect(-B.half + 6, B.front + Math.max(4, reach) - 8, B.half * 2 - 12, 12, 3); ctx.fill(); ctx.stroke();
+        continue;
+      }
+      ctx.strokeStyle = col; ctx.lineWidth = 12; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(t.off, B.front - 6); ctx.lineTo(t.off, B.front + Math.max(8, reach)); ctx.stroke(); ctx.lineCap = "butt";
+      if (a >= 60) { ctx.fillStyle = col; ctx.beginPath(); ctx.arc(t.off, B.front + reach, 10, 0, Math.PI * 2); ctx.fill(); }
+    }
+    ctx.restore();
+  }
+
+  drawObjects(ctx, st) {
+    for (const o of st.objects || []) {
+      ctx.save(); ctx.translate(o.x, o.y);
+      if (o.kind === "marker") {
+        ctx.fillStyle = o.touched ? "#fca5a5" : "#ffffff"; ctx.strokeStyle = o.touched ? "#b91c1c" : "#dc2626"; ctx.lineWidth = 6;
+        ctx.beginPath(); ctx.arc(0, 0, o.r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle = "#dc2626"; ctx.beginPath(); ctx.arc(0, 0, o.r * 0.45, 0, Math.PI * 2); ctx.fill();
+      } else {
+        const col = o.kind === "cube" ? "#0090f5" : o.kind === "crate" ? "#f59e0b" : "#a3e635";
+        ctx.fillStyle = col; ctx.strokeStyle = "rgba(15,23,42,.6)"; ctx.lineWidth = 3;
+        if (o.lifted) { ctx.shadowColor = "rgba(0,0,0,.35)"; ctx.shadowBlur = 14; ctx.shadowOffsetY = -8; }
+        ctx.beginPath(); ctx.roundRect(-o.r * 0.85, -o.r * 0.85, o.r * 1.7, o.r * 1.7, 4); ctx.fill(); ctx.stroke();
+        ctx.shadowColor = "transparent";
+        ctx.fillStyle = "rgba(255,255,255,.35)";
+        for (const [dx, dy] of [[-0.4, -0.4], [0.4, -0.4], [-0.4, 0.4], [0.4, 0.4]]) { ctx.beginPath(); ctx.arc(dx * o.r, dy * o.r, o.r * 0.18, 0, Math.PI * 2); ctx.fill(); }
+      }
+      ctx.restore();
+    }
   }
 
   text(ctx, str, x, y, size, color) {

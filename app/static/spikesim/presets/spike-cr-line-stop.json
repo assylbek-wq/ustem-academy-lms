@@ -1,0 +1,29 @@
+{
+ "title": "Тренировочный лагерь 3: стоп на линии",
+ "task": "Урок «Тренировочный лагерь 3: реакция на линии». Датчик цвета на порту B. Поезжайте вперед и остановитесь, когда датчик увидит черную линию.\nДва способа: color_sensor.color(port.B) == color.BLACK или color_sensor.reflection(port.B) < 30. Второй точнее.",
+ "mode": "python",
+ "robot": "driving-base",
+ "start": {
+  "x": 900,
+  "y": 160,
+  "h": 0
+ },
+ "python": "from hub import port, motion_sensor, light_matrix, sound, button\nimport motor, motor_pair, color_sensor, distance_sensor, color, runloop\n\nPAIR = motor_pair.PAIR_1\nDEG_PER_CM = 360 / 17.5\n\n\nasync def main():\n    motor_pair.pair(PAIR, port.C, port.D)\n    motor_pair.move(PAIR, 0, velocity=300)\n    await runloop.sleep_ms(500)\n    motor_pair.stop(PAIR)\n\n\nrunloop.run(main())\n",
+ "checks": [
+  {
+   "type": "sensor_on",
+   "port": "B",
+   "zone": {
+    "x0": 850,
+    "y0": 412,
+    "x1": 950,
+    "y1": 448
+   },
+   "label": "Датчик B остановился на черной линии"
+  },
+  {
+   "type": "finished",
+   "label": "Программа завершилась без ошибок"
+  }
+ ]
+}

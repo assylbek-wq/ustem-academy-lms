@@ -3,6 +3,7 @@
 // Без DOM: работает в Web Worker и в Node для тестов.
 import { MAT_W, MAT_H, sampleSpot, reflectionOf, spikeColorOf, distToPoly, LINE_CURVE } from "./mat.js";
 import { Bioglow } from "./bioglow.js";
+import { robotModel } from "./robots.js";
 
 // пятно датчика цвета для поля с рисунком (как sampleSpot в mat.js, но реже: рисунок и так сглажен)
 const SPOT16 = Array.from({ length: 16 }, (_, i) => { const r = 7 * Math.sqrt((i + 0.5) / 16), a = i * 2.399963; return [r * Math.cos(a), r * Math.sin(a)]; });
@@ -26,6 +27,7 @@ class Motor {
 }
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+export const OBJ_R = { marker: 24, cube: 24, crate: 30, baton: 10 };
 const ramp = (cur, want, acc, dec, dt) => {
   const rate = Math.abs(want) > Math.abs(cur) && Math.sign(want || 1) === Math.sign(cur || want || 1) ? acc : dec;
   const d = want - cur, step = rate * dt;
@@ -38,7 +40,10 @@ const profile = (rem, vmax, dec) => Math.sign(rem) * Math.min(vmax, Math.sqrt(2 
 export class Robot {
   constructor(preset = {}) {
     this.preset = preset;
-    this.ports = { ...DEFAULT_ROBOT, ...(preset.robot || {}) };
+    this.model = robotModel(preset);
+    this.ports = this.model.ports;
+    this.body = this.model.body;
+    this.mmPerDeg = Math.PI * this.model.wheel / 360;
     const st = preset.start || { x: 190, y: 150, h: -90 };
     this.pose = { x: st.x, y: st.y, h: (st.h || 0) * Math.PI / 180 };
     this.drift = preset.drift || 0;          // разница диаметров колес: 0,01 = правое на 1% больше
@@ -59,6 +64,10 @@ export class Robot {
     this.events = [];
     this.field = preset.field === "bioglow" ? new Bioglow(preset) : null;
     this.speedMm = 0;
+    // предметы уроков Competition Ready: метки (стоят на месте), кубик и ящики (их двигают корпус и навесное)
+    this.objects = (preset.objects || []).map((o, i) => ({ id: o.id || o.kind + i, kind: o.kind, x: o.x, y: o.y,
+      r: o.r || OBJ_R[o.kind] || 25, fixed: o.kind === "marker" || !!o.fixed, touched: false, carried: null, lifted: false }));
+    this.toolState = {};
   }
 
   spot(x, y) {
@@ -150,7 +159,7 @@ export class Robot {
   }
 
   sensorPoint(port) {
-    const s = this.preset.sensorPos && this.preset.sensorPos[port] || SENSOR_POS[port] || [95, 0];
+    const s = this.model.sensors[port] || [this.body.front - 10, 0];
     return this.local2world(s[0], s[1]);
   }
 
@@ -164,11 +173,11 @@ export class Robot {
 
   distance(port) {
     this.needDevice(port, "distance");
-    const o = this.local2world(BODY.front, 0), fx = -Math.sin(this.pose.h), fy = Math.cos(this.pose.h);
+    const o = this.local2world(this.body.front, 0), fx = -Math.sin(this.pose.h), fy = Math.cos(this.pose.h);
     let best = Infinity;
     if (fx > 1e-6) best = Math.min(best, (MAT_W - o.x) / fx); if (fx < -1e-6) best = Math.min(best, -o.x / fx);
     if (fy > 1e-6) best = Math.min(best, (MAT_H - o.y) / fy); if (fy < -1e-6) best = Math.min(best, -o.y / fy);
-    for (const c of [this.box, this.lever && { x: this.lever.x, y: this.lever.y, r: 40 }]) {
+    for (const c of [this.box, this.lever && { x: this.lever.x, y: this.lever.y, r: 40 }, ...this.objects.filter((q) => !q.carried)]) {
       if (!c) continue;
       const dx = o.x - c.x, dy = o.y - c.y, b = dx * fx + dy * fy, cc = dx * dx + dy * dy - c.r * c.r, disc = b * b - cc;
       if (disc >= 0) { const t = -b - Math.sqrt(disc); if (t > 0) best = Math.min(best, t); }
@@ -182,11 +191,12 @@ export class Robot {
 
   frontContact() {
     let best = Infinity;
-    for (const r of [-BODY.half + 10, 0, BODY.half - 10]) {
-      const q = this.local2world(BODY.front, r);
+    for (const r of [-this.body.half + 10, 0, this.body.half - 10]) {
+      const q = this.local2world(this.body.front, r);
       best = Math.min(best, q.x, q.y, MAT_W - q.x, MAT_H - q.y);
       if (this.box) best = Math.min(best, Math.hypot(q.x - this.box.x, q.y - this.box.y) - this.box.r);
-      if (this.field) best = Math.min(best, this.field.raycast(this.local2world(BODY.front - 5, r).x, this.local2world(BODY.front - 5, r).y, -Math.sin(this.pose.h), Math.cos(this.pose.h)) - 5);
+      for (const o of this.objects) if (!o.carried) best = Math.min(best, Math.hypot(q.x - o.x, q.y - o.y) - o.r);
+      if (this.field) best = Math.min(best, this.field.raycast(this.local2world(this.body.front - 5, r).x, this.local2world(this.body.front - 5, r).y, -Math.sin(this.pose.h), Math.cos(this.pose.h)) - 5);
     }
     return best;
   }
@@ -239,17 +249,17 @@ export class Robot {
   kinematics(dt) {
     const p = this.pose;
     let vl = 0, vr = 0;
-    const L = this.motors.A, R = this.motors.B;
-    // колеса всегда на A (левое, стоит зеркально) и B (правое)
-    if (L && String(this.ports.A).startsWith("motor")) vl = -L.vel * MM_PER_DEG * (1 - this.drift / 2);
-    if (R && String(this.ports.B).startsWith("motor")) vr = R.vel * MM_PER_DEG * (1 + this.drift / 2);
-    const v = (vl + vr) / 2, w = (vr - vl) / TRACK;
+    // колеса на портах модели: левое стоит зеркально (крутится назад, когда робот едет вперед), правое - прямо
+    const [pl, pr] = this.model.drive, L = this.motors[pl], R = this.motors[pr];
+    if (L) vl = -L.vel * this.mmPerDeg * (1 - this.drift / 2);
+    if (R) vr = R.vel * this.mmPerDeg * (1 + this.drift / 2);
+    const v = (vl + vr) / 2, w = (vr - vl) / this.model.track;
     this.speedMm = v;
     const old = { ...p };
     p.h += w * dt;
     p.x += -Math.sin(p.h) * v * dt; p.y += Math.cos(p.h) * v * dt;
     // борта стола
-    const corners = [[BODY.front, -BODY.half], [BODY.front, BODY.half], [-BODY.back, -BODY.half], [-BODY.back, BODY.half]].map(([f, r]) => this.local2world(f, r));
+    const corners = [[this.body.front, -this.body.half], [this.body.front, this.body.half], [-this.body.back, -this.body.half], [-this.body.back, this.body.half]].map(([f, r]) => this.local2world(f, r));
     let dx = 0, dy = 0;
     for (const c of corners) {
       if (c.x < 0) dx = Math.max(dx, -c.x); if (c.x > MAT_W) dx = Math.min(dx, MAT_W - c.x);
@@ -270,31 +280,99 @@ export class Robot {
     }
     // модели поля: упор в твердые части, срабатывания миссий, свободные предметы
     if (this.field) {
-      this.field.collide(this, BODY);
-      this.field.update(this, BODY, dt);
+      this.field.collide(this, this.body);
+      this.field.update(this, this.body, dt);
       for (const e of this.field.events.splice(0)) this.events.push({ toast: e });
     }
     // ящик
     if (this.box) this.pushBox(old);
+    if (this.objects.length) this.updateObjects();
     // рычаг: опускается навесным на моторе C
-    if (this.lever && this.motors.C) {
-      const ang = this.motors.C.pos;
+    const tool0 = Object.keys(this.model.tools)[0];
+    if (this.lever && tool0 && this.motors[tool0]) {
+      const ang = this.motors[tool0].pos;
       const reach = 110 * Math.sin(clamp(ang, 0, 180) * Math.PI / 180);
-      const tip = this.local2world(BODY.front + reach, 0);
+      const tip = this.local2world(this.body.front + reach, 0);
       const d = Math.hypot(tip.x - this.lever.x, tip.y - this.lever.y);
       if (this.lever.up && d < 70 && ang > 60) { this.lever.up = false; this.lever.flips++; this.events.push("lever"); }
     }
+  }
+
+  // показания датчиков для панели хаба (как панель портов в приложении SPIKE)
+  readings() {
+    const out = {};
+    for (const p of PORTS) {
+      const d = String(this.ports[p] || "");
+      try {
+        if (d === "color") { const q = this.sensorPoint(p), c = this.spot(q.x, q.y); out[p] = { color: spikeColorOf(c), refl: reflectionOf(c) }; }
+        else if (d === "distance") out[p] = { dist: this.distance(p) };
+        else if (d === "force") out[p] = { force: this.force(p) };
+        else if (this.motors[p]) out[p] = { pos: Math.round(this.motors[p].pos), vel: Math.round(this.motors[p].vel) };
+      } catch (e) { /* нет устройства */ }
+    }
+    return out;
+  }
+
+  // навесное: кончик инструмента (0 градусов - поднято, 90 - опущено вперед)
+  toolTip(port) {
+    const t = this.model.tools[port], m = this.motors[port];
+    const a = clamp(m ? m.pos : 0, 0, 180), reach = t.reach * Math.sin(a * Math.PI / 180);
+    return { ...this.local2world(this.body.front + Math.max(8, reach), t.off), a };
+  }
+
+  updateObjects() {
+    // метки - неподвижные: робот в них упирается (и это отмечается как касание)
+    for (const o of this.objects) {
+      if (o.carried) continue;
+      if (o.fixed) {
+        const before = { x: this.pose.x, y: this.pose.y }, b = { x: o.x, y: o.y, r: o.r };
+        if (this.pushCircle(b)) { this.pose.x -= b.x - o.x; this.pose.y -= b.y - o.y; if (!o.touched) { o.touched = true; this.events.push({ toast: "Робот задел метку!" }); } }
+        void before;
+      } else if (this.pushCircle(o)) o.moved = true;
+    }
+    // отвал (бульдозер): опущенный отвал толкает предметы перед роботом
+    for (const [port, t] of Object.entries(this.model.tools)) {
+      const m = this.motors[port];
+      if (!m) continue;
+      const st = (this.toolState[port] ||= { down: false });
+      const tip = this.toolTip(port);
+      if (t.kind === "dozer") {
+        if (tip.a < 60) continue;
+        for (const o of this.objects) {
+          if (o.fixed || o.carried) continue;
+          const dx = o.x - this.pose.x, dy = o.y - this.pose.y, f = dx * -Math.sin(this.pose.h) + dy * Math.cos(this.pose.h), r = dx * Math.cos(this.pose.h) + dy * Math.sin(this.pose.h);
+          const edge = this.body.front + t.reach;
+          if (f > this.body.front - 5 && f < edge + o.r && Math.abs(r) < this.body.half) {
+            const w = this.local2world(edge + o.r, r); o.x = w.x; o.y = w.y; o.moved = true;
+          }
+        }
+        continue;
+      }
+      // рука и подъемная рука: опустили рядом с предметом - зацепили; подняли - несем; опустили снова - отпустили
+      if (!st.down && tip.a >= 60) {
+        st.down = true;
+        const held = this.objects.find((o) => o.carried === port);
+        if (held) { held.carried = null; held.lifted = false; held.x = tip.x; held.y = tip.y; this.events.push({ toast: "Предмет отпущен" }); }
+        else {
+          const o = this.objects.filter((q) => !q.fixed && !q.carried).sort((a, b) => Math.hypot(a.x - tip.x, a.y - tip.y) - Math.hypot(b.x - tip.x, b.y - tip.y))[0];
+          if (o && Math.hypot(o.x - tip.x, o.y - tip.y) < o.r + 30) { o.carried = port; this.events.push({ toast: "Предмет захвачен" }); }
+        }
+      } else if (st.down && tip.a <= 30) { st.down = false; const held = this.objects.find((o) => o.carried === port); if (held) held.lifted = true; }
+      const held = this.objects.find((o) => o.carried === port);
+      if (held) { const w = this.local2world(this.body.front + held.r + 4, t.off); held.x = w.x; held.y = w.y; }
+    }
+    for (const o of this.objects) { o.x = clamp(o.x, o.r, MAT_W - o.r); o.y = clamp(o.y, o.r, MAT_H - o.r); }
   }
 
   // круглый предмет (семя, метка, модель): корпус робота выталкивает его наружу; true, если сдвинул
   pushCircle(b) {
     const p = this.pose, dx = b.x - p.x, dy = b.y - p.y;
     const f = dx * -Math.sin(p.h) + dy * Math.cos(p.h), r = dx * Math.cos(p.h) + dy * Math.sin(p.h);
-    const cf = clamp(f, -BODY.back, BODY.front), cr = clamp(r, -BODY.half, BODY.half);
+    const cf = clamp(f, -this.body.back, this.body.front), cr = clamp(r, -this.body.half, this.body.half);
     const ddf = f - cf, ddr = r - cr, d = Math.hypot(ddf, ddr);
     if (d >= b.r) return false;
     let nf, nr;
-    if (d < 1e-6) { nf = f >= 0 ? BODY.front + b.r : -BODY.back - b.r; nr = r; }
+    if (d < 1e-6) { nf = f >= 0 ? this.body.front + b.r : -this.body.back - b.r; nr = r; }
     else { nf = cf + ddf / d * b.r; nr = cr + ddr / d * b.r; }
     const w = this.local2world(nf, nr);
     b.x = w.x; b.y = w.y;
@@ -305,11 +383,11 @@ export class Robot {
     const b = this.box, p = this.pose;
     const dx = b.x - p.x, dy = b.y - p.y;
     const f = dx * -Math.sin(p.h) + dy * Math.cos(p.h), r = dx * Math.cos(p.h) + dy * Math.sin(p.h);
-    const cf = clamp(f, -BODY.back, BODY.front), cr = clamp(r, -BODY.half, BODY.half);
+    const cf = clamp(f, -this.body.back, this.body.front), cr = clamp(r, -this.body.half, this.body.half);
     const ddf = f - cf, ddr = r - cr, d = Math.hypot(ddf, ddr);
     if (d >= b.r) return;
     let nf, nr;
-    if (d < 1e-6) { nf = f >= 0 ? BODY.front + b.r : -BODY.back - b.r; nr = r; }
+    if (d < 1e-6) { nf = f >= 0 ? this.body.front + b.r : -this.body.back - b.r; nr = r; }
     else { nf = cf + ddf / d * b.r; nr = cr + ddr / d * b.r; }
     const w = this.local2world(nf, nr);
     b.x = clamp(w.x, b.r, MAT_W - b.r); b.y = clamp(w.y, b.r, MAT_H - b.r);
@@ -328,6 +406,9 @@ export class Robot {
       sensors: Object.fromEntries(PORTS.filter((p) => String(this.ports[p]) === "color").map((p) => [p, this.sensorPoint(p)])),
       maxLineDist: this.maxLineDist, yaw: this.yawDeci(),
       field: this.field ? this.field.snapshot() : null,
+      objects: this.objects.map((o) => ({ id: o.id, kind: o.kind, x: o.x, y: o.y, r: o.r, touched: o.touched, carried: o.carried, lifted: o.lifted })),
+      model: this.model.name, front: this.local2world(this.body.front, 0),
+      readings: this.readings(),
     };
   }
 }
@@ -357,6 +438,10 @@ export function evalChecks(checks, cs, st, ctx) {
     else if (c.type === "mission" && st.field) { const r = st.field.score.rows.find((x) => x.m === c.m); s.ok = !!r && r.pts >= (c.min || 1) && (!c.end || end); }
     else if (c.type === "mission_keep" && end && st.field) { const r = st.field.score.rows.find((x) => x.m === c.m); s.ok = !!r && r.pts >= c.min; }
     else if (c.type === "score_total" && st.field) s.ok = st.field.score.total >= c.min && (!c.end || end);
+    else if (c.type === "obj_zone") { const o = (st.objects || []).find((q) => q.id === c.id); s.ok = (!c.end || end) && !!o && o.x >= c.zone.x0 && o.x <= c.zone.x1 && o.y >= c.zone.y0 && o.y <= c.zone.y1; }
+    else if (c.type === "no_touch" && end) s.ok = !(st.objects || []).some((q) => q.kind === "marker" && q.touched);
+    else if (c.type === "near_obj" && end) { const o = (st.objects || []).find((q) => q.id === c.id); const d = o && st.front ? Math.hypot(st.front.x - o.x, st.front.y - o.y) - o.r : Infinity; s.ok = d <= c.max && d >= (c.min || 0); }
+    else if (c.type === "visit") { s.n ||= 0; const z = c.points[s.n]; if (z && Math.hypot(st.pose.x - z[0], st.pose.y - z[1]) <= c.tol) s.n++; s.ok = s.n >= c.points.length; }
     else if (c.type === "home_end" && end) { const hx = c.side === "right" ? MAT_W - 181 : 181; s.ok = Math.hypot(st.pose.x - hx, st.pose.y) <= 482 - 40; }
   });
   return checks.length > 0 && checks.every((_, i) => cs[i] && cs[i].ok);

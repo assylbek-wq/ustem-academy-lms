@@ -1,0 +1,51 @@
+{
+ "title": "Продвинутая база: квадрат вокруг метки",
+ "task": "Урок «My Code, Our Program». Продвинутая приводная база (колеса 88 мм на A и E) объезжает метку квадратом: 4 раза по 41 см вперед и поворот направо на 90 градусов, и возвращается на старт. Метку не задевать.\nВ уроке LEGO: сторона - 540 градусов мотора, поворот - 145 градусов с рулем 100. Лучше сделать «Мой блок» (или функцию) square().",
+ "mode": "python",
+ "robot": "advanced",
+ "start": {
+  "x": 300,
+  "y": 200,
+  "h": 0
+ },
+ "objects": [
+  {
+   "kind": "marker",
+   "x": 507,
+   "y": 407
+  }
+ ],
+ "python": "from hub import port, motion_sensor, light_matrix, sound, button\nimport motor, motor_pair, color_sensor, distance_sensor, color, runloop\n\nPAIR = motor_pair.PAIR_1\nDEG_PER_CM = 360 / 27.63\n\n\nasync def main():\n    motor_pair.pair(PAIR, port.A, port.E)\n    await motor_pair.move_for_degrees(PAIR, 540, 0, velocity=500)\n\n\nrunloop.run(main())\n",
+ "checks": [
+  {
+   "type": "visit",
+   "points": [
+    [
+     300,
+     614
+    ],
+    [
+     714,
+     614
+    ],
+    [
+     714,
+     200
+    ]
+   ],
+   "tol": 55,
+   "label": "Три угла квадрата пройдены"
+  },
+  {
+   "type": "pose_end",
+   "x": 300,
+   "y": 200,
+   "tol": 55,
+   "label": "Робот вернулся на старт"
+  },
+  {
+   "type": "no_touch",
+   "label": "Метка не задета"
+  }
+ ]
+}

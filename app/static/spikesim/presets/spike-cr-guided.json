@@ -1,0 +1,32 @@
+{
+ "title": "Миссия с подсказками на поле BIOGLOW",
+ "task": "Как урок «The Guided Mission» в приложении SPIKE: приводная база с датчиком цвета стартует в левой зоне запуска, доезжает до исследовательской платформы (М09), поднимает ее рукой E и заканчивает в правом доме.\nПодсказка: функция go(x, y) из стартовой программы, платформу поднимают с точки (686, 889), курс 0, рука E сначала вниз на 90 градусов, потом вверх.",
+ "mode": "python",
+ "robot": "driving-base",
+ "field": "bioglow",
+ "start": {
+  "x": 330,
+  "y": 150,
+  "h": 0
+ },
+ "python": "from hub import port, motion_sensor, light_matrix, sound, button\nimport motor, motor_pair, color_sensor, distance_sensor, color, runloop\n\nPAIR = motor_pair.PAIR_1\nDEG_PER_CM = 360 / 17.5\n\nimport math\nX, Y = 330.0, 150.0\nH0 = 0   # курс робота на старте: 0 - к дальнему борту, 90 - вправо\n\n\ndef heading():\n    return H0 - motion_sensor.tilt_angles()[0] / 10\n\n\nasync def turn_to(h, max_speed=300):\n    while True:\n        e = (h - heading() + 540) % 360 - 180\n        if abs(e) <= 0.8:\n            break\n        sp = int(min(max_speed, max(50, abs(e) * 6)))\n        if e > 0:\n            motor_pair.move_tank(PAIR, sp, -sp)\n        else:\n            motor_pair.move_tank(PAIR, -sp, sp)\n        await runloop.sleep_ms(5)\n    motor_pair.stop(PAIR)\n\n\nasync def go(x, y, speed=400):\n    global X, Y\n    dx, dy = x - X, y - Y\n    await turn_to(math.degrees(math.atan2(dx, dy)))\n    await motor_pair.move_for_degrees(PAIR, int(math.sqrt(dx * dx + dy * dy) / 10 * DEG_PER_CM), 0, velocity=speed)\n    X, Y = x, y\n\n\nasync def main():\n    motor_pair.pair(PAIR, port.C, port.D)\n    await go(500, 600)\n    # дальше: к платформе, поднять ее, в правый дом\n\n\nrunloop.run(main())\n",
+ "checks": [
+  {
+   "type": "mission",
+   "m": 9,
+   "min": 10,
+   "label": "Исследовательская платформа поднята"
+  },
+  {
+   "type": "mission_keep",
+   "m": 10,
+   "min": 20,
+   "label": "Хрупкие микроэкосистемы целы"
+  },
+  {
+   "type": "home_end",
+   "side": "right",
+   "label": "Робот закончил в правом доме"
+  }
+ ]
+}

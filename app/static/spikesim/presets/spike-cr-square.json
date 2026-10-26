@@ -1,0 +1,50 @@
+{
+ "title": "Тренировочный лагерь 1: квадрат",
+ "task": "Урок Competition Ready «Тренировочный лагерь 1: езда». Приводная база (колеса на портах C и D) стоит в левом доме и смотрит к дальнему борту. Проедьте квадрат со стороной 30 см, поворачивая направо, и вернитесь на старт тем же курсом.\nПодсказка: 1 оборот колеса - 17,5 см; поворот на месте на 90 градусов - около 182 градусов мотора с рулем 100.",
+ "mode": "python",
+ "robot": "driving-base",
+ "start": {
+  "x": 190,
+  "y": 160,
+  "h": 0
+ },
+ "python": "from hub import port, motion_sensor, light_matrix, sound, button\nimport motor, motor_pair, color_sensor, distance_sensor, color, runloop\n\nPAIR = motor_pair.PAIR_1\nDEG_PER_CM = 360 / 17.5\n\n\nasync def main():\n    motor_pair.pair(PAIR, port.C, port.D)\n    # одна сторона квадрата\n    await motor_pair.move_for_degrees(PAIR, int(30 * DEG_PER_CM), 0, velocity=300)\n\n\nrunloop.run(main())\n",
+ "checks": [
+  {
+   "type": "visit",
+   "points": [
+    [
+     190,
+     460
+    ],
+    [
+     490,
+     460
+    ],
+    [
+     490,
+     160
+    ]
+   ],
+   "tol": 45,
+   "label": "Три угла квадрата пройдены"
+  },
+  {
+   "type": "pose_end",
+   "x": 190,
+   "y": 160,
+   "tol": 45,
+   "label": "Робот вернулся на старт (±4,5 см)"
+  },
+  {
+   "type": "heading_end",
+   "deg": 0,
+   "tol": 8,
+   "label": "Смотрит туда же, куда на старте (±8°)"
+  },
+  {
+   "type": "finished",
+   "label": "Программа завершилась без ошибок"
+  }
+ ]
+}

@@ -1,0 +1,38 @@
+{
+ "title": "Тренировочный лагерь 2: стоп у метки",
+ "task": "Урок «Тренировочный лагерь 2: работа с предметами». На порту F датчик расстояния. Поезжайте к метке и остановитесь ближе 10 см, не задев ее.\nПодсказка: начать движение, ждать, пока расстояние меньше 100 мм (distance_sensor.distance(port.F) возвращает мм), остановить.",
+ "mode": "python",
+ "robot": "driving-base",
+ "start": {
+  "x": 190,
+  "y": 200,
+  "h": -90
+ },
+ "objects": [
+  {
+   "id": "marker",
+   "kind": "marker",
+   "x": 1100,
+   "y": 200
+  }
+ ],
+ "python": "from hub import port, motion_sensor, light_matrix, sound, button\nimport motor, motor_pair, color_sensor, distance_sensor, color, runloop\n\nPAIR = motor_pair.PAIR_1\nDEG_PER_CM = 360 / 17.5\n\n\nasync def main():\n    motor_pair.pair(PAIR, port.C, port.D)\n    await motor_pair.move_for_degrees(PAIR, int(40 * DEG_PER_CM), 0, velocity=300)\n\n\nrunloop.run(main())\n",
+ "checks": [
+  {
+   "type": "near_obj",
+   "id": "marker",
+   "max": 100,
+   "min": 5,
+   "label": "Робот остановился ближе 10 см от метки"
+  },
+  {
+   "type": "no_touch",
+   "label": "Метка не задета"
+  },
+  {
+   "type": "code_has",
+   "re": "distance_sensor\\.distance",
+   "label": "Программа использует датчик расстояния"
+  }
+ ]
+}

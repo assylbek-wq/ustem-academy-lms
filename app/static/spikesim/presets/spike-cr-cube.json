@@ -1,0 +1,38 @@
+{
+ "title": "Тренировочный лагерь 2: привезти кубик",
+ "task": "Синий кубик лежит в 40 см перед роботом. Подъедьте к нему по датчику расстояния, опустите руку (мотор E на 90 градусов вперед) за кубик и привезите его в левый дом.\nРука опущена - кубик едет с роботом; поднимете руку - робот поднимет кубик; опустите снова - отпустит.",
+ "mode": "python",
+ "robot": "driving-base",
+ "start": {
+  "x": 190,
+  "y": 200,
+  "h": -90
+ },
+ "objects": [
+  {
+   "id": "cube",
+   "kind": "cube",
+   "x": 700,
+   "y": 200
+  }
+ ],
+ "python": "from hub import port, motion_sensor, light_matrix, sound, button\nimport motor, motor_pair, color_sensor, distance_sensor, color, runloop\n\nPAIR = motor_pair.PAIR_1\nDEG_PER_CM = 360 / 17.5\n\n\nasync def main():\n    motor_pair.pair(PAIR, port.C, port.D)\n    motor_pair.move(PAIR, 0, velocity=300)\n    await runloop.until(lambda: 0 < distance_sensor.distance(port.F) < 60)\n    motor_pair.stop(PAIR)\n\n\nrunloop.run(main())\n",
+ "checks": [
+  {
+   "type": "obj_zone",
+   "id": "cube",
+   "zone": {
+    "x0": 0,
+    "y0": 0,
+    "x1": 380,
+    "y1": 320
+   },
+   "end": true,
+   "label": "Кубик в левом доме"
+  },
+  {
+   "type": "finished",
+   "label": "Программа завершилась без ошибок"
+  }
+ ]
+}
