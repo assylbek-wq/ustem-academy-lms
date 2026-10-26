@@ -1,4 +1,4 @@
-"""Компиляция скетчей Arduino Uno для лаборатории (симулятор работает в браузере на avr8js).
+"""Компиляция скетчей Arduino (Uno, Nano, Mega 2560) для лаборатории (симулятор работает в браузере на avr8js).
 
 Сервер только компилирует код avr-gcc в Intel HEX. Код ученика на сервере не выполняется.
 Защита: только разрешенные #include, запрет asm/.incbin/#pragma (иначе через компилятор можно
@@ -18,19 +18,37 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2] / "vendor" / "arduino-avr"
 CORE_SRC = ROOT / "cores" / "arduino"
-VARIANT = ROOT / "variants" / "standard"
-LIBS = {"Servo.h": ROOT / "libraries" / "Servo"}
+LIB_DIR = ROOT / "libraries"
 BUILD_DIR = Path(os.environ.get("ARDUINO_BUILD_DIR", Path(tempfile.gettempdir()) / "academy-arduino"))
 
-MAX_SOURCE = 30_000
-TIMEOUT = 25
-ALLOWED_INCLUDES = {"Arduino.h", "Servo.h", "math.h", "stdlib.h", "string.h", "stdint.h", "avr/pgmspace.h"}
+# Платы: процессор, вариант выводов, макросы как в Arduino IDE, объем flash для отчета
+BOARDS = {
+    "uno": {"mcu": "atmega328p", "variant": "standard", "define": "ARDUINO_AVR_UNO", "flash": 32256, "title": "Arduino Uno"},
+    "nano": {"mcu": "atmega328p", "variant": "eightanaloginputs", "define": "ARDUINO_AVR_NANO", "flash": 30720, "title": "Arduino Nano"},
+    "mega": {"mcu": "atmega2560", "variant": "mega", "define": "ARDUINO_AVR_MEGA2560", "flash": 253952, "title": "Arduino Mega 2560"},
+}
+# Библиотеки: заголовок -> папка в vendor/arduino-avr/libraries
+LIBS = {
+    "Servo.h": "Servo", "Wire.h": "Wire", "SPI.h": "SPI", "EEPROM.h": "EEPROM", "SoftwareSerial.h": "SoftwareSerial",
+    "LiquidCrystal.h": "LiquidCrystal", "LiquidCrystal_I2C.h": "LiquidCrystal_I2C", "Stepper.h": "Stepper",
+    "Adafruit_NeoPixel.h": "Adafruit_NeoPixel", "DHT.h": "DHT", "Adafruit_GFX.h": "Adafruit_GFX",
+    "Adafruit_SSD1306.h": "Adafruit_SSD1306", "TM1637Display.h": "TM1637", "Keypad.h": "Keypad",
+}
+LIB_DIRS = sorted(set(LIBS.values())) + ["Adafruit_BusIO"]
+
+MAX_SOURCE = 40_000
+TIMEOUT = 40
+ALLOWED_INCLUDES = set(LIBS) | {"Arduino.h", "math.h", "stdlib.h", "string.h", "stdint.h", "avr/pgmspace.h", "Fonts/FreeSans9pt7b.h"}
 FORBIDDEN = re.compile(r"\b(asm|__asm__|__asm|incbin|_Pragma)\b|#\s*pragma|#\s*include_next|#\s*import|#\s*line")
 INCLUDE_RE = re.compile(r'^\s*#\s*include\s*[<"]([^>"]+)[>"]', re.M)
-
-FLAGS = ["-mmcu=atmega328p", "-DF_CPU=16000000L", "-DARDUINO=10819", "-DARDUINO_AVR_UNO", "-DARDUINO_ARCH_AVR",
-         "-Os", "-w", "-ffunction-sections", "-fdata-sections"]
 CXXFLAGS = ["-std=gnu++11", "-fpermissive", "-fno-exceptions", "-fno-threadsafe-statics"]
+
+
+def _flags(board: str) -> list[str]:
+    b = BOARDS[board]
+    return [f"-mmcu={b['mcu']}", "-DF_CPU=16000000L", "-DARDUINO=10819", f"-D{b['define']}", "-DARDUINO_ARCH_AVR",
+            "-Os", "-w", "-ffunction-sections", "-fdata-sections"]
+
 
 _core_lock = threading.Lock()
 _cache: OrderedDict[str, dict] = OrderedDict()
@@ -45,39 +63,51 @@ def available() -> bool:
     return shutil.which("avr-gcc") is not None and CORE_SRC.is_dir()
 
 
+def _lib_paths() -> list[Path]:
+    out = []
+    for name in LIB_DIRS:
+        d = LIB_DIR / name
+        out.append(d)
+        if (d / "utility").is_dir():
+            out.append(d / "utility")
+    return out
+
+
 def _run(cmd: list[str], cwd: Path) -> subprocess.CompletedProcess:
     env = {"PATH": os.environ.get("PATH", "/usr/bin:/bin"), "LANG": "C"}
     return subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=TIMEOUT, env=env)
 
 
-def _includes() -> list[str]:
-    return ["-I", str(CORE_SRC), "-I", str(VARIANT)] + [a for d in LIBS.values() for a in ("-I", str(d))]
+def _includes(board: str) -> list[str]:
+    variant = ROOT / "variants" / BOARDS[board]["variant"]
+    return ["-I", str(CORE_SRC), "-I", str(variant)] + [a for d in _lib_paths() for a in ("-I", str(d))]
 
 
-def _build_core() -> Path:
-    """Собирает ядро Arduino (и библиотеки) один раз в core.a."""
-    lib = BUILD_DIR / "core.a"
+def _build_core(board: str) -> Path:
+    """Собирает ядро Arduino и все библиотеки для платы один раз в core-<плата>.a."""
+    lib = BUILD_DIR / f"core-{board}.a"
     if lib.exists():
         return lib
     with _core_lock:
         if lib.exists():
             return lib
-        work = BUILD_DIR / "core-build"
+        work = BUILD_DIR / f"core-build-{board}"
         if work.exists():
             shutil.rmtree(work)
         work.mkdir(parents=True)
         sources = [p for p in CORE_SRC.iterdir() if p.suffix in (".c", ".cpp", ".S")]
-        for d in LIBS.values():
+        for d in _lib_paths():
             sources += [p for p in d.iterdir() if p.suffix in (".c", ".cpp")]
+        flags, inc = _flags(board), _includes(board)
         objs = []
         for src in sources:
-            obj = work / (src.name + ".o")
+            obj = work / (src.parent.name + "_" + src.name + ".o")
             if src.suffix == ".c":
-                cmd = ["avr-gcc", "-c", *FLAGS, "-std=gnu11", *_includes(), str(src), "-o", str(obj)]
+                cmd = ["avr-gcc", "-c", *flags, "-std=gnu11", *inc, str(src), "-o", str(obj)]
             elif src.suffix == ".S":
-                cmd = ["avr-gcc", "-c", "-x", "assembler-with-cpp", *FLAGS, *_includes(), str(src), "-o", str(obj)]
+                cmd = ["avr-gcc", "-c", "-x", "assembler-with-cpp", *flags, *inc, str(src), "-o", str(obj)]
             else:
-                cmd = ["avr-g++", "-c", *FLAGS, *CXXFLAGS, *_includes(), str(src), "-o", str(obj)]
+                cmd = ["avr-g++", "-c", *flags, *CXXFLAGS, *inc, str(src), "-o", str(obj)]
             r = _run(cmd, work)
             if r.returncode != 0:
                 raise RuntimeError(f"core build failed on {src.name}: {r.stderr[-2000:]}")
@@ -130,7 +160,7 @@ def check_source(code: str) -> None:
         raise CompileError("Подключайте библиотеки так: #include <Servo.h>")
     for inc in INCLUDE_RE.findall(plain):
         if inc not in ALLOWED_INCLUDES:
-            raise CompileError(f"Библиотека {inc} недоступна в лаборатории. Можно: {', '.join(sorted(ALLOWED_INCLUDES))}.")
+            raise CompileError(f"Библиотека {inc} недоступна в лаборатории. Можно: {', '.join(sorted(LIBS))}.")
 
 
 def _clean_errors(text: str) -> str:
@@ -143,27 +173,30 @@ def _clean_errors(text: str) -> str:
     return "\n".join(out[:60]).strip()
 
 
-def compile_sketch(code: str) -> dict:
-    """Возвращает {"hex": ..., "size": байт} или поднимает CompileError с текстом ошибки."""
+def compile_sketch(code: str, board: str = "uno") -> dict:
+    """Возвращает {"hex": ..., "size": байт, "flash": всего} или поднимает CompileError с текстом ошибки."""
+    if board not in BOARDS:
+        raise CompileError("Неизвестная плата.")
     check_source(code)
-    key = hashlib.sha256(code.encode()).hexdigest()
+    key = hashlib.sha256((board + "\0" + code).encode()).hexdigest()
     with _cache_lock:
         if key in _cache:
             _cache.move_to_end(key)
             return _cache[key]
     if not available():
         raise CompileError("Компилятор Arduino на сервере не установлен.")
-    core = _build_core()
+    core = _build_core(board)
+    flags, inc = _flags(board), _includes(board)
     with tempfile.TemporaryDirectory(prefix="sketch-", dir=BUILD_DIR) as d:
         work = Path(d)
         protos = _prototypes(_strip_comments(code))
         # #line 1 оставляем только себе: в коде ученика #line запрещен, номера строк в ошибках совпадают с редактором
         src = f'#include <Arduino.h>\n{protos}\n#line 1 "sketch.cpp"\n{code}\n'
         (work / "sketch.cpp").write_text(src)
-        r = _run(["avr-g++", "-c", *FLAGS, *CXXFLAGS, *_includes(), "sketch.cpp", "-o", "sketch.o"], work)
+        r = _run(["avr-g++", "-c", *flags, *CXXFLAGS, *inc, "sketch.cpp", "-o", "sketch.o"], work)
         if r.returncode != 0:
             raise CompileError(_clean_errors(r.stderr) or "Ошибка компиляции.")
-        r = _run(["avr-gcc", "-mmcu=atmega328p", "-Os", "-Wl,--gc-sections", "-o", "sketch.elf", "sketch.o",
+        r = _run(["avr-gcc", f"-mmcu={BOARDS[board]['mcu']}", "-Os", "-Wl,--gc-sections", "-o", "sketch.elf", "sketch.o",
                   str(core), "-lm"], work)
         if r.returncode != 0:
             raise CompileError(_clean_errors(r.stderr) or "Ошибка сборки.")
@@ -172,7 +205,7 @@ def compile_sketch(code: str) -> dict:
             raise CompileError("Не удалось получить HEX.")
         size = _run(["avr-size", "-A", "sketch.elf"], work).stdout
         flash = sum(int(m.group(2)) for m in re.finditer(r"^\.(text|data)\s+(\d+)", size, re.M))
-        result = {"hex": (work / "sketch.hex").read_text(), "size": flash}
+        result = {"hex": (work / "sketch.hex").read_text(), "size": flash, "flash": BOARDS[board]["flash"]}
     with _cache_lock:
         _cache[key] = result
         while len(_cache) > 200:

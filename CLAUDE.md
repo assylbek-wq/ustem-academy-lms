@@ -30,12 +30,20 @@ USTEM Academy - LMS для подготовки учителей. Flask + SQLAlc
   один пункт. Каждый симулятор оформлен как программа, которую копирует: Arduino - Arduino IDE 2 + симуляция схемы,
   SPIKE - приложение SPIKE, FTC - OnBot Java + Driver Station, CanSat - конструктор ракеты как OpenRocket, программа
   как Thonny. Над приложением узкая строка `lab/_bar.html` вместо большого заголовка.
-- Arduino и схемы (`/lab/arduino`, старые ссылки `/lab?preset=` перенаправляются): исходники `assets/lab/` (avr8js, CodeMirror), сборка `bash deploy/build-lab.sh`
-  -> `app/static/js/lab.js` (в гите). Задания: `python3 assets/lab/presets.py` -> `app/static/lab/presets/*.json`.
-  В уроке блок `<div class="lab-preset-ИМЯ"></div>`. Скетчи компилирует сервер (`services/arduino.py`, avr-gcc
-  в Dockerfile, ядро Arduino в `vendor/arduino-avr`), выполняются они в браузере.
-  Сквозная проверка всех заданий в браузере: сервер с `SEED_DEMO=1`, затем
-  `python3 tests/e2e/lab_solutions.py http://localhost:5080` (эталоны) и с `--negative` (стартовый код не проходит).
+- Лаборатория электроники (`/lab/arduino`, старые ссылки `/lab?preset=` перенаправляются): платы Arduino Uno, Nano,
+  Mega 2560 (C++), Raspberry Pi Pico, ESP32, micro:bit (MicroPython), 60+ деталей, 2D-схема + живой 3D-вид, 45 примеров.
+  Исходники `assets/lab/`: `lab.js` (интерфейс), `parts/` (детали: рисунок, выводы, модель для расчета цепи, `device`
+  для протоколов), `devices/` (HD44780, SSD1306, MPU6050, DS3231, WS2812, DHT, HC-SR04, 74HC595, TM1637),
+  `mcu/` (`avr.js` - avr8js для Uno/Nano/Mega; `rp2040.js` - rp2040js с настоящим MicroPython 1.24
+  `app/static/lab/pico/micropython.uf2`, код через USB raw REPL; `pyboard.js` + `pylib.js` + `pytransform.js` - ESP32 и
+  micro:bit: MicroPython WASM из `static/spikesim/` с моделью платы, один интерпретатор на страницу), `solver.js` (узлы цепи),
+  `view3d.js` (Three.js), `examples.js` (примеры). Сборка `bash deploy/build-lab.sh` -> `app/static/js/lab.js` (в гите).
+  Задания: `python3 assets/lab/presets.py` -> `app/static/lab/presets/*.json`. В уроке блок `<div class="lab-preset-ИМЯ"></div>`.
+  Скетчи компилирует сервер (`services/arduino.py`, плата в `BOARDS`, библиотеки в `LIBS`, avr-gcc в Dockerfile, ядро и
+  библиотеки в `vendor/arduino-avr`), выполняются они в браузере. Новую деталь - в `parts/` (имена выводов не менять:
+  на них опираются задания), новый пример - в `examples.js`.
+  Проверки: `node tests/e2e/lab_examples.mjs [--pico]` (схемы примеров, компиляция, MicroPython без браузера); в браузере
+  сервер с `SEED_DEMO=1`, затем `python3 tests/e2e/lab_solutions.py http://localhost:5080` (эталоны) и с `--negative`.
 - Симулятор FTC (шасси, механизмы, Java OpMode, Driver Hub): исходники `assets/lab/ftc/` (`java.js` - перевод
   подмножества Java в async JS, `field.js` - поле BIOBUZZ по CAD FIRST, `core.js` - SDK, физика, очки и проверки
   без DOM, `sim.js` - интерфейс), та же сборка

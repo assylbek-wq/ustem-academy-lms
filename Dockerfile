@@ -10,6 +10,6 @@ COPY . .
 RUN useradd -r -m -u 1001 academy && mkdir -p /data/uploads && chown -R academy /data
 USER academy
 # Ядро Arduino собираем заранее, чтобы первая компиляция в лаборатории была быстрой
-RUN python -c "from app.services import arduino; arduino.compile_sketch('void setup(){} void loop(){}')"
+RUN python -c "from app.services import arduino; [arduino.compile_sketch('void setup(){} void loop(){}', b) for b in arduino.BOARDS]"
 EXPOSE 8010
 CMD ["gunicorn", "wsgi:app", "--bind", "0.0.0.0:8010", "--workers", "3", "--threads", "4", "--timeout", "300", "--forwarded-allow-ips", "*", "--preload"]

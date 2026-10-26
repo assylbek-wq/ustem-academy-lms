@@ -78,6 +78,18 @@ class CompileTest(AppTestCase):
         self.assertFalse(r.get_json()["ok"])
         self.assertIn("sketch:1", r.get_json()["error"])
 
+    def test_compile_boards_and_libraries(self):
+        self.login("admin@academy.demo")
+        code = "#include <Servo.h>\n#include <LiquidCrystal_I2C.h>\n#include <Adafruit_NeoPixel.h>\nServo s; LiquidCrystal_I2C l(0x27,16,2);\nvoid setup(){s.attach(9); l.init();} void loop(){}"
+        sizes = {}
+        for board in ("uno", "nano", "mega"):
+            data = self.client.post("/lab/compile", json={"code": code, "board": board}).get_json()
+            self.assertTrue(data["ok"], (board, data))
+            sizes[board] = data["flash"]
+        self.assertGreater(sizes["mega"], sizes["uno"])
+        r = self.client.post("/lab/compile", json={"code": code, "board": "pico"})
+        self.assertFalse(r.get_json()["ok"])  # Pico программируется на MicroPython, не компилируется
+
     def test_compile_requires_login(self):
         r = self.client.post("/lab/compile", json={"code": "void setup(){} void loop(){}"})
         self.assertIn(r.status_code, (302, 401, 403))

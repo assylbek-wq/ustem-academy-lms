@@ -1,6 +1,7 @@
 {
   "name": "ustem-lab",
   "private": true,
+  "type": "module",
   "description": "Лаборатория USTEM Academy: сборка bash deploy/build-lab.sh -> app/static/js/lab.js",
   "dependencies": {
     "@codemirror/commands": "^6.8.0",
@@ -13,6 +14,7 @@
     "avr8js": "0.20.1",
     "blockly": "^13.4.0",
     "codemirror": "^6.0.1",
+    "rp2040js": "^1.4.1",
     "three": "^0.186.1"
   },
   "devDependencies": {

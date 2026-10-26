@@ -125,13 +125,16 @@ def robots():
 def compile_sketch():
     if _limited(g.user.id):
         return jsonify(ok=False, error="Слишком часто. Подождите минуту и запустите снова."), 429
-    code = (request.get_json(silent=True) or {}).get("code")
+    data = request.get_json(silent=True) or {}
+    code, board = data.get("code"), data.get("board") or "uno"
     if not isinstance(code, str) or not code.strip():
         return jsonify(ok=False, error="Пустой скетч."), 400
+    if board not in arduino.BOARDS:
+        return jsonify(ok=False, error="Неизвестная плата."), 400
     try:
-        res = arduino.compile_sketch(code)
+        res = arduino.compile_sketch(code, board)
     except arduino.CompileError as e:
         return jsonify(ok=False, error=str(e))
     except Exception:  # noqa: BLE001 - сбой компилятора не должен ронять страницу
         return jsonify(ok=False, error="Компилятор временно недоступен. Попробуйте позже."), 503
-    return jsonify(ok=True, hex=res["hex"], size=res["size"])
+    return jsonify(ok=True, hex=res["hex"], size=res["size"], flash=res["flash"])
