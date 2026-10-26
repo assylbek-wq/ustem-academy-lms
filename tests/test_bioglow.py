@@ -50,4 +50,4 @@ class BioglowCourseTest(AppTestCase):
         self.assertEqual(pd["field"], "bioglow")
         self.assertTrue(any(c["type"] == "score_total" for c in pd["checks"]))
         js = (ROOT / "app/static/js/spikesim.js").read_text(encoding="utf-8")
-        self.assertIn("Биоцентрическая архитектура", js)
+        self.assertIn("bioglow/mat.jpg", js)
