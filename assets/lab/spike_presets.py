@@ -105,16 +105,21 @@ def chain(*blocks):
     return head
 
 
+def text(v):
+    return {"shadow": {"type": "wb_text", "fields": {"TEXT": v}}}
+
+
 def program_blocks(*blocks):
-    start = {"type": "spike_start", "x": 30, "y": 30}
+    """Программа из блоков SPIKE 3 (Word Blocks): «когда программа запускается» и цепочка блоков под ней."""
+    start = {"type": "flipperevents_whenProgramStarts", "x": 30, "y": 30}
     if blocks:
         start["next"] = {"block": chain(*blocks)}
     return {"blocks": {"languageVersion": 0, "blocks": [start]}}
 
 
-WRITE_HI = {"type": "spike_write", "inputs": {"TEXT": {"shadow": {"type": "text", "fields": {"TEXT": "Hi"}}}}}
-BEEP = {"type": "spike_beep", "inputs": {"NOTE": num(72), "SEC": num(0.3)}}
-FWD_30 = {"type": "spike_move_for", "fields": {"DIR": "1", "UNIT": "cm"}, "inputs": {"N": num(30)}}
+WRITE_HI = {"type": "flipperlight_lightDisplayText", "inputs": {"TEXT": text("Hi")}}
+BEEP = {"type": "flippersound_beepForTime", "inputs": {"NOTE": num(72), "DURATION": num(0.3)}}
+FWD_30 = {"type": "flippermove_move", "fields": {"DIRECTION": "forward", "UNIT": "cm"}, "inputs": {"VALUE": num(30)}}
 
 BLACK_LINE = "BLACK = 25\n"
 
@@ -132,7 +137,8 @@ PRESETS = {
     "spike-first": {
         "title": "Первая программа: матрица, звук, движение",
         "task": "Соберите программу из блоков: написать Hi на матрице, сыграть сигнал и проехать вперед на 30 см.\n"
-                "Блоки «написать» - в разделе «Свет и звук», «двигаться» - в разделе «Движение». Нажмите «Запуск».",
+                "Блок «написать» - в разделе «Свет», «включить звуковой сигнал» - в разделе «Звук», «переместить» - "
+                "в разделе «Движение». Нажмите «Запуск».",
         "mode": "blocks",
         "start": {"x": 190, "y": 160, "h": -90},
         "blocks": program_blocks(WRITE_HI),
@@ -523,6 +529,14 @@ SOLUTIONS.update({
     "spike-bio-match": {"python": bio_prog("".join(BIO_RUNS[k] for k in ["m13", "m02", "m03", "m04", "m05", "m0809", "m01", "m11", "m0607", "m15", "m12"])),
                         "seconds": 152},
 })
+
+
+# ─── Уроки Competition Ready приложения SPIKE: assets/lab/spike_cr_presets.py ───
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from spike_cr_presets import CR_PRESETS, CR_SOLUTIONS  # noqa: E402
+
+PRESETS.update(CR_PRESETS)
+SOLUTIONS.update(CR_SOLUTIONS)
 
 
 def write() -> list[Path]:

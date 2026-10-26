@@ -62,6 +62,13 @@ USTEM Academy - LMS для подготовки учителей. Flask + SQLAlc
   правил + 50 за жетоны точности + 20 за инспекцию, матч 2:30. Задание включает поле ключом `"field": "bioglow"`
   (задания `spike-bio-*`), в свободной тренировке поле выбирается в шапке. Проверки `mission`, `mission_keep`,
   `score_total`. Курс `app/content/fll_bioglow_season.py` (+ казахский текст в `fll_bioglow_season_kk.py`).
+  SPIKE 1 в 1: блоки как Word Blocks SPIKE 3 (`spike/blocks.js`: категории, цвета и тексты LEGO, поле матрицы 5 x 5, выбор
+  портов; каждый блок-шляпа - отдельная подпрограмма, общий код в MicroPython-модуле `wb.py` из `spike/wbpy.js`; старые
+  блоки `spike_*` скрыты, но работают), модели роботов `spike/robots.js` (`course`, `driving-base`, `advanced`; в задании
+  `"robot": "driving-base"`), панель хаба с показаниями портов, 3D-вид `spike/view3d.js` (кнопки 2D/3D). Предметы уроков
+  (`"objects"`: marker, cube, crate; рука и подъемная рука захватывают, отвал толкает), проверки `obj_zone`, `no_touch`,
+  `near_obj`, `visit`. Задания по урокам Competition Ready - `assets/lab/spike_cr_presets.py` (`spike-cr-*`), проверка
+  блоков - `python3 tests/e2e/spike_wordblocks.py http://localhost:5080`.
 - Лаборатория спутников WSO: CubeSat 1U (глава 13 регламента) и CanSat с ракетой-носителем (глава 12). Общее ядро
   `assets/lab/sat/` (`core.js` - атмосфера, радиолиния, эфир LoRa по формуле Semtech, батарея с просадкой, тепло корпуса;
   `onboard.js` - бортовая электроника и датчики; `pyapi.js` - модуль `sat` для MicroPython; `vm.js` - запуск программы;

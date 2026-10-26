@@ -104,8 +104,8 @@ class SvgField extends Blockly.FieldImage {
   getText_() { return String(this.getValue()); }
   showEditor_() { this.openEditor(); }
   openEditor() {
+    Blockly.DropDownDiv.clearContent(); // пересоздает окно: содержимое берем после очистки
     const div = Blockly.DropDownDiv.getContentDiv();
-    Blockly.DropDownDiv.clearContent();
     const box = document.createElement("div"); box.className = "wb-editor";
     box.style.cssText = "padding:8px;font:600 13px system-ui,sans-serif;color:#fff;user-select:none";
     this.buildEditor(box);
@@ -520,7 +520,7 @@ const BY_TYPE = Object.fromEntries(ALL.map((d) => [d.type, d]));
 const HAT_TYPES = new Set(ALL.filter((d) => d.kind === "hat").map((d) => d.type));
 
 // печатный текст без «е» с точками и длинного тире (правило проекта)
-const fixRu = (s) => (typeof s === "string" ? s.replace(/ё/g, "е").replace(/Ё/g, "Е").replace(/[—–]/g, "-") : s);
+const fixRu = (s) => (typeof s === "string" ? s.replace(/\u0451/g, "\u0435").replace(/\u0401/g, "\u0415").replace(/[\u2014\u2013]/g, "-") : s);
 const MSG = { // подписи Blockly в духе SPIKE (Scratch)
   PROCEDURES_DEFNORETURN_TITLE: "определить", PROCEDURES_DEFNORETURN_PROCEDURE: "блок", PROCEDURES_BEFORE_PARAMS: "с:",
   PROCEDURES_CALL_BEFORE_PARAMS: "с:", PROCEDURES_DEFNORETURN_TOOLTIP: "Мой блок: набор команд под своим именем",
@@ -614,7 +614,7 @@ function variablesFlyout(ws) {
 }
 // «Мои блоки»: блок «определить» и вызовы уже созданных блоков
 function proceduresFlyout(ws) {
-  const out = [{ kind: "label", text: tr("Мои блоки") }, { kind: "block", type: "procedures_defnoreturn" }];
+  const out = [{ kind: "label", text: tr("Мои блоки") }, { kind: "block", type: "procedures_defnoreturn", fields: { NAME: tr("блок") } }];
   for (const [name, params] of Blockly.Procedures.allProcedures(ws)[0]) out.push({ kind: "block", type: "procedures_callnoreturn", extraState: { name, params } });
   return out;
 }

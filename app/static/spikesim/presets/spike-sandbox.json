@@ -19,16 +19,16 @@
    "languageVersion": 0,
    "blocks": [
     {
-     "type": "spike_start",
+     "type": "flipperevents_whenProgramStarts",
      "x": 30,
      "y": 30,
      "next": {
       "block": {
-       "type": "spike_write",
+       "type": "flipperlight_lightDisplayText",
        "inputs": {
         "TEXT": {
          "shadow": {
-          "type": "text",
+          "type": "wb_text",
           "fields": {
            "TEXT": "Hi"
           }
@@ -37,13 +37,13 @@
        },
        "next": {
         "block": {
-         "type": "spike_move_for",
+         "type": "flippermove_move",
          "fields": {
-          "DIR": "1",
+          "DIRECTION": "forward",
           "UNIT": "cm"
          },
          "inputs": {
-          "N": {
+          "VALUE": {
            "shadow": {
             "type": "math_number",
             "fields": {
