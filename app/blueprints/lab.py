@@ -38,6 +38,7 @@ LABS = [
     {"key": "arduino", "group": "robotics", "endpoint": "lab.arduino", "solved": "lab-", "dir": "lab/presets", "glob": "*.json"},
     {"key": "spike", "group": "robotics", "endpoint": "lab.spike", "solved": "spike-", "dir": "spikesim/presets", "glob": "spike-*.json"},
     {"key": "ftc", "group": "robotics", "endpoint": "lab.ftc", "solved": "ftc-", "dir": "ftcsim/presets", "glob": "ftc-*.json"},
+    {"key": "ursim", "group": "robotics", "endpoint": "lab.ursim", "solved": "ursim-", "dir": "ursim", "glob": "presets-*.json"},
     {"key": "robots", "group": "robotics", "endpoint": "lab.robots", "solved": "robot-", "dir": "robots/presets", "glob": "robot-*.json"},
     {"key": "cubesat", "group": "space", "endpoint": "lab.cubesat", "solved": "cubesat-", "dir": "cubesat/presets", "glob": "cubesat-*.json"},
     {"key": "cansat", "group": "space", "endpoint": "lab.cansat", "solved": "cansat-", "dir": "cansat/presets", "glob": "cansat-*.json"},
@@ -107,6 +108,13 @@ def cansat():
     if not re.fullmatch(r"cansat-[a-z0-9-]{1,40}", preset or "") or not (CANSAT_DIR / f"{preset}.json").exists():
         preset = "cansat-sandbox"
     return render_template("lab/sat.html", kind="cansat", preset=preset.removeprefix("cansat-"))
+
+
+@bp.route("/lab/ursim")
+@login_required
+def ursim():
+    """UrSim команды URAN92 (MIT): вождение робота FTC на поле BIOBUZZ, собранная игра в static/ursim."""
+    return render_template("lab/ursim.html")
 
 
 @bp.route("/lab/robots")

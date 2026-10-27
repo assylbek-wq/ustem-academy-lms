@@ -1,0 +1,167 @@
+// End-of-match results over the whole screen, laid out like the FIRST Tech Challenge audience
+// display: blue alliance on the left, red on the right, both scores with the point breakdown in
+// the middle, the WINNER box on the winning side and the event bar along the bottom.
+// No buttons: R (✕ / A) plays again, Esc (○ / B) goes back to the menu.
+
+import type { PadModel } from '../input/gamepad';
+import type { InputManager } from '../input/InputManager';
+import { POINTS, total, type AllianceScore } from '../game/scoring';
+import type { Alliance } from '../robot/robotConfig';
+import { h } from './dom';
+import { keyChip } from './Hud';
+import { t, type TextKey } from './i18n';
+import type { Screen } from './menus';
+import { MenuNav } from './MenuNav';
+
+export interface ResultsActions {
+  /** The same match again */
+  again(): void;
+  /** Back to the main menu */
+  menu(): void;
+}
+
+export interface ResultsTeam {
+  name: string;
+  logo: string;
+}
+
+export interface ResultsInfo {
+  score: Record<Alliance, AllianceScore>;
+  teams: Record<Alliance, ResultsTeam[]>;
+  /** Top bar, e.g. "Match 3" */
+  title: string;
+  /** Bottom bar, e.g. "UrSim · solo play" */
+  event: string;
+}
+
+const NAMES: Record<Alliance, TextKey> = { red: 'results.red', blue: 'results.blue' };
+/** The audience display puts blue on the left. */
+const SIDES: Alliance[] = ['blue', 'red'];
+/** Countdown to the next match shown in the bottom bar, s */
+const NEXT_MATCH = 60;
+
+/** Breakdown rows of the audience display. FOUL is points credited for the opponent's fouls. */
+function rows(s: AllianceScore): [string, number][] {
+  const f = s.field;
+  return [
+    ['AUTO', s.leave * POINTS.leave + s.autoPark * POINTS.autoPark + s.autoTips * POINTS.tip],
+    ['TELEOP HIVE', s.teleopTips * POINTS.tip],
+    ['Other TELEOP', f.cellElements * POINTS.cellElement + f.flowerBottom * POINTS.flowerBottomNectar
+      + f.ownedFlowerElements * POINTS.ownedFlowerElement + f.gardenElements * POINTS.gardenElement + s.teleopPark * POINTS.teleopPark],
+    ['FOUL', s.foulPoints],
+  ];
+}
+
+/** Calls that have words for them in the interface language (the rest are FTC terms like MAJOR FOUL). */
+const CALL_WORDS: Record<string, TextKey> = { 'VERBAL WARNING': 'call.VERBAL WARNING', 'YELLOW CARD': 'call.YELLOW CARD', 'RED CARD': 'call.RED CARD' };
+
+/** "G417 · VERBAL WARNING · Red 1" from the referee (sim/Referee.ts), in the interface language. */
+function callText(call: string): string {
+  return call.split(' · ').map(part => (CALL_WORDS[part] ? t(CALL_WORDS[part]) : part)).join(' · ');
+}
+
+/** Referee calls against an alliance, the same call counted once with ×N. */
+function calls(list: string[]): HTMLElement | '' {
+  if (!list.length) return '';
+  const counts = new Map<string, number>();
+  for (const c of list) counts.set(c, (counts.get(c) ?? 0) + 1);
+  return h('div', { class: 'fr-calls' },
+    h('div', { class: 'fr-calls-title' }, t('results.calls')),
+    ...[...counts].map(([c, n]) => h('div', {}, n > 1 ? `${callText(c)} ×${n}` : callText(c))));
+}
+
+const clockText = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+export class ResultsScreen implements Screen {
+  readonly el = h('div', { class: 'screen menu-results' });
+  readonly nav: MenuNav;
+  private readonly hint = h('span', { class: 'fr-hint' });
+  private readonly clock = h('div', { class: 'fr-clock' });
+  private readonly record: Record<Alliance, HTMLElement> = { red: h('div', { class: 'fr-record' }), blue: h('div', { class: 'fr-record' }) };
+  private model: PadModel | null = null;
+  private shownAt = 0;
+
+  constructor(private readonly actions: ResultsActions) {
+    this.nav = new MenuNav(this.el, actions.menu);
+  }
+
+  update(input: InputManager): void {
+    if (input.model1 !== this.model) this.renderHint(input.model1);
+    this.clock.textContent = clockText(Math.max(0, NEXT_MATCH - (performance.now() - this.shownAt) / 1000));
+    if (input.keyboard.pressed('KeyR') || input.menuPressed('a')) this.actions.again();
+    else if (input.keyboard.pressed('Escape') || input.triggered('pause')) this.actions.menu();
+  }
+
+  private renderHint(model: PadModel): void {
+    this.model = model;
+    const pad = model !== 'keyboard';
+    this.hint.replaceChildren(
+      h('span', {}, h('span', { class: 'key' }, 'R'), pad ? keyChip(model, 'a') : '', t('results.again')),
+      h('span', {}, keyChip('keyboard', 'guide'), pad ? keyChip(model, 'b') : '', t('results.menu')),
+    );
+  }
+
+  /** "★ Personal best ★" tab over an alliance score, like "Event High Score" (set once the server answers). */
+  setRecord(alliance: Alliance, text: string): void {
+    this.record[alliance].textContent = `★ ${text} ★`;
+    this.record[alliance].classList.add('fr-record-on');
+  }
+
+  show(info: ResultsInfo): void {
+    this.model = null;
+    this.shownAt = performance.now();
+    this.clock.textContent = clockText(NEXT_MATCH);
+    for (const a of SIDES) {
+      this.record[a].textContent = '';
+      this.record[a].classList.remove('fr-record-on');
+    }
+    const totals = { red: total(info.score.red), blue: total(info.score.blue) };
+    const winner: Alliance | null = totals.red === totals.blue ? null : totals.red > totals.blue ? 'red' : 'blue';
+    const table = { red: rows(info.score.red), blue: rows(info.score.blue) };
+
+    const card = (a: Alliance) => {
+      const s = info.score[a];
+      return s.redCards ? 'red' : s.yellowCards ? 'yellow' : '';
+    };
+    const side = (a: Alliance) => h('div', { class: `fr-side fr-side-${a}` },
+      winner === a
+        ? h('div', { class: 'fr-winner' }, h('span', {}, t('results.winner')), h('span', { class: 'fr-cup' }, '🏆'))
+        : winner === null ? h('div', { class: 'fr-winner fr-tie' }, h('span', {}, t('results.tie'))) : '',
+      h('div', { class: 'fr-teams' },
+        ...(info.teams[a].length ? info.teams[a] : [{ name: '—', logo: '' }]).map(t =>
+          h('div', { class: `fr-team fr-team-${a}` },
+            h('span', { class: 'fr-team-logo' }, t.logo ? h('img', { src: t.logo, alt: '' }) : ''),
+            h('span', { class: 'fr-team-name' }, t.name),
+            card(a) ? h('span', { class: `fr-card fr-card-${card(a)}` }) : ''))),
+      info.score[a].redCards ? h('div', { class: 'fr-dq' }, t('results.dq')) : '',
+      calls(info.score[a].calls),
+    );
+
+    this.el.replaceChildren(
+      h('div', { class: 'fr' },
+        h('div', { class: 'fr-top' },
+          h('div', { class: 'fr-top-left' }, t('results.top')),
+          h('div', { class: 'fr-top-title' }, info.title),
+          h('div', { class: 'fr-top-logo' }, h('img', { src: 'assets/biobuzz.webp', alt: 'BIOBUZZ' }))),
+        h('div', { class: 'fr-main' },
+          side('blue'),
+          h('div', { class: 'fr-center' },
+            h('div', { class: 'fr-scores' },
+              ...SIDES.map(a => h('div', { class: `fr-score fr-score-${a}` },
+                this.record[a],
+                h('span', { class: 'fr-score-name' }, t(NAMES[a])),
+                h('strong', {}, String(totals[a]))))),
+            h('div', { class: 'fr-table' },
+              ...table.blue.map(([label, blue], i) =>
+                h('div', { class: 'fr-row' },
+                  h('span', { class: 'fr-num' }, String(blue)),
+                  h('span', { class: 'fr-label' }, label),
+                  h('span', { class: 'fr-num' }, String(table.red[i][1])))))),
+          side('red')),
+        h('div', { class: 'fr-bottom' },
+          h('div', { class: 'fr-ftc' }, h('img', { src: 'assets/ftc.webp', alt: 'FIRST Tech Challenge' })),
+          this.clock,
+          h('div', { class: 'fr-event' }, h('span', {}, info.event), this.hint))),
+    );
+  }
+}

@@ -90,6 +90,9 @@ USTEM Academy - LMS для подготовки учителей. Flask + SQLAlc
   Задания: `python3 assets/lab/robot_presets.py` -> `app/static/robots/presets/robot-*.json`, в уроке
   `<div class="robot-sim-ИМЯ"></div>`. Курс `app/content/unitree_mujoco.py` (slug `unitree-mujoco`). Сквозная проверка без
   браузера: `node tests/e2e/robot_solutions.mjs` и `--negative`.
+- UrSim (`/lab/ursim`): готовая игра-симулятор вождения FTC BIOBUZZ команды URAN92 (MIT, TypeScript + three.js + Rapier),
+  исходники как есть в `vendor/ursim/` (наши правки: казахский `src/ui/i18n.kk.json`, язык из `?lang=`), сборка
+  `bash deploy/build-ursim.sh` -> `app/static/ursim/` (в гите), на странице во фрейме; рекорды на `ursim.onrender.com`.
 - Казахский язык симуляторов (`<html lang="kk">`): строки в коде остаются русскими, перевод в словаре
   `assets/lab/i18n/kk.json` (ru -> kk; правила и термины - `i18n/GLOSSARY.md`, без калек). `i18n/index.js`:
   `localize(root)` переводит текст и подписи внутри симулятора (MutationObserver), canvas и confirm, `trPreset`/`trCode` -

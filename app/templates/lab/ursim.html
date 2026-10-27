@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% from "lab/_bar.html" import lab_bar with context %}
+{% block title %}{{ t('ursim.title') }}{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ static_v('css/labhub.css') }}">{% endblock %}
+{% block content %}
+{{ lab_bar(t('labhub.ursim.name')) }}
+<iframe id="ursim" class="ursim-frame" title="{{ t('ursim.title') }}" allow="fullscreen; gamepad; autoplay"
+  src="{{ url_for('static', filename='ursim/index.html') }}?lang={{ locale }}&amp;server=https://ursim.onrender.com"></iframe>
+<div class="ursim-tools">
+  <p>{{ t('ursim.credit') }}</p>
+  <button type="button" onclick="var f=document.getElementById('ursim');(f.requestFullscreen||f.webkitRequestFullscreen).call(f);f.focus()">{{ t('ursim.fullscreen') }}</button>
+</div>
+{% endblock %}

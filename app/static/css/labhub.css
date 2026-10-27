@@ -18,6 +18,7 @@
 .hub-art-ftc { background: #fdeee4; color: #c2410c; }
 .hub-art-cubesat { background: #e8eefb; color: #1e40af; }
 .hub-art-cansat { background: #f1ecfb; color: #6d28d9; }
+.hub-art-ursim { background: #fdf3e2; color: #b45309; }
 .hub-art-robots { background: #eceff3; color: #334155; }
 .hub-text { display: grid; gap: 2px; min-width: 0; }
 .hub-name { font-weight: 600; font-size: 15.5px; color: #0f172a; }
@@ -38,3 +39,8 @@
 .lab-crumbs a { color: #475569; text-decoration: none; }
 .lab-crumbs a:hover { color: #0f172a; text-decoration: underline; }
 .lab-crumbs h1 { margin: 0; font-size: 15px; font-weight: 600; color: #0f172a; }
+/* UrSim: собранная игра во фрейме на всю ширину */
+.ursim-frame { display: block; width: 100%; height: calc(100vh - 170px); min-height: 480px; border: 0; border-radius: 8px; background: #0b0f14; }
+.ursim-tools { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 10px; }
+.ursim-tools p { margin: 0; color: #64748b; font-size: 13px; max-width: 80ch; }
+.ursim-tools button { flex: none; font-size: 13px; font-weight: 600; padding: 5px 14px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; color: #1e293b; cursor: pointer; }
