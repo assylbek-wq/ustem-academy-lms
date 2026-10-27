@@ -58,6 +58,9 @@ class User(db.Model):
     locale = db.Column(db.String(8), default="ru")
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     consent_at = db.Column(db.DateTime)  # согласие на обработку персональных данных
+    # почта подтверждена: при самостоятельной регистрации - ссылкой из письма; аккаунты, которые создал администратор
+    # или импорт, считаются подтвержденными (адрес указал заказчик), но вход по приглашению тоже проверяет почту
+    email_verified_at = db.Column(db.DateTime, default=utcnow)
     portfolio_public = db.Column(db.Boolean, default=False, nullable=False)
     portfolio_token = db.Column(db.String(64), unique=True, default=lambda: new_token(12))
     invite_token = db.Column(db.String(64), unique=True, index=True)

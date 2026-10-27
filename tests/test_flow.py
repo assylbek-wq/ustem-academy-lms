@@ -193,7 +193,7 @@ class FullFlowTest(AppTestCase):
         r = anon.get(f"/join/{cohort.invite_code}")
         self.assertEqual(r.status_code, 200)
         r = anon.post("/register", data={"full_name": "Новый Учитель", "email": "new@test.kz",
-                                         "password": "password1", "consent": "1"})
+                                         "password": "password1", "consent": "1", "phone": "+77011112233"})
         self.assertEqual(r.status_code, 302)
         u = User.query.filter_by(email="new@test.kz").first()
         self.assertIsNotNone(Enrollment.query.filter_by(cohort_id=cohort.id, user_id=u.id).first())

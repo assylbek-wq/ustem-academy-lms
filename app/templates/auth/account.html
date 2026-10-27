@@ -9,7 +9,7 @@
     <div class="grid sm:grid-cols-2 gap-4">
       <div><label class="label">{{ t('auth.full_name') }}</label><input name="full_name" value="{{ user.full_name }}" class="input" required></div>
       <div><label class="label">Email</label><input value="{{ user.email }}" class="input bg-slate-50" disabled></div>
-      <div><label class="label">{{ t('auth.phone') }}</label><input name="phone" value="{{ user.phone or '' }}" class="input"></div>
+      <div><label class="label">{{ t('auth.phone') }} *</label><input type="tel" name="phone" value="{{ user.phone or '' }}" class="input" inputmode="tel" autocomplete="tel" placeholder="+7 700 000 00 00"></div>
       <div><label class="label">{{ t('auth.city') }}</label><input name="city" value="{{ user.city or '' }}" class="input"></div>
       <div class="sm:col-span-2"><label class="label">{{ t('auth.organization') }}</label><input name="organization" value="{{ user.organization or '' }}" class="input"></div>
       <div><label class="label">{{ t('account.language') }}</label>

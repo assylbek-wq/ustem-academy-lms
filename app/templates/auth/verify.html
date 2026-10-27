@@ -1,0 +1,15 @@
+{% extends "auth/_card.html" %}
+{% from "_macros.html" import csrf with context %}
+{% block title %}{{ t('auth.verify_title') }} - USTEM Academy{% endblock %}
+{% block heading %}{{ t('auth.verify_title') }}{% endblock %}
+{% block form %}
+<div class="space-y-4">
+  <p class="text-sm text-slate-600">{{ t('auth.verify_text', email=g.user.email) }}</p>
+  <p class="text-sm text-slate-500">{{ t('auth.verify_spam') }}</p>
+  <form method="post" action="{{ url_for('auth.verify_resend') }}">
+    {{ csrf() }}
+    <button class="btn-primary w-full">{{ t('auth.verify_resend') }}</button>
+  </form>
+  <p class="text-sm text-slate-500">{{ t('auth.verify_wrong') }} <a href="{{ url_for('auth.logout') }}" class="text-brand-700 font-semibold">{{ t('auth.verify_again') }}</a></p>
+</div>
+{% endblock %}

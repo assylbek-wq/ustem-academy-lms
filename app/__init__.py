@@ -6,7 +6,7 @@ import mimetypes
 import os
 from datetime import date, datetime
 
-from flask import Flask, g, request, session
+from flask import Flask, g, redirect, request, session, url_for
 from markupsafe import Markup
 
 from .config import Config
@@ -55,6 +55,13 @@ def create_app(config: type = Config, **overrides) -> Flask:
         g.locale = session.get("locale") or (g.user.locale if g.user else None) or "ru"
         if g.locale not in LOCALES:
             g.locale = "ru"
+        # самостоятельная регистрация: пока почта не подтверждена, открыты только вход, выход и страница подтверждения
+        if g.user and request.endpoint and not request.endpoint.startswith(("auth.", "static", "public.")):
+            from .blueprints.auth import needs_verification
+            if needs_verification(g.user):
+                if request.path.startswith("/api/"):
+                    return {"error": "email_not_verified"}, 403
+                return redirect(url_for("auth.verify_needed"))
 
     @app.after_request
     def security_headers(resp):
