@@ -286,7 +286,8 @@ def forgot():
     sent = False
     if request.method == "POST":
         email = (request.form.get("email") or "").strip().lower()
-        if not _rate_limited(f"forgot:{request.remote_addr}", limit=5, window=900):
+        # лимит на почту и общий лимит на адрес: учителя одной школы или зала часто выходят в сеть с одного IP
+        if not _rate_limited(f"forgot:{email}", limit=5, window=900) and not _rate_limited(f"forgot-ip:{request.remote_addr}", limit=60, window=900):
             user = User.query.filter_by(email=email, is_active=True).first()
             if user:
                 token = user.issue_invite(days=2)

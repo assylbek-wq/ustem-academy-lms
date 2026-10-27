@@ -21,6 +21,10 @@ from .models import Notification, User, db, local_today
 
 def create_app(config: type = Config, **overrides) -> Flask:
     app = Flask(__name__, static_folder="static", template_folder="templates")
+    # за Caddy: настоящий IP посетителя из X-Forwarded-For (иначе все учителя «приходят» с одного адреса прокси,
+    # и лимиты попыток входа и восстановления пароля срабатывают на всех сразу)
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
     app.config.from_object(config)
     app.config.update(overrides)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
