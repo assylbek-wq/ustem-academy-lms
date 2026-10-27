@@ -9,6 +9,10 @@
   {% include "live/_style.html" %}
   <style>
     :root{--card2:#121219;--soft:#c9c9d6}
+    .sharebox{max-width:1240px;margin:14px auto 0;padding:16px 20px;background:var(--card);border:1px solid var(--line);border-radius:18px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;position:relative;z-index:2}
+    .sharebox[hidden]{display:none}
+    .sharerow{display:flex;gap:8px;flex:1;min-width:260px}
+    .sharerow input{flex:1;min-width:0;background:#0b0b12;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font:13px Inter,sans-serif}
     body{background:var(--bg);color:var(--text);min-height:100vh}
     .bgfx{position:fixed;inset:0;pointer-events:none;background:radial-gradient(900px 600px at 0% 0%,rgba(47,91,255,.18),transparent 60%),radial-gradient(800px 600px at 100% 100%,rgba(255,106,26,.12),transparent 60%),radial-gradient(700px 500px at 80% 0%,rgba(138,43,226,.14),transparent 60%)}
     header{position:sticky;top:0;z-index:20;background:rgba(11,11,18,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
@@ -136,11 +140,20 @@
   <span class="ttl">{{ t('live.st_title') }}</span>
   {% if data.live %}<span class="live">LIVE</span>{% endif %}
   <span class="sp"></span>
+  {% if not guest %}
+  <button class="btn" type="button" id="shareBtn">🔗 {{ t('live.st_share') }}</button>
   <a class="btn" href="{{ url_for('live.export', slug=ev.slug) }}">⬇ Excel</a>
   <a class="btn" href="{{ url_for('live.control', slug=ev.slug) }}">{{ t('live.control') }}</a>
-  <span class="langs">{% for l in ('kk', 'ru') %}<a href="?lang={{ l }}" class="{{ 'on' if locale == l }}">{{ l|upper }}</a>{% endfor %}</span>
+  {% endif %}
+  <span class="langs">{% for l in ('kk', 'ru') %}<a href="?{{ 'key=' ~ key ~ '&' if key }}lang={{ l }}" class="{{ 'on' if locale == l }}">{{ l|upper }}</a>{% endfor %}</span>
 </div></header>
 <div class="tip" id="tip"></div>
+{% if not guest %}
+<div class="sharebox" id="shareBox" hidden>
+  <div><b>{{ t('live.st_share_h') }}</b><div class="muted" style="font-size:13px;margin-top:4px">{{ t('live.st_share_sub') }}</div></div>
+  <div class="sharerow"><input id="shareUrl" readonly value="{{ share_url }}"><button class="btn" type="button" id="shareCopy">{{ t('live.st_copy') }}</button></div>
+</div>
+{% endif %}
 
 <main>
   <div class="hero reveal">
@@ -232,7 +245,18 @@
 
 <script>
 (function () {
-  var DATA = {{ data|tojson }}, LANG = {{ locale|tojson }}, SLUG = {{ ev.slug|tojson }};
+  var DATA = {{ data|tojson }}, LANG = {{ locale|tojson }}, SLUG = {{ ev.slug|tojson }}, KEY = {{ key|tojson }};
+  (function () {
+    var b = document.getElementById('shareBtn'); if (!b) return;
+    var box = document.getElementById('shareBox'), inp = document.getElementById('shareUrl'), c = document.getElementById('shareCopy');
+    b.onclick = function () { box.hidden = !box.hidden; if (!box.hidden) inp.select(); };
+    c.onclick = function () {
+      inp.select();
+      var done = function () { c.textContent = {{ t('live.st_copied')|tojson }}; setTimeout(function () { c.textContent = {{ t('live.st_copy')|tojson }}; }, 1600); };
+      if (navigator.clipboard) navigator.clipboard.writeText(inp.value).then(done, function () { document.execCommand('copy'); done(); });
+      else { document.execCommand('copy'); done(); }
+    };
+  })();
   var BLOCKS = {{ blocks|tojson }};
   var T = {{ {
     'subj': dict(physics=t('live.subj_physics'), informatics=t('live.subj_informatics'), math=t('live.subj_math'), technology=t('live.subj_technology'),
@@ -433,7 +457,7 @@
   drawTl(false);
   Array.prototype.forEach.call(document.querySelectorAll('.reveal'), function (el) { if (io) io.observe(el); else { el.classList.add('in'); grow(el); } });
   if (DATA.live) setInterval(function () {
-    fetch('/live/' + SLUG + '/stats.json', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (d) {
+    fetch('/live/' + SLUG + '/stats.json' + (KEY ? '?key=' + encodeURIComponent(KEY) : ''), {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (d) {
       DATA = d; render(); drawTl(false);
       Array.prototype.forEach.call(document.querySelectorAll('[data-k]'), function (el) { var v = d.kpi[el.dataset.k]; if (v !== undefined) el.textContent = v; });
       Array.prototype.forEach.call(document.querySelectorAll('.reveal.in'), function (el) {

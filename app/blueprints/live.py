@@ -10,11 +10,13 @@ from __future__ import annotations
 
 import io
 import re
+import hashlib
+import hmac
 import secrets
 from datetime import datetime
 
 import segno
-from flask import Blueprint, abort, g, jsonify, redirect, render_template, request, send_file, url_for
+from flask import Blueprint, abort, current_app, g, jsonify, redirect, render_template, request, send_file, url_for
 from markupsafe import Markup
 
 from ..core import audit, role_required
@@ -329,20 +331,54 @@ def control_ask(slug, ask_id):
     return jsonify({"ok": True})
 
 
-@bp.route("/<slug>/stats")
-@role_required("methodist", "trainer")
-def stats_page(slug):
-    """Статистика и аналитика эфира для команды USTEM."""
+def stats_key(ev: LiveEvent) -> str:
+    """Ключ гостевой ссылки на статистику (для министерства и партнеров). Выводится из SECRET_KEY, без хранения."""
+    secret = str(current_app.config.get("SECRET_KEY") or "").encode()
+    return hmac.new(secret, f"live-stats:{ev.slug}:{ev.id}".encode(), hashlib.sha256).hexdigest()[:24]
+
+
+def _stats_access(ev: LiveEvent) -> str | None:
+    """'staff' - команда USTEM, 'guest' - по ссылке с ключом (без персональных данных), None - нет доступа."""
+    if g.user and g.user.has_role("methodist", "trainer"):
+        return "staff"
+    key = request.args.get("key") or ""
+    if key and secrets.compare_digest(key, stats_key(ev)):
+        return "guest"
+    return None
+
+
+def _stats_data(ev: LiveEvent, guest: bool) -> dict:
     from ..services import live_stats
+    data = live_stats.compute(ev)
+    if guest:  # гостям без ФИО и школ авторов вопросов
+        for a in data["asks"]:
+            a["name"] = ""
+            a["school"] = ""
+    return data
+
+
+@bp.route("/<slug>/stats")
+def stats_page(slug):
+    """Статистика и аналитика эфира: команде USTEM и гостям по ссылке с ключом."""
     ev = _event(slug)
-    return render_template("live/stats.html", ev=ev, data=live_stats.compute(ev), blocks=svc.blocks(slug))
+    access = _stats_access(ev)
+    if not access:
+        if not g.user:
+            return redirect(url_for("auth.login", next=request.full_path))
+        abort(403)
+    guest = access == "guest"
+    share_url = absolute(url_for("live.stats_page", slug=slug, key=stats_key(ev), lang="ru")) if not guest else ""
+    return render_template("live/stats.html", ev=ev, data=_stats_data(ev, guest), blocks=svc.blocks(slug),
+                           guest=guest, share_url=share_url, key=request.args.get("key", "") if guest else "")
 
 
 @bp.route("/<slug>/stats.json")
-@role_required("methodist", "trainer")
 def stats_json(slug):
-    from ..services import live_stats
-    resp = jsonify(live_stats.compute(_event(slug)))
+    ev = _event(slug)
+    access = _stats_access(ev)
+    if not access:
+        abort(403)
+    resp = jsonify(_stats_data(ev, access == "guest"))
     resp.headers["Cache-Control"] = "no-store"
     return resp
 
