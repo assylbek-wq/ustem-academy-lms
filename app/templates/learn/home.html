@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="{{ static_v('css/journey.css') }}">
 {% endblock %}
 {% block content %}
-{{ page_header(t('learn.hello', name=user.full_name.split()[0] if user.full_name else ''), t('learn.hello_sub'), icon='👋') }}
+{{ page_header(t('learn.hello', name=user.first_name), t('learn.hello_sub'), icon='👋') }}
 
 {% if staff_links %}
 <div class="flex flex-wrap gap-2 mb-6">

@@ -51,6 +51,26 @@ class User(db.Model):
     email = db.Column(db.String(255), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255))
     full_name = db.Column(db.String(255), nullable=False)
+
+    @property
+    def first_name(self) -> str:
+        """Имя для приветствия. В форме пишут «Фамилия Имя Отчество», но бывает и «Имя Фамилия»:
+        фамилию узнаем по окончанию (-ов, -ева, -ин, -баев...), отчество - по -ович, -овна, -ұлы, -қызы."""
+        parts = [w for w in (self.full_name or "").replace(",", " ").split() if w]
+        if not parts:
+            return ""
+        if len(parts) == 1:
+            return parts[0]
+        low = [w.lower().strip(".") for w in parts]
+        patr = ("ович", "евич", "ьич", "овна", "евна", "ична", "инична", "ұлы", "улы", "қызы", "кызы", "uly", "kyzy", "ovich", "ovna")
+        sur = ("ов", "ев", "ёв", "ова", "ева", "ёва", "ин", "ина", "ын", "ына", "ий", "ая", "ко", "ук", "юк", "ян", "дзе",
+               "баев", "баева", "uly", "ov", "ova", "ev", "eva", "in", "ina")
+        cand = [i for i in range(len(parts)) if not low[i].endswith(patr)]
+        if len(cand) >= 2 and low[cand[0]].endswith(sur) and not low[cand[1]].endswith(sur):
+            return parts[cand[1]]
+        if len(cand) >= 2 and low[cand[1]].endswith(sur) and not low[cand[0]].endswith(sur):
+            return parts[cand[0]]
+        return parts[1] if len(cand) >= 2 else parts[0]   # по форме: сначала фамилия, потом имя
     phone = db.Column(db.String(64))
     organization = db.Column(db.String(255))
     city = db.Column(db.String(128))
