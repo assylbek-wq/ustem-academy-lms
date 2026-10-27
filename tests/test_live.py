@@ -119,3 +119,34 @@ class LiveTest(AppTestCase):
         self.assertEqual(LiveEvent.query.get(self.ev.id).state["mode"], "waiting")
         self.assertIn("id=\"reset\"", admin.get("/live/keleshek/control").get_data(as_text=True))
         self.assertEqual(User.query.filter_by(email="teacher1@academy.demo").count(), 1)
+
+    def test_edit_add_delete_questions(self):
+        op = self.new_client("methodist@academy.demo")
+        q = LiveQuestion.query.filter_by(event_id=self.ev.id, key="q1").first()
+        body = {"block": 1, "text": {"kk": "Жаңа сұрақ?", "ru": "Новый вопрос?"},
+                "options": [{"kk": "А"}, {"kk": "Б"}, {"kk": ""}, {"kk": "В"}], "correct": 2,
+                "note": {"kk": "Себебі"}, "seconds": 25}
+        r = op.post(f"/live/keleshek/control/question/{q.id}", json=body)
+        self.assertTrue(r.get_json()["ok"], r.get_json())
+        db_q = LiveQuestion.query.get(q.id)
+        self.assertEqual((db_q.text["kk"], len(db_q.options), db_q.correct, db_q.seconds), ("Жаңа сұрақ?", 3, 2, 25))
+        svc.ensure_events()  # перезапуск Академии не затирает правку
+        self.assertEqual(LiveQuestion.query.get(q.id).text["kk"], "Жаңа сұрақ?")
+        self.assertEqual(op.post(f"/live/keleshek/control/question/{q.id}", json={**body, "options": [{"kk": "А"}]}).status_code, 400)
+        n = LiveQuestion.query.filter_by(event_id=self.ev.id).count()
+        r = op.post("/live/keleshek/control/question", json={**body, "block": 1}).get_json()
+        new = LiveQuestion.query.get(r["id"])
+        self.assertEqual(LiveQuestion.query.filter_by(event_id=self.ev.id).count(), n + 1)
+        block1 = [x.key for x in LiveQuestion.query.filter_by(event_id=self.ev.id).order_by(LiveQuestion.position) if x.block == 1]
+        self.assertEqual(block1[-1], new.key)
+        order = [x.position for x in LiveQuestion.query.filter_by(event_id=self.ev.id).order_by(LiveQuestion.position)]
+        self.assertEqual(order, sorted(set(order)))
+        self.assertTrue(op.post(f"/live/keleshek/control/question/{new.id}/delete", json={}).get_json()["ok"])
+        # вопрос с ответами удалить нельзя
+        teacher = self.new_client("teacher1@academy.demo")
+        teacher.get("/live/keleshek")
+        op.post("/live/keleshek/control/state", json={"mode": "question", "qid": q.id})
+        teacher.post("/live/keleshek/answer", json={"qid": q.id, "choice": 2, "ms": 100})
+        self.assertEqual(op.post(f"/live/keleshek/control/question/{q.id}/delete", json={}).status_code, 400)
+        self.assertEqual(self.client.post(f"/live/keleshek/control/question/{q.id}", json=body).status_code, 302)
+        self.assertIn('data-edit="new"', op.get("/live/keleshek/control").get_data(as_text=True))

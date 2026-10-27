@@ -1143,6 +1143,22 @@ _S.update({
     'live.c_reset_prompt': ('Все ответы, анкеты, баллы и вопросы этого эфира будут удалены без возврата. Для подтверждения введите код эфира: {slug}', 'Осы эфирдің барлық жауаптары, сауалнамалары, ұпайлары және сұрақтары қайтарусыз өшіріледі. Растау үшін эфир кодын жазыңыз: {slug}', 'All answers, profiles, scores and questions of this live will be deleted for good. To confirm, type the live code: {slug}'),
     'live.c_reset_bad': ('Код не совпал, ничего не удалено.', 'Код сәйкес келмеді, ештеңе өшірілген жоқ.', 'Code did not match, nothing was deleted.'),
     'live.c_reset_done': ('Обнулено: ответов {a}, зрителей {v}, вопросов {q}.', 'Нөлденді: жауап {a}, көрермен {v}, сұрақ {q}.', 'Reset: {a} answers, {v} viewers, {q} questions.'),
+    'audit.live.question': ('Эфир: вопрос изменен', 'Эфир: сұрақ өзгертілді', 'Live: question saved'),
+    'audit.live.question_delete': ('Эфир: вопрос удален', 'Эфир: сұрақ өшірілді', 'Live: question deleted'),
+    'live.q_edit': ('Изменить вопрос', 'Сұрақты өзгерту', 'Edit question'),
+    'live.q_add': ('Добавить вопрос', 'Сұрақ қосу', 'Add question'),
+    'live.q_hint': ('Правки сразу видны на экране и у учителей. Вопрос, на который уже отвечали, удалить нельзя.', 'Өзгерістер экранда және мұғалімдерде бірден көрінеді. Жауап берілген сұрақты өшіруге болмайды.', 'Changes show on screen and for teachers right away. Answered questions cannot be deleted.'),
+    'live.q_text': ('Вопрос', 'Сұрақ', 'Question'),
+    'live.q_options': ('Варианты ответа', 'Жауап нұсқалары', 'Answer options'),
+    'live.q_options_hint': ('От 2 до 4 вариантов. Отметьте правильный кружком ✓. Пустые строки не показываются.', '2-ден 4-ке дейін нұсқа. Дұрысын ✓ белгісімен белгілеңіз. Бос жолдар көрсетілмейді.', '2 to 4 options. Mark the right one with ✓. Empty rows are skipped.'),
+    'live.q_note': ('Пояснение', 'Түсіндірме', 'Explanation'),
+    'live.q_seconds': ('Секунд на ответ', 'Жауапқа секунд', 'Seconds to answer'),
+    'live.q_cancel': ('Отмена', 'Болдырмау', 'Cancel'),
+    'live.q_delete': ('Удалить вопрос', 'Сұрақты өшіру', 'Delete question'),
+    'live.q_del_confirm': ('Удалить этот вопрос?', 'Бұл сұрақты өшіру керек пе?', 'Delete this question?'),
+    'live.q_del_used': ('На этот вопрос уже отвечали или он сейчас на экране: удалить нельзя, можно изменить текст.', 'Бұл сұраққа жауап берілген немесе ол қазір экранда: өшіруге болмайды, мәтінін өзгертуге болады.', 'This question has answers or is on screen now: it cannot be deleted, but you can edit it.'),
+    'live.q_err': ('Заполните вопрос, от 2 до 4 вариантов, отметьте правильный; время от 10 до 120 секунд.', 'Сұрақты, 2-4 нұсқаны толтырып, дұрысын белгілеңіз; уақыт 10-120 секунд.', 'Fill in the question and 2-4 options, mark the right one; time 10 to 120 seconds.'),
+    'live.q_warn_live': ('Этот вопрос сейчас на экране: правка появится у всех через 1-2 секунды. Если поменяете правильный ответ, баллы уже ответивших не пересчитаются.', 'Бұл сұрақ қазір экранда: өзгеріс 1-2 секундта бәрінде көрінеді. Дұрыс жауапты өзгертсеңіз, жауап бергендердің ұпайы қайта есептелмейді.', 'This question is on screen now: the edit shows for everyone in 1-2 seconds. Changing the right answer does not recount points already given.'),
 })
 
 

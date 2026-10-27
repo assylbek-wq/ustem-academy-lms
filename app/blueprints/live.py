@@ -237,6 +237,8 @@ def control(slug):
     links = _links(ev)
     return render_template("live/control.html", ev=ev, qs=qs, blocks=svc.blocks(slug), links=links,
                            qsec={str(q.id): q.seconds for q in qs},
+                           qdata={str(q.id): {"block": q.block, "text": q.text, "options": q.options, "correct": q.correct,
+                                              "note": q.note or {}, "seconds": q.seconds} for q in qs},
                            screen_url=absolute(url_for("live.screen", slug=slug, key=ev.screen_key, lang="kk")),
                            overlay_url=absolute(url_for("live.overlay", slug=slug, key=ev.screen_key, lang="kk")))
 
@@ -324,6 +326,41 @@ def control_ask(slug, ask_id):
         LiveAsk.query.filter_by(event_id=ev.id, status="picked").update({"status": "done"})
     a.status = status
     db.session.commit()
+    return jsonify({"ok": True})
+
+
+@bp.route("/<slug>/control/question", methods=["POST"])
+@bp.route("/<slug>/control/question/<int:qid>", methods=["POST"])
+@role_required("methodist", "trainer")
+def control_question(slug, qid=None):
+    """Изменить вопрос викторины или добавить новый (без qid)."""
+    ev = _event(slug)
+    q = None
+    if qid:
+        q = db.session.get(LiveQuestion, qid)
+        if not q or q.event_id != ev.id:
+            abort(404)
+    q, err = svc.save_question(ev, request.get_json(silent=True) or {}, q)
+    if err:
+        return jsonify({"ok": False, "error": t(err)}), 400
+    audit("live.question", "live_question", q.id, key=q.key)
+    db.session.commit()
+    return jsonify({"ok": True, "id": q.id})
+
+
+@bp.route("/<slug>/control/question/<int:qid>/delete", methods=["POST"])
+@role_required("methodist", "trainer")
+def control_question_delete(slug, qid):
+    ev = _event(slug)
+    q = db.session.get(LiveQuestion, qid)
+    if not q or q.event_id != ev.id:
+        abort(404)
+    if LiveAnswer.query.filter_by(question_id=q.id).first() or (ev.state or {}).get("qid") == q.id:
+        return jsonify({"ok": False, "error": t("live.q_del_used")}), 400
+    audit("live.question_delete", "live_question", q.id, key=q.key)
+    db.session.delete(q)
+    db.session.commit()
+    svc.drop_cache(ev.slug)
     return jsonify({"ok": True})
 
 

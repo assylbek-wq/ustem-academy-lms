@@ -27,7 +27,7 @@
     .b.rev{background:var(--k1);color:#fff;border-color:transparent}
     .b.sm{padding:6px 10px;font-size:13px}
     .big{font-size:16px;padding:14px}
-    .q{display:grid;grid-template-columns:40px minmax(0,1fr) 90px 190px;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #eee}
+    .q{display:grid;grid-template-columns:40px minmax(0,1fr) 90px 240px;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #eee}
     .q:last-child{border-bottom:0}
     .q.cur{background:#fff8e6;margin:0 -14px;padding:10px 14px;border-radius:8px}
     .q .k{font-weight:800;color:#8a8aa0}
@@ -86,9 +86,10 @@
           <span class="k">{{ loop.index }}</span>
           <span class="tx"><b>{{ q.text.get('kk') }}</b><small>{{ q.text.get('ru') }}</small><br><small class="ans">✓ {{ q.options[q.correct].get('kk') }}</small></span>
           <span class="n" id="n-{{ q.id }}">0</span>
-          <span class="acts"><button class="b sm go" data-start="{{ q.id }}">▶ {{ t('live.start') }}</button><button class="b sm rev" data-reveal="{{ q.id }}">✓</button></span>
+          <span class="acts"><button class="b sm go" data-start="{{ q.id }}">▶ {{ t('live.start') }}</button><button class="b sm rev" data-reveal="{{ q.id }}">✓</button><button class="b sm" data-edit="{{ q.id }}" title="{{ t('live.q_edit') }}">✎</button></span>
         </div>
       {% endfor %}
+      <div class="row" style="margin-top:12px"><button class="b sm" data-edit="new">＋ {{ t('live.q_add') }}</button><span class="hint">{{ t('live.q_hint') }}</span></div>
     </div>
   </div>
 
@@ -165,6 +166,7 @@
   };
   function render() {
     var st = data.state || {}, s = data.stats || {};
+    window.LIVE_CTRL_STATE = st;
     offset = data.now - Date.now() / 1000;
     $('s-online').textContent = s.online || 0; $('s-joined').textContent = s.joined || 0;
     $('s-prof').textContent = s.profiles || 0; $('s-schools').textContent = s.schools || 0;
@@ -191,6 +193,97 @@
   }
   function load() { return fetch('/live/' + SLUG + '/control.json', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (d) { data = d; render(); }); }
   (function loop() { load().catch(function () {}).finally(function () { setTimeout(loop, 2000); }); })();
+})();
+</script>
+
+<div id="qmodal" style="display:none;position:fixed;inset:0;background:rgba(10,10,20,.55);z-index:50;overflow:auto;padding:30px 12px">
+  <div class="card" style="max-width:760px;margin:0 auto">
+    <h2 id="qm-title">{{ t('live.q_edit') }}</h2>
+    <div class="hint" id="qm-warn" style="color:#b45309;display:none">{{ t('live.q_warn_live') }}</div>
+    <div class="qm-grid">
+      <label>{{ t('live.block') }}</label>
+      <select class="in" id="qm-block">{% for b in range(1, (blocks|length) + 1) %}<option value="{{ b }}">{{ b }} · {{ blocks.get(b, {})|loc }}</option>{% endfor %}</select>
+      <label>{{ t('live.q_text') }} KK</label><textarea class="in" id="qm-text-kk" rows="2"></textarea>
+      <label>{{ t('live.q_text') }} RU</label><textarea class="in" id="qm-text-ru" rows="2"></textarea>
+    </div>
+    <div style="margin-top:10px;font-weight:700">{{ t('live.q_options') }}</div>
+    <div class="hint">{{ t('live.q_options_hint') }}</div>
+    {% for i in range(4) %}
+    <div class="qm-opt">
+      <label class="qm-right"><input type="radio" name="qm-correct" value="{{ i }}"> ✓</label>
+      <span class="qm-sw k{{ i }}"></span>
+      <input class="in" id="qm-o{{ i }}-kk" placeholder="KK">
+      <input class="in" id="qm-o{{ i }}-ru" placeholder="RU">
+    </div>
+    {% endfor %}
+    <div class="qm-grid" style="margin-top:10px">
+      <label>{{ t('live.q_note') }} KK</label><textarea class="in" id="qm-note-kk" rows="2"></textarea>
+      <label>{{ t('live.q_note') }} RU</label><textarea class="in" id="qm-note-ru" rows="2"></textarea>
+      <label>{{ t('live.q_seconds') }}</label><input class="in" id="qm-sec" type="number" min="10" max="120" style="max-width:120px">
+    </div>
+    <div class="err" id="qm-err" style="color:#dc2626;margin-top:8px"></div>
+    <div class="row" style="margin-top:12px">
+      <button class="b go" id="qm-save">{{ t('live.save') }}</button>
+      <button class="b" id="qm-cancel">{{ t('live.q_cancel') }}</button>
+      <span style="flex:1"></span>
+      <button class="b sm" id="qm-del" style="border-color:#e8323c;color:#e8323c">{{ t('live.q_delete') }}</button>
+    </div>
+  </div>
+</div>
+<style>
+  .qm-grid{display:grid;grid-template-columns:110px 1fr;gap:8px;align-items:center;margin-top:10px}
+  .qm-grid label{font-weight:700;font-size:13px;color:#55556a}
+  .qm-opt{display:grid;grid-template-columns:52px 14px 1fr 1fr;gap:8px;align-items:center;margin-top:6px}
+  .qm-sw{width:14px;height:36px;border-radius:4px}
+  .qm-sw.k0{background:var(--k0)}.qm-sw.k1{background:var(--k1)}.qm-sw.k2{background:var(--k2)}.qm-sw.k3{background:var(--k3)}
+  .qm-right{font-weight:800;font-size:13px;display:flex;gap:4px;align-items:center}
+  textarea.in{resize:vertical;width:100%;border:1px solid #d6d6e0;border-radius:10px;padding:9px 10px;font-size:14px;font-family:inherit}
+</style>
+<script>
+(function () {
+  var SLUG = {{ ev.slug|tojson }}, Q = {{ qdata|tojson }};
+  var T = {{ {'edit': t('live.q_edit'), 'add': t('live.q_add'), 'confirm_del': t('live.q_del_confirm'), 'err': t('live.q_err')}|tojson }};
+  var csrf = document.querySelector('meta[name=csrf-token]').content, $ = function (id) { return document.getElementById(id); };
+  var cur = null;
+  function post(url, body) { return fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf}, body: JSON.stringify(body)}).then(function (r) { return r.json(); }); }
+  function open(id) {
+    cur = id === 'new' ? null : id;
+    var q = cur ? Q[cur] : {block: 1, text: {}, options: [{}, {}, {}, {}], correct: 0, note: {}, seconds: 30};
+    $('qm-title').textContent = cur ? T.edit : T.add;
+    $('qm-block').value = q.block;
+    $('qm-text-kk').value = q.text.kk || ''; $('qm-text-ru').value = q.text.ru || '';
+    for (var i = 0; i < 4; i++) { var o = q.options[i] || {}; $('qm-o' + i + '-kk').value = o.kk || ''; $('qm-o' + i + '-ru').value = o.ru || ''; }
+    Array.prototype.forEach.call(document.querySelectorAll('input[name=qm-correct]'), function (r) { r.checked = +r.value === q.correct; });
+    $('qm-note-kk').value = (q.note || {}).kk || ''; $('qm-note-ru').value = (q.note || {}).ru || '';
+    $('qm-sec').value = q.seconds || 30;
+    $('qm-del').style.display = cur ? '' : 'none';
+    $('qm-err').textContent = '';
+    var st = (window.LIVE_CTRL_STATE || {});
+    $('qm-warn').style.display = cur && st.qid === +cur && (st.mode === 'question' || st.mode === 'reveal') ? 'block' : 'none';
+    $('qmodal').style.display = 'block';
+  }
+  function close() { $('qmodal').style.display = 'none'; }
+  Array.prototype.forEach.call(document.querySelectorAll('[data-edit]'), function (b) { b.onclick = function () { open(b.dataset.edit); }; });
+  $('qm-cancel').onclick = close;
+  $('qmodal').onclick = function (e) { if (e.target === this) close(); };
+  $('qm-save').onclick = function () {
+    var opts = [], corr = document.querySelector('input[name=qm-correct]:checked');
+    for (var i = 0; i < 4; i++) opts.push({kk: $('qm-o' + i + '-kk').value, ru: $('qm-o' + i + '-ru').value});
+    // пустые варианты убираются на сервере: индекс верного считаем среди непустых
+    var ci = corr ? +corr.value : -1, filled = 0, idx = -1;
+    opts.forEach(function (o, i) { if ((o.kk || o.ru).trim()) { if (i === ci) idx = filled; filled++; } });
+    var body = {block: +$('qm-block').value, text: {kk: $('qm-text-kk').value, ru: $('qm-text-ru').value}, options: opts, correct: idx,
+                note: {kk: $('qm-note-kk').value, ru: $('qm-note-ru').value}, seconds: +$('qm-sec').value};
+    post('/live/' + SLUG + '/control/question' + (cur ? '/' + cur : ''), body).then(function (r) {
+      if (r.ok) location.reload(); else $('qm-err').textContent = r.error || T.err;
+    });
+  };
+  $('qm-del').onclick = function () {
+    if (!cur || !confirm(T.confirm_del)) return;
+    post('/live/' + SLUG + '/control/question/' + cur + '/delete', {}).then(function (r) {
+      if (r.ok) location.reload(); else $('qm-err').textContent = r.error || T.err;
+    });
+  };
 })();
 </script>
 </body>

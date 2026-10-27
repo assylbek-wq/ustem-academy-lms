@@ -58,7 +58,8 @@ def region_name(key: str | None, lang: str = "kk") -> str:
 
 # ─── Загрузка эфиров из кода ─────────────────────────────────────────────
 def ensure_events() -> None:
-    """Создает эфиры из app/content/live_*.py и обновляет тексты вопросов (ключи вопросов постоянны)."""
+    """Создает эфиры из app/content/live_*.py и недостающие вопросы. Вопросы, которые уже есть в базе, не трогаем:
+    их правят на пульте (live/control), и перезапуск Академии не должен затирать эти правки."""
     import importlib
     for name in SOURCES:
         mod = importlib.import_module(f"app.content.{name}")
@@ -72,13 +73,53 @@ def ensure_events() -> None:
         ev.subtitle = data.get("subtitle") or {}
         ev.links = data.get("links") or {}
         db.session.flush()
-        have = {q.key: q for q in LiveQuestion.query.filter_by(event_id=ev.id)}
+        have = {q.key for q in LiveQuestion.query.filter_by(event_id=ev.id)}
         for pos, qd in enumerate(mod.QUESTIONS):
-            q = have.get(qd["key"]) or LiveQuestion(event_id=ev.id, key=qd["key"])
-            q.block, q.position, q.text, q.options = qd["block"], pos, qd["text"], qd["options"]
-            q.correct, q.note, q.seconds = qd["correct"], qd.get("note") or {}, qd.get("seconds", 30)
-            db.session.add(q)
+            if qd["key"] in have:
+                continue
+            db.session.add(LiveQuestion(event_id=ev.id, key=qd["key"], block=qd["block"], position=pos, text=qd["text"],
+                                        options=qd["options"], correct=qd["correct"], note=qd.get("note") or {},
+                                        seconds=qd.get("seconds", 30)))
     db.session.commit()
+
+
+def _ml(d) -> dict:
+    d = d if isinstance(d, dict) else {}
+    return {k: (d.get(k) or "").strip()[:600] for k in ("kk", "ru") if (d.get(k) or "").strip()}
+
+
+def save_question(ev: LiveEvent, data: dict, q: LiveQuestion | None = None) -> tuple[LiveQuestion | None, str | None]:
+    """Создать или изменить вопрос с пульта. Возвращает (вопрос, None) или (None, ключ ошибки)."""
+    text = _ml(data.get("text"))
+    options = [_ml(o) for o in (data.get("options") or [])]
+    options = [o for o in options if o]
+    note = _ml(data.get("note"))
+    try:
+        correct = int(data.get("correct"))
+        seconds = int(data.get("seconds") or 30)
+        block = int(data.get("block") or (q.block if q else 1))
+    except (TypeError, ValueError):
+        return None, "live.q_err"
+    if not text or not (2 <= len(options) <= 4) or not (0 <= correct < len(options)) or not (10 <= seconds <= 120) \
+            or not (1 <= block <= 20):
+        return None, "live.q_err"
+    if q is None:
+        qs = LiveQuestion.query.filter_by(event_id=ev.id).order_by(LiveQuestion.position).all()
+        in_block = [x.position for x in qs if x.block <= block]
+        pos = (max(in_block) + 1) if in_block else 0
+        for x in qs:
+            if x.position >= pos:
+                x.position += 1
+        n = 1
+        keys = {x.key for x in qs}
+        while f"c{n}" in keys:
+            n += 1
+        q = LiveQuestion(event_id=ev.id, key=f"c{n}", position=pos)
+        db.session.add(q)
+    q.block, q.text, q.options, q.correct, q.note, q.seconds = block, text, options, correct, note, seconds
+    db.session.commit()
+    drop_cache(ev.slug)
+    return q, None
 
 
 def blocks(slug: str) -> dict:
