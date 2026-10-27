@@ -1,0 +1,24 @@
+<style>
+  :root{
+    --ink:#0b0b12; --bg:#0b0b12; --card:#16161f; --line:#2a2a38; --mute:#9a9ab0; --text:#f4f4f8;
+    --blue:#2f5bff; --violet:#8a2be2; --red:#e8323c; --orange:#ff6a1a; --green:#22c55e;
+    --grad:linear-gradient(90deg,#2f5bff 0%,#8a2be2 38%,#e8323c 72%,#ff6a1a 100%);
+    --k0:#e21b3c; --k1:#1368ce; --k2:#d89e00; --k3:#26890c;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{font-family:'Inter',ui-sans-serif,-apple-system,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}
+  .grad-text{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .grad-line{height:3px;background:var(--grad);border-radius:2px}
+  .shape{display:inline-block;width:1em;height:1em;flex:none}
+  .shape svg{width:100%;height:100%;display:block}
+</style>
+<script>
+window.LIVE_SHAPES = [
+  '<svg viewBox="0 0 24 24"><path d="M12 3 22 20H2z" fill="#fff"/></svg>',
+  '<svg viewBox="0 0 24 24"><path d="M12 2 22 12 12 22 2 12z" fill="#fff"/></svg>',
+  '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#fff"/></svg>',
+  '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="1.5" fill="#fff"/></svg>'];
+window.liveEsc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); };
+window.liveLoc = function (o, lang) { if (!o) return ''; if (typeof o === 'string') return o; return o[lang] || o.kk || o.ru || o.en || ''; };
+</script>

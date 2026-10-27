@@ -589,3 +589,83 @@ class UserPath(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     key = db.Column(db.String(80), nullable=False)
     created_at = db.Column(db.DateTime, default=utcnow)
+
+
+# ─── Прямой эфир (вебинар на YouTube + викторина в Академии) ─────────────
+class LiveEvent(db.Model):
+    """Эфир: видео идет с YouTube, а анкета, вопросы, рейтинг и счетчики - в Академии (blueprints/live.py).
+    state - что сейчас показывают всем: {"mode": "waiting|talk|profile|question|reveal|leaderboard|ask|finish",
+    "qid": id вопроса, "at": время начала вопроса (unix, секунды), "v": номер версии}."""
+    __tablename__ = "live_events"
+    id = db.Column(db.Integer, primary_key=True)
+    slug = db.Column(db.String(64), unique=True, nullable=False)
+    title = db.Column(JSON, nullable=False, default=dict)
+    subtitle = db.Column(JSON, default=dict)
+    youtube_id = db.Column(db.String(32))
+    starts_at = db.Column(db.DateTime)            # местное время Академии
+    screen_key = db.Column(db.String(64), nullable=False, default=lambda: new_token(18))  # экран для OBS без входа
+    state = db.Column(JSON, nullable=False, default=dict)
+    links = db.Column(JSON, default=dict)          # QR в заставке: {"connect": url, "bot": url}
+    created_at = db.Column(db.DateTime, default=utcnow)
+
+
+class LiveQuestion(db.Model):
+    __tablename__ = "live_questions"
+    __table_args__ = (db.UniqueConstraint("event_id", "key", name="uq_live_question_key"),)
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey("live_events.id", ondelete="CASCADE"), nullable=False, index=True)
+    key = db.Column(db.String(32), nullable=False)       # q1, q2... (из app/content/live_*.py)
+    block = db.Column(db.Integer, nullable=False, default=1)
+    position = db.Column(db.Integer, nullable=False, default=0)
+    text = db.Column(JSON, nullable=False, default=dict)
+    options = db.Column(JSON, nullable=False, default=list)  # [{"ru","kk","en"}, ...]
+    correct = db.Column(db.Integer, nullable=False, default=0)
+    note = db.Column(JSON, default=dict)                     # пояснение после ответа
+    seconds = db.Column(db.Integer, nullable=False, default=30)
+
+
+class LiveViewer(db.Model):
+    """Учитель на эфире: анкета, присутствие (пульс страницы), баллы."""
+    __tablename__ = "live_viewers"
+    __table_args__ = (db.UniqueConstraint("event_id", "user_id", name="uq_live_viewer"),)
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey("live_events.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    region = db.Column(db.String(64))
+    city = db.Column(db.String(128))
+    school = db.Column(db.String(255))
+    subjects = db.Column(JSON, default=list)
+    position = db.Column(db.String(32))     # мұғалім, директор орынбасары...
+    robotics = db.Column(db.String(32))     # опыт: none | started | team
+    profile_at = db.Column(db.DateTime)
+    first_seen = db.Column(db.DateTime, default=utcnow)
+    last_seen = db.Column(db.DateTime, default=utcnow, index=True)
+    seconds = db.Column(db.Integer, nullable=False, default=0)   # сколько был на странице эфира
+    score = db.Column(db.Integer, nullable=False, default=0)
+    user = db.relationship("User")
+
+
+class LiveAnswer(db.Model):
+    __tablename__ = "live_answers"
+    __table_args__ = (db.UniqueConstraint("question_id", "user_id", name="uq_live_answer"),)
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey("live_events.id", ondelete="CASCADE"), nullable=False, index=True)
+    question_id = db.Column(db.Integer, db.ForeignKey("live_questions.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    choice = db.Column(db.Integer, nullable=False)
+    is_correct = db.Column(db.Boolean, nullable=False, default=False)
+    points = db.Column(db.Integer, nullable=False, default=0)
+    ms = db.Column(db.Integer)
+    created_at = db.Column(db.DateTime, default=utcnow)
+
+
+class LiveAsk(db.Model):
+    """Вопрос спикеру из страницы эфира."""
+    __tablename__ = "live_asks"
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey("live_events.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    text = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(16), nullable=False, default="new")   # new | picked | done | hidden
+    created_at = db.Column(db.DateTime, default=utcnow)
+    user = db.relationship("User")

@@ -31,8 +31,8 @@ def create_app(config: type = Config, **overrides) -> Flask:
             and app.config["SECRET_KEY"] == "dev-secret-change-me"):
         raise RuntimeError("Задайте SECRET_KEY в окружении для продакшена")
 
-    from .blueprints import admin, api, auth, cohorts, game, lab, learn, public, reports, review, studio
-    for bp in (public.bp, auth.bp, learn.bp, lab.bp, game.bp, review.bp, cohorts.bp, studio.bp, admin.bp, reports.bp, api.bp):
+    from .blueprints import admin, api, auth, cohorts, game, lab, learn, live, public, reports, review, studio
+    for bp in (public.bp, auth.bp, learn.bp, lab.bp, game.bp, live.bp, review.bp, cohorts.bp, studio.bp, admin.bp, reports.bp, api.bp):
         app.register_blueprint(bp)
 
     @app.before_request
@@ -101,6 +101,13 @@ def create_app(config: type = Config, **overrides) -> Flask:
         if app.config.get("SEED_CONTENT") or app.config.get("SEED_DEMO"):
             from .content import ensure_all
             ensure_all()  # готовые курсы из app/content, которых еще нет в базе
+        if not app.config.get("TESTING") and app.config.get("DB_AUTO_INIT", True):
+            try:
+                from .services.live import ensure_events
+                ensure_events()  # эфиры из app/content/live_*.py (тексты вопросов обновляются)
+            except Exception:  # эфир не должен мешать запуску Академии
+                logging.getLogger("academy").exception("live: ensure_events failed")
+                db.session.rollback()
         if not app.config.get("TESTING") and app.config.get("DB_AUTO_INIT", True):
             from .services.selfpaced import sync_all
             sync_all()  # постоянные потоки для программ «в своем темпе»

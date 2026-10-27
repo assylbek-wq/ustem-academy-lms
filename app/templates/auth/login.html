@@ -11,6 +11,6 @@
 </form>
 <div class="mt-4 flex justify-between text-sm">
   <a href="{{ url_for('auth.forgot') }}" class="text-slate-500 hover:text-brand-700">{{ t('auth.forgot') }}</a>
-  <a href="{{ url_for('auth.register') }}" class="text-brand-700 font-semibold">{{ t('auth.register') }}</a>
+  <a href="{{ url_for('auth.register', next=request.args.get('next')) }}" class="text-brand-700 font-semibold">{{ t('auth.register') }}</a>
 </div>
 {% endblock %}

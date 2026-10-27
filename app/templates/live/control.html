@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="{{ locale }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>{{ t('live.control') }} · {{ ev.title|loc }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  {% include "live/_style.html" %}
+  <style>
+    body{background:#f5f5f8;color:#14141c;font-size:14px}
+    header{position:sticky;top:0;z-index:10;background:#0b0b12;color:#fff;padding:12px 18px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+    header h1{font-size:16px;margin:0;font-weight:800}
+    .stat{display:flex;flex-direction:column;line-height:1.1}
+    .stat b{font-size:22px;font-variant-numeric:tabular-nums}
+    .stat span{font-size:11px;color:#a0a0b5;text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+    .mode{margin-left:auto;background:var(--grad);border-radius:999px;padding:7px 14px;font-weight:800}
+    .wrap{max-width:1400px;margin:0 auto;padding:16px;display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:16px}
+    @media(max-width:1100px){.wrap{grid-template-columns:1fr}}
+    .card{background:#fff;border:1px solid #e3e3ea;border-radius:14px;padding:14px;margin-bottom:16px}
+    .card h2{font-size:14px;margin:0 0 10px;text-transform:uppercase;letter-spacing:.05em;color:#55556a}
+    .modes{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+    .b{border:1px solid #d6d6e0;background:#fff;border-radius:10px;padding:10px 12px;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px;text-align:center}
+    .b:hover{border-color:#14141c}
+    .b.on{background:#14141c;color:#fff;border-color:#14141c}
+    .b.go{background:var(--k3);color:#fff;border-color:transparent}
+    .b.rev{background:var(--k1);color:#fff;border-color:transparent}
+    .b.sm{padding:6px 10px;font-size:13px}
+    .big{font-size:16px;padding:14px}
+    .q{display:grid;grid-template-columns:40px minmax(0,1fr) 90px 190px;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #eee}
+    .q:last-child{border-bottom:0}
+    .q.cur{background:#fff8e6;margin:0 -14px;padding:10px 14px;border-radius:8px}
+    .q .k{font-weight:800;color:#8a8aa0}
+    .q .tx b{display:block}
+    .q .tx small{color:#77778a}
+    .q .tx .ans{color:#16a34a;font-weight:700}
+    .q .n{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
+    .q .acts{display:flex;gap:6px;justify-content:flex-end}
+    .blk{font-weight:800;margin:14px 0 4px;color:#8a2be2}
+    input.in{width:100%;border:1px solid #d6d6e0;border-radius:10px;padding:9px 10px;font-size:14px;font-family:inherit}
+    .row{display:flex;gap:8px;align-items:center;margin-top:8px}
+    .copy{display:flex;gap:6px;align-items:center;margin-top:6px}
+    .copy code{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:#f1f1f5;border-radius:8px;padding:7px 9px;font-size:12px}
+    .ask{border-bottom:1px solid #eee;padding:9px 0}
+    .ask .who{color:#77778a;font-size:12px}
+    .ask.picked{background:#eef3ff;margin:0 -14px;padding:9px 14px}
+    .ask.done{opacity:.5}
+    .timer{font-variant-numeric:tabular-nums;font-weight:800}
+    .hint{color:#77778a;font-size:12px;margin-top:6px;line-height:1.4}
+    .ok{color:#16a34a;font-weight:700}
+  </style>
+</head>
+<body>
+<header>
+  <h1>{{ t('live.control') }} · {{ ev.title|loc }}</h1>
+  <div class="stat"><b id="s-online">0</b><span>{{ t('live.c_online') }}</span></div>
+  <div class="stat"><b id="s-joined">0</b><span>{{ t('live.c_joined') }}</span></div>
+  <div class="stat"><b id="s-prof">0</b><span>{{ t('live.c_profiles') }}</span></div>
+  <div class="stat"><b id="s-schools">0</b><span>{{ t('live.c_schools') }}</span></div>
+  <div class="stat"><b id="s-ans">-</b><span>{{ t('live.c_answers') }}</span></div>
+  <div class="mode" id="mode">-</div>
+</header>
+<div class="wrap">
+  <div>
+    <div class="card">
+      <h2>{{ t('live.c_screen') }}</h2>
+      <div class="modes">
+        <button class="b big" data-mode="waiting">⏳ {{ t('live.m_waiting') }}</button>
+        <button class="b big" data-mode="talk">🎤 {{ t('live.m_talk') }}</button>
+        <button class="b big" data-mode="profile">📝 {{ t('live.m_profile') }}</button>
+        <button class="b big go" id="next-q">▶ {{ t('live.m_next') }}</button>
+        <button class="b big rev" id="reveal">✓ {{ t('live.m_reveal') }}</button>
+        <button class="b big" data-mode="leaderboard">🏆 {{ t('live.m_leaderboard') }}</button>
+        <button class="b big" data-mode="ask">💬 {{ t('live.m_ask') }}</button>
+        <button class="b big" data-mode="finish">🎉 {{ t('live.m_finish') }}</button>
+      </div>
+      <div class="hint">{{ t('live.c_hint') }}</div>
+    </div>
+
+    <div class="card">
+      <h2>{{ t('live.c_questions') }} <span class="timer" id="qtimer"></span></h2>
+      {% set ns = namespace(blk=None) %}
+      {% for q in qs %}
+        {% if q.block != ns.blk %}{% set ns.blk = q.block %}<div class="blk">{{ t('live.block') }} {{ q.block }} · {{ blocks.get(q.block, {})|loc }}</div>{% endif %}
+        <div class="q" id="q-{{ q.id }}" data-id="{{ q.id }}">
+          <span class="k">{{ loop.index }}</span>
+          <span class="tx"><b>{{ q.text.get('kk') }}</b><small>{{ q.text.get('ru') }}</small><br><small class="ans">✓ {{ q.options[q.correct].get('kk') }}</small></span>
+          <span class="n" id="n-{{ q.id }}">0</span>
+          <span class="acts"><button class="b sm go" data-start="{{ q.id }}">▶ {{ t('live.start') }}</button><button class="b sm rev" data-reveal="{{ q.id }}">✓</button></span>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <h2>YouTube</h2>
+      <input class="in" id="yt" value="{{ ('https://youtu.be/' ~ ev.youtube_id) if ev.youtube_id else '' }}" placeholder="https://youtube.com/live/...">
+      <div class="row"><button class="b sm" id="yt-save">{{ t('live.save') }}</button><span id="yt-msg" class="hint"></span></div>
+      <div class="hint">{{ t('live.c_yt_hint') }}</div>
+    </div>
+    <div class="card">
+      <h2>{{ t('live.c_links') }}</h2>
+      <div class="hint">{{ t('live.c_l_teacher') }}</div>
+      <div class="copy"><code>{{ links.academy }}</code><button class="b sm" data-copy="{{ links.academy }}">⧉</button></div>
+      <div class="hint">{{ t('live.c_l_screen') }}</div>
+      <div class="copy"><code>{{ screen_url }}</code><button class="b sm" data-copy="{{ screen_url }}">⧉</button></div>
+      <div class="hint">{{ t('live.c_l_overlay') }}</div>
+      <div class="copy"><code>{{ overlay_url }}</code><button class="b sm" data-copy="{{ overlay_url }}">⧉</button></div>
+      <div class="row"><a class="b sm" href="{{ url_for('live.export', slug=ev.slug) }}">⬇ {{ t('live.c_export') }}</a><a class="b sm" target="_blank" href="{{ screen_url }}">{{ t('live.c_open_screen') }}</a></div>
+    </div>
+    <div class="card">
+      <h2>{{ t('live.c_asks') }} <span id="ask-n"></span></h2>
+      <div id="asks"><div class="hint">{{ t('live.c_no_asks') }}</div></div>
+    </div>
+  </div>
+</div>
+<script>
+(function () {
+  var SLUG = {{ ev.slug|tojson }};
+  var ORDER = {{ qs|map(attribute='id')|list|tojson }};
+  var QSEC = {{ qsec|tojson }};
+  var MODES = {{ {'waiting': t('live.m_waiting'), 'talk': t('live.m_talk'), 'profile': t('live.m_profile'), 'question': t('live.m_question'),
+                 'reveal': t('live.m_reveal'), 'leaderboard': t('live.m_leaderboard'), 'ask': t('live.m_ask'), 'finish': t('live.m_finish')}|tojson }};
+  var T = {{ {'pick': t('live.c_pick'), 'done': t('live.c_done'), 'hide': t('live.c_hide'), 'saved': t('live.saved'), 'copied': t('live.c_copied'), 'confirm': t('live.c_confirm_restart')}|tojson }};
+  var csrf = document.querySelector('meta[name=csrf-token]').content, $ = function (id) { return document.getElementById(id); }, esc = window.liveEsc;
+  var data = null, offset = 0, timerI = null;
+  function post(url, body) { return fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf}, body: JSON.stringify(body)}).then(function (r) { return r.json(); }); }
+  function setMode(mode, qid) { return post('/live/' + SLUG + '/control/state', {mode: mode, qid: qid}).then(load); }
+  Array.prototype.forEach.call(document.querySelectorAll('[data-mode]'), function (b) { b.onclick = function () { setMode(b.dataset.mode); }; });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-start]'), function (b) {
+    b.onclick = function () {
+      var id = +b.dataset.start, n = data && data.per_q[String(id)];
+      if (n && n[0] > 0 && !confirm(T.confirm)) return;
+      setMode('question', id);
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-reveal]'), function (b) {
+    b.onclick = function () { var st = data && data.state; if (st && st.qid === +b.dataset.reveal) setMode('reveal'); };
+  });
+  $('reveal').onclick = function () { if (data && data.state && data.state.qid) setMode('reveal'); };
+  $('next-q').onclick = function () {
+    var cur = data && data.state && data.state.qid, idx = cur ? ORDER.indexOf(cur) + 1 : 0;
+    while (idx < ORDER.length && data && data.per_q[String(ORDER[idx])] && data.per_q[String(ORDER[idx])][0] > 0) idx++;
+    if (idx < ORDER.length) setMode('question', ORDER[idx]);
+  };
+  Array.prototype.forEach.call(document.querySelectorAll('[data-copy]'), function (b) { b.onclick = function () { navigator.clipboard.writeText(b.dataset.copy); b.textContent = '✓'; setTimeout(function () { b.textContent = '⧉'; }, 1200); }; });
+  $('yt-save').onclick = function () {
+    post('/live/' + SLUG + '/control/settings', {youtube: $('yt').value}).then(function (r) { $('yt-msg').textContent = r.ok ? T.saved + (r.youtube_id ? ' · ' + r.youtube_id : '') : (r.error || 'error'); });
+  };
+  function render() {
+    var st = data.state || {}, s = data.stats || {};
+    offset = data.now - Date.now() / 1000;
+    $('s-online').textContent = s.online || 0; $('s-joined').textContent = s.joined || 0;
+    $('s-prof').textContent = s.profiles || 0; $('s-schools').textContent = s.schools || 0;
+    $('s-ans').textContent = s.answers ? s.answers.total : '-';
+    $('mode').textContent = MODES[st.mode] || st.mode || '-';
+    Array.prototype.forEach.call(document.querySelectorAll('[data-mode]'), function (b) { b.classList.toggle('on', b.dataset.mode === st.mode); });
+    Array.prototype.forEach.call(document.querySelectorAll('.q'), function (row) {
+      var id = row.dataset.id, n = data.per_q[id];
+      row.classList.toggle('cur', String(st.qid) === id && (st.mode === 'question' || st.mode === 'reveal'));
+      $('n-' + id).innerHTML = n ? n[0] + ' <small style="color:#16a34a">✓' + n[1] + '</small>' : '0';
+    });
+    clearInterval(timerI);
+    if (st.mode === 'question' && st.qid) {
+      var sec = QSEC[String(st.qid)] || 30;
+      timerI = setInterval(function () { var left = Math.max(0, Math.ceil((st.at || 0) + sec - (Date.now() / 1000 + offset))); $('qtimer').textContent = '⏱ ' + left; }, 250);
+    } else { $('qtimer').textContent = ''; }
+    var asks = data.asks || [];
+    $('ask-n').textContent = asks.length ? '(' + asks.length + ')' : '';
+    $('asks').innerHTML = asks.length ? asks.map(function (a) {
+      return '<div class="ask ' + a.status + '"><div>' + esc(a.text) + '</div><div class="who">' + esc(a.at + ' · ' + a.name + (a.school ? ' · ' + a.school : '') + (a.region ? ' · ' + a.region : '')) + '</div>' +
+        '<div class="row"><button class="b sm" data-ask="' + a.id + '" data-st="picked">' + T.pick + '</button><button class="b sm" data-ask="' + a.id + '" data-st="done">' + T.done + '</button><button class="b sm" data-ask="' + a.id + '" data-st="hidden">' + T.hide + '</button></div></div>';
+    }).join('') : $('asks').innerHTML;
+    Array.prototype.forEach.call(document.querySelectorAll('[data-ask]'), function (b) { b.onclick = function () { post('/live/' + SLUG + '/control/ask/' + b.dataset.ask, {status: b.dataset.st}).then(load); }; });
+  }
+  function load() { return fetch('/live/' + SLUG + '/control.json', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (d) { data = d; render(); }); }
+  (function loop() { load().catch(function () {}).finally(function () { setTimeout(loop, 2000); }); })();
+})();
+</script>
+</body>
+</html>

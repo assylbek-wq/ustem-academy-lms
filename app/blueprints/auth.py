@@ -97,8 +97,9 @@ def login():
 
 @bp.route("/register", methods=["GET", "POST"])
 def register():
+    nxt = safe_next(request.args.get("next"), "")
     if g.user:
-        return redirect(url_for("learn.home"))
+        return redirect(nxt or url_for("learn.home"))
     form = request.form
     if request.method == "POST":
         email = (form.get("email") or "").strip().lower()
@@ -145,7 +146,7 @@ def register():
             cohort = _join_pending_cohort(user)
             if cohort:
                 return redirect(url_for("learn.cohort", cohort_id=cohort.id))
-        return redirect(url_for("learn.home"))
+        return redirect(nxt or url_for("learn.home"))
     return render_template("auth/register.html", form={})
 
 
