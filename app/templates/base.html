@@ -103,7 +103,7 @@
   <div class="max-w-6xl mx-auto px-4 h-14 flex items-center gap-3">
     <a href="{{ url_for('public.home') }}" class="flex items-center gap-2 -ml-1 px-1 py-1 rounded-md hover:bg-slate-100">
       <img src="{{ url_for('static', filename='img/ustem-mark.png') }}" alt="USTEM" class="w-7 h-7 object-contain">
-      <span class="font-semibold">USTEM Academy</span>
+      <span class="font-semibold whitespace-nowrap">USTEM Academy</span>
     </a>
     <nav class="hidden md:flex items-center gap-1 text-sm text-slate-600 ml-4">
       <a href="{{ url_for('public.home') }}#programs" class="px-2.5 py-1.5 rounded-md hover:bg-slate-100">{{ t('pub.nav_programs') }}</a>
@@ -111,7 +111,7 @@
       <a href="{{ url_for('public.verify_form') }}" class="px-2.5 py-1.5 rounded-md hover:bg-slate-100">{{ t('pub.nav_verify') }}</a>
     </nav>
     <div class="flex-1"></div>
-    {{ langs('hidden sm:flex') }}
+    {{ langs() }}
     <a href="{{ url_for('auth.login') }}" class="btn-ghost btn-sm">{{ t('auth.login') }}</a>
     <a href="{{ url_for('auth.register') }}" class="btn-primary btn-sm hidden sm:inline-flex">{{ t('auth.register') }}</a>
   </div>
