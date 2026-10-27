@@ -78,7 +78,7 @@
   <section class="scene" id="s-waiting">
     <div style="display:grid;grid-template-columns:1.1fr 1fr;gap:70px;height:100%">
       <div style="display:flex;flex-direction:column;justify-content:center">
-        <div class="kicker">USTEM Foundation × Ы. Алтынсарин атындағы ҰБА · {{ t('live.screen_kicker') }}</div>
+        <div class="kicker">{{ ((ev.texts or {}).get('partners') or 'USTEM Foundation') }} · {{ kicker }}</div>
         <h1 class="grad-text">{{ (ev.title|loc).split('·')[0] }}</h1>
         <div class="lead">{{ ev.subtitle|loc }}</div>
         <div style="margin-top:56px">
@@ -93,7 +93,7 @@
           {% if qrs.connect %}<div class="qrcard" style="flex-direction:column;align-items:flex-start;padding:22px"><div style="display:flex;gap:18px;align-items:center"><div class="qr" style="width:150px;height:150px">{{ qrs.connect }}</div><div class="n" style="margin:0">2</div></div>
             <div class="t1" style="font-size:26px;margin-top:14px">USTEM Connect</div><div class="t2" style="font-size:19px">{{ t('live.scr_step2_sub') }}</div></div>{% endif %}
           {% if qrs.bot %}<div class="qrcard" style="flex-direction:column;align-items:flex-start;padding:22px"><div style="display:flex;gap:18px;align-items:center"><div class="qr" style="width:150px;height:150px">{{ qrs.bot }}</div><div class="n" style="margin:0">3</div></div>
-            <div class="t1" style="font-size:26px;margin-top:14px">Telegram-бот</div><div class="t2" style="font-size:19px">@UstemConnectBot · {{ t('live.scr_step3_sub') }}</div></div>{% endif %}
+            <div class="t1" style="font-size:26px;margin-top:14px">Telegram-бот</div><div class="t2" style="font-size:19px">{{ bot_handle }} · {{ t('live.scr_step3_sub') }}</div></div>{% endif %}
         </div>
       </div>
     </div>
@@ -102,7 +102,7 @@
   <!-- Спикер говорит: фон с QR (обычно поверх идет камера) -->
   <section class="scene" id="s-talk">
     <div style="display:flex;flex-direction:column;justify-content:center;height:100%">
-      <div class="kicker">{{ t('live.screen_kicker') }}</div>
+      <div class="kicker">{{ kicker }}</div>
       <h2 class="grad-text" style="font-size:120px">{{ (ev.title|loc).split('·')[0] }}</h2>
       <div class="lead">{{ t('live.scr_talk') }}</div>
     </div>
@@ -173,12 +173,12 @@
     <div style="display:grid;grid-template-columns:1.1fr 1fr;gap:70px;height:100%">
       <div style="display:flex;flex-direction:column;justify-content:center">
         <h1 style="font-size:180px">{{ t('live.thanks') }}</h1>
-        <div class="lead">{{ t('live.scr_finish_sub') }}</div>
+        <div class="lead">{{ finish_text }}</div>
         <div class="counter" style="margin-top:50px" id="fin-count"></div>
       </div>
       <div style="display:flex;flex-direction:column;justify-content:center;gap:22px">
         {% if qrs.connect %}<div class="qrcard"><div class="qr" style="width:220px;height:220px">{{ qrs.connect }}</div><div><div class="t1">{{ t('live.scr_fin_connect') }}</div><div class="url">{{ pretty(links.connect) }}</div></div></div>{% endif %}
-        {% if qrs.bot %}<div class="qrcard"><div class="qr" style="width:220px;height:220px">{{ qrs.bot }}</div><div><div class="t1">{{ t('live.scr_fin_bot') }}</div><div class="url">@UstemConnectBot</div></div></div>{% endif %}
+        {% if qrs.bot %}<div class="qrcard"><div class="qr" style="width:220px;height:220px">{{ qrs.bot }}</div><div><div class="t1">{{ t('live.scr_fin_bot') }}</div><div class="url">{{ bot_handle }}</div></div></div>{% endif %}
       </div>
     </div>
   </section>
@@ -201,7 +201,7 @@
                  chemistry=t('live.subj_chemistry'), biology=t('live.subj_biology'), primary=t('live.subj_primary'), other=t('live.subj_other')),
     'online': t('live.scr_online'), 'joined': t('live.scr_joined'), 'schools': t('live.scr_schools')
   }|tojson }};
-  var BLOCKS = {{ blocks_json|tojson }};
+  var BLOCKS = {{ blocks_json|tojson }}, DEMO = {{ demo|tojson }};
   var esc = window.liveEsc, L = function (o) { return window.liveLoc(o, LANG); };
   var stage = document.getElementById('stage');
   function fit() { var s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080); stage.style.transform = 'scale(' + s + ')'; stage.style.left = ((window.innerWidth - 1920 * s) / 2) + 'px'; stage.style.top = ((window.innerHeight - 1080 * s) / 2) + 'px'; }
@@ -285,7 +285,12 @@
       data = d; if (d.state) offset = d.state.now - Date.now() / 1000; render();
     }).catch(function () {}).finally(function () { setTimeout(poll, 1500); });
   }
-  poll();
+  if (DEMO) {  // предпросмотр в конструкторе: сцена без эфира и без опроса сервера
+    data = DEMO;
+    if (DEMO.state.q) DEMO.state.q.at = Date.now() / 1000 - 4;
+    offset = 0; render();
+    if (DEMO.state.mode === 'question') setTimeout(function () { clearInterval(ringI); }, 1200);
+  } else poll();
 })();
 </script>
 </body>

@@ -629,6 +629,11 @@ class LiveEvent(db.Model):
     screen_key = db.Column(db.String(64), nullable=False, default=lambda: new_token(18))  # экран для OBS без входа
     state = db.Column(JSON, nullable=False, default=dict)
     links = db.Column(JSON, default=dict)          # QR в заставке: {"connect": url, "bot": url}
+    blocks = db.Column(JSON, default=list)         # программа эфира: [{"kk","ru"}, ...], блок N = blocks[N-1]
+    texts = db.Column(JSON, default=dict)          # экран: {"partners": str, "kicker": {kk,ru}, "finish": {kk,ru}}
+    lang = db.Column(db.String(8), nullable=False, default="kk", server_default="kk")  # язык экрана и ссылки
+    created_by = db.Column(db.Integer)             # кто собрал в конструкторе (users.id)
+    archived = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
     created_at = db.Column(db.DateTime, default=utcnow)
 
 

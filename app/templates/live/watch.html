@@ -158,8 +158,8 @@
 
     <div class="card links">
       <h3>{{ t('live.next_title') }}</h3>
-      <a href="{{ links.connect }}" target="_blank" rel="noopener">USTEM Connect <span>{{ t('live.link_connect') }}</span></a>
-      <a href="{{ links.bot }}" target="_blank" rel="noopener">Telegram-бот <span>@UstemConnectBot</span></a>
+      {% if links.connect %}<a href="{{ links.connect }}" target="_blank" rel="noopener">USTEM Connect <span>{{ t('live.link_connect') }}</span></a>{% endif %}
+      {% if links.bot %}<a href="{{ links.bot }}" target="_blank" rel="noopener">Telegram-бот <span>{{ bot_handle or t('live.link_bot') }}</span></a>{% endif %}
       <a href="{{ url_for('learn.catalog') }}">USTEM Academy <span>{{ t('live.link_academy') }}</span></a>
     </div>
   </div>
@@ -175,7 +175,7 @@
     'q': t('live.q_label'), 'of': t('live.of'), 'sent': t('live.answer_sent'), 'right': t('live.right'), 'wrong': t('live.wrong'),
     'noanswer': t('live.no_answer'), 'points': t('live.points'), 'place': t('live.place'), 'of_total': t('live.of_total'),
     'top': t('live.top'), 'talk': t('live.talk'), 'talk_sub': t('live.talk_sub'), 'profile_now': t('live.profile_now'),
-    'ask_now': t('live.ask_now'), 'thanks': t('live.thanks'), 'thanks_sub': t('live.thanks_sub'), 'saved': t('live.saved'),
+    'ask_now': t('live.ask_now'), 'thanks': t('live.thanks'), 'thanks_sub': finish_text or t('live.thanks_sub'), 'saved': t('live.saved'),
     'ask_ok': t('live.ask_ok'), 'late': t('live.late'), 'closed': t('live.closed'), 'already': t('live.already'),
     'sec': t('live.sec'), 'net': t('live.net'), 'waiting': t('live.waiting'), 'waiting_sub': t('live.waiting_sub'),
     'your_score': t('live.your_score')

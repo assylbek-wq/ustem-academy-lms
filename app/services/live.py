@@ -58,8 +58,8 @@ def region_name(key: str | None, lang: str = "kk") -> str:
 
 # ─── Загрузка эфиров из кода ─────────────────────────────────────────────
 def ensure_events() -> None:
-    """Создает эфиры из app/content/live_*.py и недостающие вопросы. Вопросы, которые уже есть в базе, не трогаем:
-    их правят на пульте (live/control), и перезапуск Академии не должен затирать эти правки."""
+    """Создает эфиры из app/content/live_*.py, если их еще нет, и недостающие вопросы. Существующий эфир не трогаем:
+    его правят в конструкторе (/live/<slug>/build) и на пульте, перезапуск Академии не должен затирать эти правки."""
     import importlib
     for name in SOURCES:
         mod = importlib.import_module(f"app.content.{name}")
@@ -68,10 +68,15 @@ def ensure_events() -> None:
         if not ev:
             ev = LiveEvent(slug=data["slug"], state={"mode": "waiting", "v": 1})
             ev.starts_at = data.get("starts_at")
+            ev.title = data["title"]
+            ev.subtitle = data.get("subtitle") or {}
+            ev.links = data.get("links") or {}
             db.session.add(ev)
-        ev.title = data["title"]
-        ev.subtitle = data.get("subtitle") or {}
-        ev.links = data.get("links") or {}
+        if not ev.blocks:
+            bl = getattr(mod, "BLOCKS", {}) or {}
+            ev.blocks = [bl[k] for k in sorted(bl)]
+        if not ev.texts and getattr(mod, "TEXTS", None):
+            ev.texts = mod.TEXTS
         db.session.flush()
         have = {q.key for q in LiveQuestion.query.filter_by(event_id=ev.id)}
         for pos, qd in enumerate(mod.QUESTIONS):
@@ -101,7 +106,7 @@ def save_question(ev: LiveEvent, data: dict, q: LiveQuestion | None = None) -> t
     except (TypeError, ValueError):
         return None, "live.q_err"
     if not text or not (2 <= len(options) <= 4) or not (0 <= correct < len(options)) or not (10 <= seconds <= 120) \
-            or not (1 <= block <= 20):
+            or not (1 <= block <= max(20, len(ev.blocks or []))):
         return None, "live.q_err"
     if q is None:
         qs = LiveQuestion.query.filter_by(event_id=ev.id).order_by(LiveQuestion.position).all()
@@ -123,12 +128,9 @@ def save_question(ev: LiveEvent, data: dict, q: LiveQuestion | None = None) -> t
 
 
 def blocks(slug: str) -> dict:
-    import importlib
-    for name in SOURCES:
-        mod = importlib.import_module(f"app.content.{name}")
-        if mod.EVENT["slug"] == slug:
-            return getattr(mod, "BLOCKS", {})
-    return {}
+    """Программа эфира {номер блока: {"kk","ru"}} (номера с 1)."""
+    ev = LiveEvent.query.filter_by(slug=slug).first()
+    return {i + 1: b for i, b in enumerate((ev.blocks if ev else None) or [])}
 
 
 # ─── Кеш состояния ───────────────────────────────────────────────────────

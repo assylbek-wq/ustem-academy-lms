@@ -1,0 +1,67 @@
+{# Общий вид конструктора эфиров (hub.html, build.html): темный стиль USTEM, как экран и аналитика. #}
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" sizes="32x32" href="{{ static_v('img/favicon-32.png') }}">
+{% include "live/_style.html" %}
+<style>
+  :root{--card2:#1c1c27;--soft:#c9c9d6;--focus:#6d8bff}
+  [hidden]{display:none!important}
+  body{background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
+  .bgfx{position:fixed;inset:0;pointer-events:none;z-index:0;background:radial-gradient(900px 600px at 0% 0%,rgba(47,91,255,.16),transparent 60%),radial-gradient(800px 600px at 100% 100%,rgba(255,106,26,.10),transparent 60%),radial-gradient(700px 500px at 80% 0%,rgba(138,43,226,.12),transparent 60%)}
+  a{color:inherit}
+  header.top{position:sticky;top:0;z-index:30;background:rgba(11,11,18,.86);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+  header.top .in{max-width:1600px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  header.top img{width:26px;height:26px}
+  header.top .ttl{font-weight:800;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw}
+  header.top .crumb{color:var(--mute);text-decoration:none;font-weight:700;font-size:13px}
+  header.top .crumb:hover{color:#fff}
+  .sp{flex:1}
+  .btn{display:inline-flex;align-items:center;gap:7px;justify-content:center;color:#fff;text-decoration:none;border:1px solid var(--line);background:transparent;border-radius:10px;padding:8px 13px;font:700 13px Inter,sans-serif;cursor:pointer;white-space:nowrap;transition:border-color .15s,background .15s,transform .1s}
+  .btn:hover{border-color:#8d8da6;background:rgba(255,255,255,.03)}
+  .btn:active{transform:translateY(1px)}
+  .btn.pri{background:var(--grad);border-color:transparent;box-shadow:0 6px 24px -8px rgba(138,43,226,.7)}
+  .btn.pri:hover{filter:brightness(1.08)}
+  .btn.soft{background:var(--card2)}
+  .btn.ghost{border-color:transparent;color:var(--soft)}
+  .btn.ghost:hover{color:#fff;background:var(--card2)}
+  .btn.danger{color:#ff8a8f;border-color:rgba(232,50,60,.4)}
+  .btn.danger:hover{background:rgba(232,50,60,.12)}
+  .btn.sm{padding:6px 10px;font-size:12px;border-radius:8px}
+  .btn[disabled]{opacity:.45;pointer-events:none}
+  .langs a{color:var(--mute);text-decoration:none;font-size:12px;font-weight:800;margin-left:8px}
+  .langs a.on{color:#fff}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;border-radius:999px;padding:4px 9px;background:var(--card2);color:var(--soft);border:1px solid var(--line)}
+  .chip.live{background:var(--red);color:#fff;border-color:transparent}
+  .chip.live:before{content:"";width:6px;height:6px;border-radius:50%;background:#fff;animation:blink 1.2s infinite}
+  .chip.soon{background:rgba(47,91,255,.16);color:#9db3ff;border-color:rgba(47,91,255,.35)}
+  .chip.done{background:rgba(34,197,94,.12);color:#7ee2a3;border-color:rgba(34,197,94,.3)}
+  .chip.draft{color:var(--mute)}
+  @keyframes blink{50%{opacity:.25}}
+  .in-l{display:block;font-size:12px;font-weight:700;color:var(--soft);margin:0 0 6px}
+  .in-l small{color:var(--mute);font-weight:600}
+  input.f,textarea.f,select.f{width:100%;background:#0f0f17;color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:500 14px Inter,sans-serif;outline:none;transition:border-color .15s,box-shadow .15s}
+  textarea.f{resize:vertical;min-height:44px;line-height:1.45}
+  input.f:focus,textarea.f:focus,select.f:focus{border-color:var(--focus);box-shadow:0 0 0 3px rgba(109,139,255,.18)}
+  input.f::placeholder,textarea.f::placeholder{color:#5c5c74}
+  select.f{appearance:none;background-image:linear-gradient(45deg,transparent 50%,#8d8da6 50%),linear-gradient(135deg,#8d8da6 50%,transparent 50%);background-position:calc(100% - 16px) 50%,calc(100% - 11px) 50%;background-size:5px 5px;background-repeat:no-repeat;padding-right:30px}
+  .hintx{color:var(--mute);font-size:12px;margin-top:6px;line-height:1.45}
+  .other{color:#6f6f88;font-size:12px;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .other b{color:#8d8da6;font-weight:800;margin-right:4px}
+  .modal{position:fixed;inset:0;z-index:60;background:rgba(5,5,10,.72);backdrop-filter:blur(4px);display:none;align-items:flex-start;justify-content:center;padding:6vh 16px;overflow:auto}
+  .modal.on{display:flex;animation:fade .18s ease}
+  .modal .box{background:#14141d;border:1px solid var(--line);border-radius:20px;width:100%;max-width:620px;padding:24px;box-shadow:0 30px 80px -20px rgba(0,0,0,.8);animation:pop .22s cubic-bezier(.2,.9,.3,1.2)}
+  .modal .box.wide{max-width:860px}
+  .modal h3{margin:0 0 4px;font-size:22px;font-weight:900;letter-spacing:-.02em}
+  .modal .sub{color:var(--mute);margin-bottom:18px;line-height:1.45}
+  .modal .acts{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;flex-wrap:wrap}
+  @keyframes fade{from{opacity:0}}
+  @keyframes pop{from{transform:translateY(12px) scale(.98);opacity:0}}
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:#fff;color:#0b0b12;font-weight:800;border-radius:12px;padding:11px 16px;opacity:0;pointer-events:none;transition:all .25s;z-index:80;max-width:90vw;text-align:center}
+  .toast.on{opacity:1;transform:translateX(-50%)}
+  .toast.err{background:#ff5a63;color:#fff}
+  .seg{display:inline-flex;background:#0f0f17;border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
+  .seg button{border:0;background:transparent;color:var(--mute);font:800 12px Inter,sans-serif;padding:6px 11px;border-radius:7px;cursor:pointer}
+  .seg button.on{background:#fff;color:#0b0b12}
+  .spin{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:rot .7s linear infinite;display:inline-block}
+  @keyframes rot{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>

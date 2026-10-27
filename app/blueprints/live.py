@@ -23,6 +23,7 @@ from ..core import audit, role_required
 from ..i18n import t
 from ..models import LiveAnswer, LiveAsk, LiveEvent, LiveQuestion, LiveViewer, User, db, utcnow
 from ..services import live as svc
+from ..services import live_builder as lb
 from ..services.mail import absolute
 
 bp = Blueprint("live", __name__, url_prefix="/live")
@@ -50,7 +51,7 @@ def qr_svg(url: str, dark: str = "#0b0b12", light: str = "#ffffff") -> Markup:
 
 def _links(ev: LiveEvent) -> dict:
     links = dict(ev.links or {})
-    links["academy"] = absolute(url_for("live.watch", slug=ev.slug, lang="kk"))
+    links["academy"] = absolute(url_for("live.watch", slug=ev.slug, lang=ev.lang or "kk"))
     return links
 
 
@@ -66,8 +67,10 @@ def watch(slug):
         nxt = url_for("live.watch", slug=slug)
         return render_template("live/gate.html", ev=ev, nxt=nxt)
     v = svc.viewer_for(ev, g.user)
+    links = _links(ev)
     return render_template("live/watch.html", ev=ev, v=v, regions=svc.KZ_REGIONS, subjects=svc.SUBJECTS,
-                           positions=svc.POSITIONS, robotics=svc.ROBOTICS, links=_links(ev))
+                           positions=svc.POSITIONS, robotics=svc.ROBOTICS, links=links,
+                           bot_handle=lb.bot_handle(links.get("bot")), finish_text=_finish(ev))
 
 
 @bp.route("/<slug>/state")
@@ -199,9 +202,51 @@ def screen(slug):
         abort(403)
     links = _links(ev)
     qrs = {k: qr_svg(links[k]) for k in ("academy", "connect", "bot") if links.get(k)}
+    from ..i18n import current_locale as get_locale
     return render_template("live/screen.html", ev=ev, links=links, qrs=qrs, pretty=_pretty,
                            key=request.args.get("key", ""), subjects=svc.SUBJECTS, blocks_json=svc.blocks(slug),
-                           starts=ev.starts_at.strftime("%Y-%m-%dT%H:%M:%S") if ev.starts_at else "")
+                           starts=ev.starts_at.strftime("%Y-%m-%dT%H:%M:%S") if ev.starts_at else "",
+                           kicker=lb.kicker(ev, get_locale()), finish_text=_finish(ev) or t("live.scr_finish_sub_def"),
+                           bot_handle=lb.bot_handle(links.get("bot")), demo=_demo(ev))
+
+
+def _finish(ev: LiveEvent) -> str:
+    from ..i18n import current_locale as get_locale
+    f = (ev.texts or {}).get("finish") or {}
+    return f.get(get_locale()) or f.get("kk") or f.get("ru") or ""
+
+
+def _demo(ev: LiveEvent) -> dict | None:
+    """Предпросмотр сцены в конструкторе (?demo=waiting|talk|profile|question|reveal|leaderboard|finish): без эфира,
+    с примерными цифрами. Только для команды: экран с ключом показывает живой эфир."""
+    mode = request.args.get("demo")
+    if mode not in svc.MODES or not (g.user and g.user.has_role("methodist", "trainer")):
+        return None
+    import time as _t
+    qs = LiveQuestion.query.filter_by(event_id=ev.id).order_by(LiveQuestion.position).all()
+    st = {"mode": mode, "v": 0, "now": _t.time()}
+    if mode in ("question", "reveal"):
+        q = next((x for x in qs if str(x.id) == request.args.get("qid")), qs[0] if qs else None)
+        if not q:
+            st["mode"] = mode = "talk"
+        else:
+            st["q"] = {"id": q.id, "n": qs.index(q) + 1, "of": len(qs), "text": q.text, "options": q.options,
+                       "seconds": q.seconds, "at": 0, "block": q.block}
+            if mode == "reveal":
+                st["q"].update(correct=q.correct, note=q.note)
+    by = [64, 212, 41, 23][:len(st["q"]["options"])] if st.get("q") else [0, 0, 0, 0]
+    top = [{"name": n, "school": sch, "region": r, "region_ru": r, "score": sc} for n, sch, r, sc in (
+        ("Айгерим С.", "№12 мектеп", "Астана", 4820), ("Нурлан К.", "Келешек мектебі", "Алматы", 4610),
+        ("Динара М.", "№5 гимназия", "Шымкент", 4390), ("Ерлан Т.", "НЗМ", "Ақтөбе", 4120), ("Сауле Б.", "№34 мектеп", "Павлодар", 3980))]
+    stats = {"online": 312, "joined": 348, "profiles": 241, "schools": 186,
+             "subjects": {"physics": 61, "informatics": 74, "math": 52, "technology": 38, "primary": 21},
+             "regions": [{"kk": "Астана", "ru": "Астана", "n": 48}, {"kk": "Алматы", "ru": "Алматы", "n": 41},
+                         {"kk": "Шымкент", "ru": "Шымкент", "n": 33}, {"kk": "Түркістан облысы", "ru": "Туркестанская область", "n": 27}],
+             "answers": {"qid": st["q"]["id"] if st.get("q") else 0, "by": by, "total": sum(by)},
+             "top": top, "region_top": [{"kk": "Астана", "ru": "Астана", "n": 48, "avg": 2410},
+                                        {"kk": "Алматы", "ru": "Алматы", "n": 41, "avg": 2280}]}
+    picked = {"text": "Командаға неше оқушы керек?", "name": "Айгерим С.", "school": "№12 мектеп"} if mode == "ask" else None
+    return {"state": st, "stats": stats, "picked": picked}
 
 
 @bp.route("/<slug>/overlay")
@@ -467,3 +512,226 @@ def export(slug):
     buf.seek(0)
     return send_file(buf, as_attachment=True, download_name=f"live-{ev.slug}.xlsx",
                      mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+# ─── Конструктор эфиров ──────────────────────────────────────────────────
+def _builder_json(ev: LiveEvent) -> dict:
+    qs = LiveQuestion.query.filter_by(event_id=ev.id).order_by(LiveQuestion.position).all()
+    used = {qid for (qid,) in db.session.query(LiveAnswer.question_id).filter(LiveAnswer.event_id == ev.id).distinct()}
+    return {
+        "slug": ev.slug, "title": ev.title or {}, "subtitle": ev.subtitle or {}, "lang": ev.lang or "kk",
+        "starts_at": ev.starts_at.strftime("%Y-%m-%dT%H:%M") if ev.starts_at else "",
+        "youtube": f"https://youtu.be/{ev.youtube_id}" if ev.youtube_id else "",
+        "partners": (ev.texts or {}).get("partners", ""), "kicker": (ev.texts or {}).get("kicker") or {},
+        "finish": (ev.texts or {}).get("finish") or {}, "links": ev.links or {}, "blocks": ev.blocks or [],
+        "archived": bool(ev.archived), "has_viewers": lb.has_viewers(ev),
+        "questions": [{"id": q.id, "block": q.block, "text": q.text, "options": q.options, "correct": q.correct,
+                       "note": q.note or {}, "seconds": q.seconds, "used": q.id in used} for q in qs],
+        "ready": lb.readiness(ev),
+        "urls": {
+            "watch": absolute(url_for("live.watch", slug=ev.slug, lang=ev.lang or "kk")),
+            "screen": absolute(url_for("live.screen", slug=ev.slug, key=ev.screen_key, lang=ev.lang or "kk")),
+            "overlay": absolute(url_for("live.overlay", slug=ev.slug, key=ev.screen_key, lang=ev.lang or "kk")),
+            "control": absolute(url_for("live.control", slug=ev.slug)),
+            "stats": absolute(url_for("live.stats_page", slug=ev.slug)),
+            "guest": absolute(url_for("live.stats_page", slug=ev.slug, key=stats_key(ev), lang="ru")),
+            "qr": url_for("live.qr_file", slug=ev.slug),
+        },
+    }
+
+
+def _bad(key: str, code: int = 400):
+    return jsonify({"ok": False, "error": t(key)}), code
+
+
+@bp.route("/", strict_slashes=False)
+@role_required("methodist", "trainer")
+def hub():
+    """Все эфиры: создать, скопировать, открыть конструктор, пульт, аналитику."""
+    from sqlalchemy import func
+    evs = LiveEvent.query.order_by(LiveEvent.starts_at.desc().nullsfirst(), LiveEvent.id.desc()).all()
+    counts = dict(db.session.query(LiveViewer.event_id, func.count(LiveViewer.id)).group_by(LiveViewer.event_id).all())
+    qn = dict(db.session.query(LiveQuestion.event_id, func.count(LiveQuestion.id)).group_by(LiveQuestion.event_id).all())
+    from ..services.live_stats import _local
+    now = _local(utcnow())
+    rows = [{"ev": e, "status": lb.status(e, now), "viewers": counts.get(e.id, 0), "questions": qn.get(e.id, 0)} for e in evs]
+    return render_template("live/hub.html", rows=rows, ai=lb.ai_enabled())
+
+
+@bp.route("/new", methods=["POST"])
+@role_required("methodist", "trainer")
+def create():
+    f = request.get_json(silent=True) or request.form
+    src = None
+    if f.get("copy"):
+        src = LiveEvent.query.filter_by(slug=f.get("copy")).first()
+    title = f.get("title")
+    if isinstance(title, str):  # название на одном языке: второй допишут в конструкторе
+        title = {lb.guess_lang(title): title}
+    try:
+        ev = lb.create(title or {}, f.get("starts_at"), g.user.id, source=src,
+                       with_questions=str(f.get("with_questions", "1")) not in ("0", "false", ""))
+    except lb.BuildError as e:
+        return _bad(str(e))
+    audit("live.create", "live_event", ev.id, slug=ev.slug, copy=src.slug if src else None)
+    db.session.commit()
+    return jsonify({"ok": True, "slug": ev.slug, "url": url_for("live.build", slug=ev.slug)})
+
+
+@bp.route("/<slug>/build")
+@role_required("methodist", "trainer")
+def build(slug):
+    ev = _event(slug)
+    others = LiveEvent.query.filter(LiveEvent.id != ev.id).order_by(LiveEvent.id.desc()).all()
+    return render_template("live/build.html", ev=ev, data=_builder_json(ev), ai=lb.ai_enabled(), others=others)
+
+
+@bp.route("/<slug>/build.json")
+@role_required("methodist", "trainer")
+def build_json(slug):
+    resp = jsonify(_builder_json(_event(slug)))
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
+@bp.route("/<slug>/build/save", methods=["POST"])
+@role_required("methodist", "trainer")
+def build_save(slug):
+    ev = _event(slug)
+    try:
+        changed = lb.save_settings(ev, request.get_json(silent=True) or {})
+    except lb.BuildError as e:
+        db.session.rollback()
+        return _bad(str(e))
+    if "slug" in changed:
+        audit("live.slug", "live_event", ev.id, slug=ev.slug)
+        db.session.commit()
+    return jsonify({"ok": True, "data": _builder_json(ev)})
+
+
+@bp.route("/<slug>/build/reorder", methods=["POST"])
+@role_required("methodist", "trainer")
+def build_reorder(slug):
+    ev = _event(slug)
+    f = request.get_json(silent=True) or {}
+    moves = f.get("blocks") or {}
+    if moves:  # перенос вопроса в другой блок при перетаскивании
+        for qid, b in moves.items():
+            q = db.session.get(LiveQuestion, int(qid))
+            if q and q.event_id == ev.id and 1 <= int(b) <= len(ev.blocks or []):
+                q.block = int(b)
+    lb.reorder(ev, [int(x) for x in f.get("ids") or []])
+    return jsonify({"ok": True})
+
+
+@bp.route("/<slug>/build/paste", methods=["POST"])
+@role_required("methodist", "trainer")
+def build_paste(slug):
+    ev = _event(slug)
+    f = request.get_json(silent=True) or {}
+    items, blocks = lb.parse_paste(f.get("text") or "")
+    if f.get("dry"):
+        return jsonify({"ok": True, "items": items, "blocks": blocks})
+    if not items:
+        return _bad("live.b_paste_none")
+    try:
+        block = max(1, min(int(f.get("block") or 1), len(ev.blocks or [1])))
+        seconds = max(10, min(int(f.get("seconds") or 30), 120))
+    except (TypeError, ValueError):
+        block, seconds = 1, 30
+    n = lb.add_parsed(ev, items, blocks, f.get("lang") or "ru", block, seconds)
+    audit("live.paste", "live_event", ev.id, n=n)
+    db.session.commit()
+    return jsonify({"ok": True, "added": n, "data": _builder_json(ev)})
+
+
+@bp.route("/<slug>/build/ai", methods=["POST"])
+@role_required("methodist", "trainer")
+def build_ai(slug):
+    """ИИ составляет вопросы по презентации (PDF) или тексту. Возвращает черновики, в эфир их добавляет /build/add."""
+    ev = _event(slug)
+    if not lb.ai_enabled():
+        return _bad("live.b_ai_off")
+    pdf = None
+    up = request.files.get("pdf")
+    if up and up.filename:
+        pdf = up.read()
+        if not pdf.startswith(b"%PDF") or len(pdf) > 30 * 1024 * 1024:
+            return _bad("live.b_ai_pdf")
+    text = request.form.get("text") or ""
+    if not pdf and len(text.strip()) < 80:
+        return _bad("live.b_ai_need")
+    try:
+        count = max(1, min(int(request.form.get("count") or 5), 15))
+    except ValueError:
+        count = 5
+    try:
+        items = lb.ai_questions(ev, count, pdf, text, request.form.get("focus") or "")
+    except Exception:
+        import logging
+        logging.getLogger("academy.live").exception("live ai questions failed")
+        return _bad("live.b_ai_fail", 502)
+    audit("live.ai_questions", "live_event", ev.id, n=len(items))
+    db.session.commit()
+    return jsonify({"ok": True, "items": items})
+
+
+@bp.route("/<slug>/build/add", methods=["POST"])
+@role_required("methodist", "trainer")
+def build_add(slug):
+    ev = _event(slug)
+    f = request.get_json(silent=True) or {}
+    n = 0
+    for it in (f.get("items") or [])[:30]:
+        data = dict(it)
+        data["block"] = f.get("block") or 1
+        data["seconds"] = f.get("seconds") or 30
+        q, err = svc.save_question(ev, data)
+        n += 1 if q else 0
+    return jsonify({"ok": True, "added": n, "data": _builder_json(ev)})
+
+
+@bp.route("/<slug>/build/translate", methods=["POST"])
+@role_required("methodist", "trainer")
+def build_translate(slug):
+    ev = _event(slug)
+    if not lb.ai_enabled():
+        return _bad("live.b_ai_off")
+    try:
+        n = lb.ai_translate(ev)
+    except Exception:
+        import logging
+        logging.getLogger("academy.live").exception("live ai translate failed")
+        db.session.rollback()
+        return _bad("live.b_ai_fail", 502)
+    audit("live.ai_translate", "live_event", ev.id, n=n)
+    db.session.commit()
+    return jsonify({"ok": True, "filled": n, "data": _builder_json(ev)})
+
+
+@bp.route("/<slug>/build/delete", methods=["POST"])
+@role_required("methodist", "trainer")
+def build_delete(slug):
+    ev = _event(slug)
+    if (request.get_json(silent=True) or {}).get("confirm") != ev.slug:
+        return _bad("live.c_reset_bad")
+    try:
+        eid = ev.id
+        lb.delete(ev)
+    except lb.BuildError as e:
+        return _bad(str(e))
+    audit("live.delete", "live_event", eid, slug=slug)
+    db.session.commit()
+    return jsonify({"ok": True, "url": url_for("live.hub")})
+
+
+@bp.route("/<slug>/qr.svg")
+@role_required("methodist", "trainer")
+def qr_file(slug):
+    """QR на страницу эфира для афиш и рассылок."""
+    from flask import Response
+    ev = _event(slug)
+    url = absolute(url_for("live.watch", slug=ev.slug, lang=ev.lang or "kk"))
+    svg = segno.make(url, error="m").svg_inline(scale=12, border=3, dark="#0b0b12", light="#ffffff")
+    return Response('<?xml version="1.0" encoding="UTF-8"?>\n' + svg, mimetype="image/svg+xml",
+                    headers={"Content-Disposition": f'attachment; filename="qr-{ev.slug}.svg"'})

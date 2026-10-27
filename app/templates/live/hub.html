@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="{{ locale }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>{{ t('live.b_hub') }} · USTEM Academy</title>
+  {% include "live/_studio.html" %}
+  <style>
+    main{position:relative;z-index:1;max-width:1320px;margin:0 auto;padding:34px 20px 80px}
+    .hero{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:26px}
+    .kick{color:var(--mute);font-weight:800;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+    h1{font-size:clamp(38px,6vw,64px);line-height:.98;margin:8px 0 10px;font-weight:900;letter-spacing:-.04em}
+    .lead{color:var(--soft);font-size:16px;max-width:620px;line-height:1.5}
+    .tools{display:flex;gap:10px;align-items:center;margin:0 0 18px;flex-wrap:wrap}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px}
+    .ev{position:relative;background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px 20px 16px;display:flex;flex-direction:column;gap:12px;overflow:hidden;transition:transform .2s,border-color .2s,box-shadow .2s;animation:rise .45s cubic-bezier(.2,.8,.2,1) both}
+    .ev:before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:var(--grad);opacity:.55;transition:opacity .2s}
+    .ev:hover{transform:translateY(-3px);border-color:#3a3a50;box-shadow:0 20px 50px -24px rgba(47,91,255,.45)}
+    .ev:hover:before{opacity:1}
+    .ev.arch{opacity:.55}
+    @keyframes rise{from{opacity:0;transform:translateY(14px)}}
+    .ev .hd{display:flex;align-items:center;gap:8px;justify-content:space-between}
+    .ev .when{color:var(--mute);font-weight:700;font-size:13px}
+    .ev h2{font-size:22px;line-height:1.15;margin:2px 0 0;font-weight:900;letter-spacing:-.02em}
+    .ev h2 a{text-decoration:none}
+    .ev .st{color:var(--soft);font-size:13px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:19px}
+    .ev .nums{display:flex;gap:18px;margin-top:2px}
+    .ev .nums div{display:flex;flex-direction:column}
+    .ev .nums b{font-size:24px;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+    .ev .nums span{color:var(--mute);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+    .ev .acts{display:flex;gap:8px;margin-top:auto;padding-top:8px;border-top:1px solid var(--line);flex-wrap:wrap}
+    .newcard{border:1.5px dashed #3a3a50;background:transparent;border-radius:20px;min-height:230px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;cursor:pointer;color:var(--soft);font:800 16px Inter,sans-serif;transition:border-color .2s,background .2s,color .2s}
+    .newcard:hover{border-color:#8a2be2;background:rgba(138,43,226,.06);color:#fff}
+    .newcard .plus{width:54px;height:54px;border-radius:16px;background:var(--grad);display:flex;align-items:center;justify-content:center;font-size:30px;color:#fff;box-shadow:0 10px 30px -10px rgba(138,43,226,.8)}
+    .opts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:6px 0 14px}
+    .opt{border:1px solid var(--line);border-radius:14px;padding:14px;cursor:pointer;background:#0f0f17;transition:border-color .15s}
+    .opt b{display:block;font-size:15px;margin-bottom:4px}
+    .opt span{color:var(--mute);font-size:12px;line-height:1.4}
+    .opt.on{border-color:var(--focus);box-shadow:0 0 0 3px rgba(109,139,255,.18)}
+    .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .fld{margin-bottom:14px}
+    @media(max-width:560px){.row2,.opts{grid-template-columns:1fr}}
+    .chk{display:flex;gap:8px;align-items:center;color:var(--soft);font-weight:600;margin-top:10px}
+  </style>
+</head>
+<body>
+<div class="bgfx"></div>
+<header class="top"><div class="in">
+  <img src="{{ url_for('static', filename='img/ustem-mark.png') }}" alt="">
+  <a class="crumb" href="/">USTEM Academy</a>
+  <span class="crumb">/</span><span class="ttl">{{ t('live.b_hub') }}</span>
+  <span class="sp"></span>
+  <span class="langs">{% for l in ('kk', 'ru') %}<a href="?lang={{ l }}" class="{{ 'on' if locale == l }}">{{ l|upper }}</a>{% endfor %}</span>
+</div></header>
+
+<main>
+  <div class="hero">
+    <div>
+      <div class="kick">USTEM Academy · Live</div>
+      <h1 class="grad-text">{{ t('live.b_hub') }}</h1>
+      <div class="lead">{{ t('live.b_hub_sub') }}</div>
+    </div>
+    <button class="btn pri" type="button" data-new>＋ {{ t('live.b_new') }}</button>
+  </div>
+
+  {% set arch = rows|selectattr('ev.archived')|list %}
+  {% if arch %}<div class="tools"><label class="chk" style="margin:0"><input type="checkbox" id="showArch"> {{ t('live.b_show_arch', n=arch|length) }}</label></div>{% endif %}
+
+  <div class="grid">
+    <button class="newcard" type="button" data-new><span class="plus">＋</span>{{ t('live.b_new') }}<small style="color:var(--mute);font-weight:600;font-size:13px">{{ t('live.b_new_hint') }}</small></button>
+    {% for r in rows %}{% set e = r.ev %}
+    <article class="ev{{ ' arch' if e.archived }}" style="animation-delay:{{ loop.index0 * 50 }}ms" {% if e.archived %}data-arch hidden{% endif %}>
+      <div class="hd">
+        <span class="chip {{ r.status }}">{{ t('live.b_st_' ~ r.status) }}</span>
+        <span class="when">{% if e.starts_at %}{{ e.starts_at.strftime('%d.%m.%Y · %H:%M') }}{% else %}{{ t('live.b_no_date') }}{% endif %}</span>
+      </div>
+      <h2><a href="{{ url_for('live.build', slug=e.slug) }}">{{ e.title|loc }}</a></h2>
+      <div class="st">{{ e.subtitle|loc }}</div>
+      <div class="nums">
+        <div><b>{{ r.viewers }}</b><span>{{ t('live.b_viewers') }}</span></div>
+        <div><b>{{ r.questions }}</b><span>{{ t('live.b_questions') }}</span></div>
+        <div><b style="font-size:15px;line-height:28px;color:var(--soft)">/live/{{ e.slug }}</b><span>{{ t('live.b_link') }}</span></div>
+      </div>
+      <div class="acts">
+        <a class="btn pri sm" href="{{ url_for('live.build', slug=e.slug) }}">✎ {{ t('live.b_open') }}</a>
+        <a class="btn sm" href="{{ url_for('live.control', slug=e.slug) }}">🎛 {{ t('live.control') }}</a>
+        <a class="btn sm" href="{{ url_for('live.stats_page', slug=e.slug) }}">📊 {{ t('live.st_short') }}</a>
+        <span class="sp"></span>
+        <button class="btn ghost sm" type="button" data-copy="{{ e.slug }}" data-title="{{ e.title|loc }}" title="{{ t('live.b_copy') }}">⧉ {{ t('live.b_copy') }}</button>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</main>
+
+<div class="modal" id="m"><form class="box" id="mf">
+  <h3 id="m-h">{{ t('live.b_new') }}</h3>
+  <div class="sub" id="m-sub">{{ t('live.b_new_sub') }}</div>
+  <div class="opts">
+    <div class="opt on" data-src=""><b>✦ {{ t('live.b_blank') }}</b><span>{{ t('live.b_blank_sub') }}</span></div>
+    <div class="opt" data-src="copy"><b>⧉ {{ t('live.b_from') }}</b><span>{{ t('live.b_from_sub') }}</span></div>
+  </div>
+  <div class="fld" id="m-copy" hidden>
+    <label class="in-l">{{ t('live.b_from_which') }}</label>
+    <select class="f" name="copy">{% for r in rows %}<option value="{{ r.ev.slug }}">{{ r.ev.title|loc }}{% if r.ev.starts_at %} · {{ r.ev.starts_at.strftime('%d.%m.%Y') }}{% endif %}</option>{% endfor %}</select>
+    <label class="chk"><input type="checkbox" name="with_questions" checked> {{ t('live.b_with_q') }}</label>
+  </div>
+  <div class="fld">
+    <label class="in-l">{{ t('live.b_f_title') }} <small>· {{ t('live.b_f_title_hint') }}</small></label>
+    <input class="f" name="title" required maxlength="160" autocomplete="off" placeholder="{{ t('live.b_f_title_ph') }}">
+  </div>
+  <div class="row2">
+    <div class="fld"><label class="in-l">{{ t('live.b_f_date') }}</label><input class="f" type="date" name="d"></div>
+    <div class="fld"><label class="in-l">{{ t('live.b_f_time') }} <small>· {{ t('live.astana_time') }}</small></label><input class="f" type="time" name="tm" value="11:00"></div>
+  </div>
+  <div class="hintx">{{ t('live.b_new_after') }}</div>
+  <div class="acts">
+    <button class="btn ghost" type="button" data-close>{{ t('live.q_cancel') }}</button>
+    <button class="btn pri" type="submit" id="m-go">{{ t('live.b_create') }} →</button>
+  </div>
+</form></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  var CSRF = document.querySelector('meta[name=csrf-token]').content;
+  var m = document.getElementById('m'), f = document.getElementById('mf'), src = '';
+  function toast(msg, err) { var el = document.getElementById('toast'); el.textContent = msg; el.className = 'toast on' + (err ? ' err' : ''); setTimeout(function () { el.className = 'toast'; }, 2600); }
+  function pick(s) {
+    src = s;
+    Array.prototype.forEach.call(document.querySelectorAll('.opt'), function (o) { o.classList.toggle('on', o.dataset.src === s); });
+    document.getElementById('m-copy').hidden = s !== 'copy';
+  }
+  function open(copy, title) {
+    m.classList.add('on'); f.reset(); f.tm.value = '11:00';
+    if (copy) { pick('copy'); f.copy.value = copy; f.title.value = title || ''; } else pick('');
+    setTimeout(function () { f.title.focus(); f.title.select(); }, 50);
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('[data-new]'), function (b) { b.onclick = function () { open(); }; });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-copy]'), function (b) { b.onclick = function () { open(b.dataset.copy, b.dataset.title); }; });
+  Array.prototype.forEach.call(document.querySelectorAll('.opt'), function (o) { o.onclick = function () { pick(o.dataset.src); }; });
+  m.addEventListener('click', function (e) { if (e.target === m || e.target.hasAttribute('data-close')) m.classList.remove('on'); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') m.classList.remove('on'); });
+  var sa = document.getElementById('showArch');
+  if (sa) sa.onchange = function () { Array.prototype.forEach.call(document.querySelectorAll('[data-arch]'), function (el) { el.hidden = !sa.checked; }); };
+  f.onsubmit = function (e) {
+    e.preventDefault();
+    var go = document.getElementById('m-go'); go.disabled = true;
+    var body = {title: f.title.value, starts_at: f.d.value ? f.d.value + 'T' + (f.tm.value || '11:00') : '',
+                copy: src === 'copy' ? f.copy.value : '', with_questions: f.with_questions.checked ? 1 : 0};
+    fetch('{{ url_for("live.create") }}', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': CSRF}, body: JSON.stringify(body)})
+      .then(function (r) { return r.json(); }).then(function (d) {
+        if (d.ok) location.href = d.url; else { toast(d.error || 'Error', true); go.disabled = false; }
+      }).catch(function () { toast({{ t('live.net')|tojson }}, true); go.disabled = false; });
+  };
+})();
+</script>
+</body>
+</html>

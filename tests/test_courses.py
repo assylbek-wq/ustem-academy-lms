@@ -185,14 +185,14 @@ class MigrationTest(AppTestCase):
             con.close()
             create_app(Prod, SQLALCHEMY_DATABASE_URI=f"sqlite:///{legacy}")
             con = sqlite3.connect(legacy)
-            self.assertEqual(con.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0009_email_verified")
+            self.assertEqual(con.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0010_live_builder")
             self.assertEqual(con.execute("SELECT self_paced FROM programs WHERE slug='old'").fetchone()[0], 0)
             con.close()
 
             fresh = os.path.join(d, "fresh.db")
             create_app(Prod, SQLALCHEMY_DATABASE_URI=f"sqlite:///{fresh}")
             con = sqlite3.connect(fresh)
-            self.assertEqual(con.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0009_email_verified")
+            self.assertEqual(con.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0010_live_builder")
             con.close()
 
 

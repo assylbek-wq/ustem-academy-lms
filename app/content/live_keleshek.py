@@ -17,6 +17,14 @@ EVENT = {
 }
 
 
+TEXTS = {
+    "partners": "USTEM Foundation × Ы. Алтынсарин атындағы ҰБА",
+    "kicker": {"kk": "Кіріспе семинар · 27 қазан 2026", "ru": "Вводный семинар · 27 октября 2026"},
+    "finish": {"kk": "Келешек Лигасын бірге бастайық. Келесі қадам - мектеп командасын USTEM Connect-те тіркеу.",
+               "ru": "Начнем Лигу Келешек вместе. Следующий шаг - команда школы в USTEM Connect."},
+}
+
+
 def _q(key, block, text, options, correct, note, seconds=30):
     return {"key": key, "block": block, "text": text, "options": options, "correct": correct, "note": note, "seconds": seconds}
 

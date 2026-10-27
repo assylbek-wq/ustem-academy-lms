@@ -57,6 +57,9 @@
         {{ navlink('studio.index', 'layers', t('nav.studio'), '/studio') }}
         <a href="{{ url_for('studio.paths') }}" class="sidebar-link {% if cur_path.startswith('/studio/paths') %}sidebar-link-active{% endif %}">{{ ic('map-pin') }} <span>{{ t('nav.paths') }}</span></a>
       {% endif %}
+      {% if user.has_role('methodist', 'trainer') %}
+        {{ navlink('live.hub', 'video', t('nav.live'), '/live') }}
+      {% endif %}
       {% if user.customer_ids or user.is_admin %}
         {{ navlink('reports.index', 'chart', t('nav.reports'), '/reports') }}
       {% endif %}
