@@ -1,7 +1,7 @@
 """подтверждение email: users.email_verified_at (у уже зарегистрированных - считаем подтвержденным)
 
-Revision ID: 0008_email_verified
-Revises: 0007_wso_cansat_path
+Revision ID: 0009_email_verified
+Revises: 0008_live
 Create Date: 2026-10-27 05:00:00
 
 """
@@ -9,8 +9,8 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = '0008_email_verified'
-down_revision = '0007_wso_cansat_path'
+revision = '0009_email_verified'
+down_revision = '0008_live'
 branch_labels = None
 depends_on = None
 
