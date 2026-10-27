@@ -1137,6 +1137,12 @@ _S.update({
     'live.c_hide': ('Скрыть', 'Жасыру', 'Hide'),
     'live.c_copied': ('Скопировано', 'Көшірілді', 'Copied'),
     'live.c_confirm_restart': ('На этот вопрос уже отвечали. Запустить снова? Новые ответы не примутся у тех, кто уже ответил.', 'Бұл сұраққа жауап берілген. Қайта бастау керек пе? Бұрын жауап бергендердің жаңа жауабы қабылданбайды.', 'This question already has answers. Start again? People who answered cannot answer again.'),
+    'audit.live.reset': ('Эфир обнулен', 'Эфир нөлденді', 'Live reset'),
+    'live.c_reset': ('Обнулить эфир', 'Эфирді нөлдеу', 'Reset live'),
+    'live.c_reset_hint': ('Удаляет ответы, анкеты, баллы и вопросы спикеру, экран - на заставку. Аккаунты учителей остаются. Только для администратора. Сначала выгрузите Excel.', 'Жауаптарды, сауалнамаларды, ұпайларды және спикерге сұрақтарды өшіреді, экран заставкаға оралады. Мұғалімдердің аккаунттары қалады. Тек әкімшіге. Алдымен Excel-ге жүктеңіз.', 'Deletes answers, profiles, scores and questions, screen back to pre-show. Teacher accounts stay. Admins only. Export Excel first.'),
+    'live.c_reset_prompt': ('Все ответы, анкеты, баллы и вопросы этого эфира будут удалены без возврата. Для подтверждения введите код эфира: {slug}', 'Осы эфирдің барлық жауаптары, сауалнамалары, ұпайлары және сұрақтары қайтарусыз өшіріледі. Растау үшін эфир кодын жазыңыз: {slug}', 'All answers, profiles, scores and questions of this live will be deleted for good. To confirm, type the live code: {slug}'),
+    'live.c_reset_bad': ('Код не совпал, ничего не удалено.', 'Код сәйкес келмеді, ештеңе өшірілген жоқ.', 'Code did not match, nothing was deleted.'),
+    'live.c_reset_done': ('Обнулено: ответов {a}, зрителей {v}, вопросов {q}.', 'Нөлденді: жауап {a}, көрермен {v}, сұрақ {q}.', 'Reset: {a} answers, {v} viewers, {q} questions.'),
 })
 
 

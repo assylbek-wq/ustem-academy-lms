@@ -283,3 +283,15 @@ def asks(ev: LiveEvent, limit: int = 60) -> list[dict]:
                     "school": (v.school if v else "") or "", "region": region_name(v.region if v else None, "kk"),
                     "at": local_hm(a.created_at)})
     return out
+
+
+def reset(ev: LiveEvent) -> dict:
+    """Обнулить эфир: ответы, анкеты зрителей, вопросы спикеру; экран - на заставку. Аккаунты учителей остаются."""
+    counts = {
+        "answers": LiveAnswer.query.filter_by(event_id=ev.id).delete(synchronize_session=False),
+        "asks": LiveAsk.query.filter_by(event_id=ev.id).delete(synchronize_session=False),
+        "viewers": LiveViewer.query.filter_by(event_id=ev.id).delete(synchronize_session=False),
+    }
+    db.session.flush()
+    set_state(ev, "waiting")  # коммитит и сбрасывает кеш
+    return counts

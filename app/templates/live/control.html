@@ -108,6 +108,12 @@
       <div class="hint">{{ t('live.c_l_overlay') }}</div>
       <div class="copy"><code>{{ overlay_url }}</code><button class="b sm" data-copy="{{ overlay_url }}">⧉</button></div>
       <div class="row"><a class="b sm" href="{{ url_for('live.export', slug=ev.slug) }}">⬇ {{ t('live.c_export') }}</a><a class="b sm" target="_blank" href="{{ screen_url }}">{{ t('live.c_open_screen') }}</a></div>
+      {% if user.is_admin %}
+      <div class="row" style="margin-top:14px;padding-top:12px;border-top:1px solid #eee">
+        <button class="b sm" id="reset" style="border-color:#e8323c;color:#e8323c">⟲ {{ t('live.c_reset') }}</button>
+        <span class="hint" id="reset-msg">{{ t('live.c_reset_hint') }}</span>
+      </div>
+      {% endif %}
     </div>
     <div class="card">
       <h2>{{ t('live.c_asks') }} <span id="ask-n"></span></h2>
@@ -147,6 +153,15 @@
   Array.prototype.forEach.call(document.querySelectorAll('[data-copy]'), function (b) { b.onclick = function () { navigator.clipboard.writeText(b.dataset.copy); b.textContent = '✓'; setTimeout(function () { b.textContent = '⧉'; }, 1200); }; });
   $('yt-save').onclick = function () {
     post('/live/' + SLUG + '/control/settings', {youtube: $('yt').value}).then(function (r) { $('yt-msg').textContent = r.ok ? T.saved + (r.youtube_id ? ' · ' + r.youtube_id : '') : (r.error || 'error'); });
+  };
+  var rb = document.getElementById('reset');
+  if (rb) rb.onclick = function () {
+    var code = prompt({{ t('live.c_reset_prompt', slug=ev.slug)|tojson }});
+    if (code === null) return;
+    post('/live/' + SLUG + '/control/reset', {confirm: code}).then(function (r) {
+      $('reset-msg').textContent = r.ok ? {{ t('live.c_reset_done')|tojson }}.replace('{a}', r.answers).replace('{v}', r.viewers).replace('{q}', r.asks) : (r.error || 'error');
+      load();
+    });
   };
   function render() {
     var st = data.state || {}, s = data.stats || {};

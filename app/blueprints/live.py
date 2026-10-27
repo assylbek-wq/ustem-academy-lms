@@ -327,6 +327,20 @@ def control_ask(slug, ask_id):
     return jsonify({"ok": True})
 
 
+@bp.route("/<slug>/control/reset", methods=["POST"])
+@role_required("admin")
+def control_reset(slug):
+    """Обнуление эфира после тестов. Только администратор и только с вводом кода эфира для подтверждения."""
+    ev = _event(slug)
+    f = request.get_json(silent=True) or {}
+    if (f.get("confirm") or "").strip().lower() != ev.slug:
+        return jsonify({"ok": False, "error": t("live.c_reset_bad")}), 400
+    counts = svc.reset(ev)
+    audit("live.reset", "live_event", ev.id, **counts)
+    db.session.commit()
+    return jsonify({"ok": True, **counts})
+
+
 @bp.route("/<slug>/export.xlsx")
 @role_required("methodist", "trainer")
 def export(slug):
