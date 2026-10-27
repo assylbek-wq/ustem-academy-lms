@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="{{ locale }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ t('live.st_title') }} · {{ ev.title|loc }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" sizes="32x32" href="{{ static_v('img/favicon-32.png') }}">
+  {% include "live/_style.html" %}
+  <style>
+    :root{--card2:#121219;--soft:#c9c9d6}
+    body{background:var(--bg);color:var(--text);min-height:100vh}
+    .bgfx{position:fixed;inset:0;pointer-events:none;background:radial-gradient(900px 600px at 0% 0%,rgba(47,91,255,.18),transparent 60%),radial-gradient(800px 600px at 100% 100%,rgba(255,106,26,.12),transparent 60%),radial-gradient(700px 500px at 80% 0%,rgba(138,43,226,.14),transparent 60%)}
+    header{position:sticky;top:0;z-index:20;background:rgba(11,11,18,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+    .hin{max-width:1280px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+    .hin img{width:26px;height:26px}
+    .hin .ttl{font-weight:800;font-size:15px}
+    .hin .sp{flex:1}
+    .hin a.btn{color:#fff;text-decoration:none;border:1px solid var(--line);border-radius:10px;padding:7px 12px;font-weight:700;font-size:13px}
+    .hin a.btn:hover{border-color:#fff}
+    .langs a{color:var(--mute);text-decoration:none;font-size:12px;font-weight:800;margin-left:8px}
+    .langs a.on{color:#fff}
+    .live{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:900;letter-spacing:.06em;background:var(--red);border-radius:6px;padding:4px 8px}
+    .live:before{content:"";width:6px;height:6px;border-radius:50%;background:#fff;animation:blink 1.2s infinite}
+    @keyframes blink{50%{opacity:.25}}
+    main{position:relative;max-width:1280px;margin:0 auto;padding:28px 20px 80px}
+    .hero{display:grid;grid-template-columns:1.2fr 1fr;gap:28px;align-items:end;margin-bottom:28px}
+    @media(max-width:900px){.hero{grid-template-columns:1fr}}
+    .kicker{color:var(--mute);font-weight:700;font-size:13px;letter-spacing:.04em;text-transform:uppercase}
+    h1{font-size:clamp(36px,6vw,68px);line-height:.98;margin:10px 0 12px;font-weight:900;letter-spacing:-.035em}
+    .lead{color:var(--soft);font-size:16px;line-height:1.5;max-width:640px}
+    .big{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;position:relative;overflow:hidden}
+    .big:after{content:"";position:absolute;left:0;right:0;bottom:0;height:4px;background:var(--grad)}
+    .big .n{font-size:clamp(56px,8vw,96px);font-weight:900;letter-spacing:-.04em;line-height:1;font-variant-numeric:tabular-nums}
+    .big .l{color:var(--soft);font-weight:700;margin-top:6px}
+    .big .s{color:var(--mute);font-size:13px;margin-top:10px}
+    .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+    @media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}}
+    .kpi{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px}
+    .kpi .n{font-size:38px;font-weight:900;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1}
+    .kpi .n small{font-size:16px;color:var(--mute);font-weight:700;margin-left:4px}
+    .kpi .l{color:var(--soft);font-weight:700;font-size:14px;margin-top:8px}
+    .kpi .s{color:var(--mute);font-size:12px;margin-top:4px}
+    .kpi .bar{height:5px;border-radius:3px;background:#24243a;margin-top:12px;overflow:hidden}
+    .kpi .bar i{display:block;height:100%;width:0;background:var(--grad);transition:width 1.2s cubic-bezier(.2,.8,.2,1)}
+    section.card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;margin-bottom:22px}
+    .card h2{font-size:22px;margin:0 0 4px;font-weight:800;letter-spacing:-.01em}
+    .card .sub{color:var(--mute);font-size:13px;margin-bottom:16px;line-height:1.45}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+    .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+    @media(max-width:900px){.grid2,.grid3{grid-template-columns:1fr}}
+    .grid2>section.card,.grid3>section.card{margin-bottom:0}
+    .rowgap{margin-bottom:22px}
+    /* Полосы */
+    .hb{margin:10px 0}
+    .hb .lab{display:flex;justify-content:space-between;gap:10px;font-size:14px;font-weight:600;margin-bottom:6px}
+    .hb .lab b{font-variant-numeric:tabular-nums}
+    .hb .lab span.m{color:var(--mute);font-weight:500}
+    .hb .tr{height:12px;border-radius:6px;background:#22222f;overflow:hidden}
+    .hb .tr i{display:block;height:100%;width:0;border-radius:6px;background:var(--grad);transition:width 1.1s cubic-bezier(.2,.8,.2,1)}
+    /* Таймлайн */
+    #tl{width:100%;height:300px;display:block}
+    .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--mute);margin-top:8px}
+    .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+    .tip{position:fixed;pointer-events:none;background:#fff;color:var(--ink);border-radius:10px;padding:8px 10px;font-size:13px;font-weight:700;box-shadow:0 10px 30px rgba(0,0,0,.4);display:none;z-index:40}
+    /* Карта */
+    #map svg{width:100%;height:auto;display:block}
+    #map path.rg{stroke:#0b0b12;stroke-width:1.2;transition:fill .8s ease, opacity .8s ease;cursor:default}
+    #map path.rg:hover{stroke:#fff;stroke-width:2}
+    #map .bub{transition:r 1s cubic-bezier(.2,.8,.2,1)}
+    #map text{font-family:Inter,sans-serif;font-weight:800;fill:#fff;font-size:15px;paint-order:stroke;stroke:#0b0b12;stroke-width:4px}
+    /* Воронка */
+    .fun .st{display:grid;grid-template-columns:180px 1fr 70px;gap:14px;align-items:center;margin:10px 0}
+    @media(max-width:600px){.fun .st{grid-template-columns:110px 1fr 56px}}
+    .fun .st .nm{font-weight:700;font-size:14px}
+    .fun .st .tr{height:38px;border-radius:10px;background:#1a1a26;overflow:hidden}
+    .fun .st .tr i{display:flex;align-items:center;justify-content:flex-end;padding-right:10px;height:100%;width:0;background:var(--grad);border-radius:10px;font-weight:900;font-variant-numeric:tabular-nums;transition:width 1.2s cubic-bezier(.2,.8,.2,1)}
+    .fun .st .pc{color:var(--mute);font-weight:800;font-variant-numeric:tabular-nums;text-align:right}
+    /* Викторина */
+    .qz{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px}
+    @media(max-width:600px){.qz{grid-template-columns:1fr}}
+    .qc{background:var(--card2);border:1px solid var(--line);border-radius:18px;padding:16px}
+    .qc .hd{display:flex;gap:14px;align-items:flex-start}
+    .ring{width:74px;height:74px;flex:none;position:relative}
+    .ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+    .ring circle.fg{transition:stroke-dashoffset 1.3s cubic-bezier(.2,.8,.2,1)}
+    .ring .v{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px}
+    .qc .qn{color:var(--mute);font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+    .qc .qt{font-weight:800;font-size:15px;line-height:1.3;margin-top:4px}
+    .qc .meta{color:var(--mute);font-size:12px;margin-top:6px}
+    .op{display:grid;grid-template-columns:20px 1fr 40px;gap:8px;align-items:center;margin-top:8px;font-size:13px}
+    .op .sh{width:18px;height:18px;border-radius:5px;display:flex;align-items:center;justify-content:center}
+    .op .sh svg{width:11px;height:11px}
+    .op .tr{position:relative;height:24px;border-radius:7px;background:#1f1f2c;overflow:hidden}
+    .op .tr i{position:absolute;left:0;top:0;bottom:0;width:0;border-radius:7px;opacity:.85;transition:width 1.1s cubic-bezier(.2,.8,.2,1)}
+    .op .tr span{position:relative;z-index:1;display:block;padding:4px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+    .op.ok .tr{outline:2px solid #fff;outline-offset:1px}
+    .op .c{text-align:right;font-weight:800;font-variant-numeric:tabular-nums}
+    .muted{color:var(--mute)}
+    .unasked{margin-top:14px;font-size:13px;color:var(--mute)}
+    /* Таблицы и списки */
+    table.t{width:100%;border-collapse:collapse;font-size:14px}
+    table.t th{color:var(--mute);font-size:12px;text-transform:uppercase;letter-spacing:.05em;text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+    table.t td{padding:10px;border-bottom:1px solid #1f1f2c;vertical-align:top}
+    table.t td.r,table.t th.r{text-align:right;font-variant-numeric:tabular-nums}
+    .medal{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:8px;background:#22222f;font-weight:900;font-size:13px}
+    .m1{background:#ffd23f;color:#0b0b12}.m2{background:#d9d9e6;color:#0b0b12}.m3{background:#e5a06a;color:#0b0b12}
+    .seg{display:flex;height:40px;border-radius:12px;overflow:hidden;margin:6px 0 10px}
+    .seg i{display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;width:0;transition:width 1.1s cubic-bezier(.2,.8,.2,1);white-space:nowrap;overflow:hidden}
+    .segleg{display:flex;flex-wrap:wrap;gap:12px;font-size:13px;color:var(--soft)}
+    .segleg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px}
+    .hist{display:flex;align-items:flex-end;gap:10px;height:170px;margin-top:10px}
+    .hist .c{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end}
+    .hist .c i{width:100%;height:0;border-radius:10px 10px 4px 4px;background:var(--grad);transition:height 1.1s cubic-bezier(.2,.8,.2,1)}
+    .hist .c b{font-variant-numeric:tabular-nums}
+    .hist .c span{color:var(--mute);font-size:12px;text-align:center}
+    .tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+    .tabs button{background:#1b1b27;border:1px solid var(--line);color:var(--soft);border-radius:999px;padding:6px 12px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit}
+    .tabs button.on{background:#fff;color:var(--ink);border-color:#fff}
+    .ask{padding:12px 0;border-bottom:1px solid #1f1f2c}
+    .ask .w{color:var(--mute);font-size:12px;margin-top:4px}
+    .ask .st{display:inline-block;font-size:11px;font-weight:800;border-radius:6px;padding:2px 6px;margin-left:6px;vertical-align:1px}
+    .st-done{background:rgba(34,197,94,.18);color:#86efac}.st-picked{background:rgba(47,91,255,.25);color:#a5b4fc}.st-new{background:#24243a;color:var(--soft)}.st-hidden{background:#24243a;color:#77778a}
+    .asks{max-height:520px;overflow:auto;padding-right:6px}
+    .foot{color:var(--mute);font-size:12px;line-height:1.5;margin-top:10px}
+    .reveal{opacity:0;transform:translateY(18px);transition:opacity .7s ease, transform .7s cubic-bezier(.2,.8,.2,1)}
+    .reveal.in{opacity:1;transform:none}
+    @media (prefers-reduced-motion: reduce){.reveal{opacity:1;transform:none;transition:none}*{transition:none!important;animation:none!important}}
+    @media print{header{position:static}.reveal{opacity:1;transform:none}body{background:#0b0b12;-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+  </style>
+</head>
+<body>
+<div class="bgfx"></div>
+<header><div class="hin">
+  <img src="{{ url_for('static', filename='img/ustem-mark.png') }}" alt="">
+  <span class="ttl">{{ t('live.st_title') }}</span>
+  {% if data.live %}<span class="live">LIVE</span>{% endif %}
+  <span class="sp"></span>
+  <a class="btn" href="{{ url_for('live.export', slug=ev.slug) }}">⬇ Excel</a>
+  <a class="btn" href="{{ url_for('live.control', slug=ev.slug) }}">{{ t('live.control') }}</a>
+  <span class="langs">{% for l in ('kk', 'ru') %}<a href="?lang={{ l }}" class="{{ 'on' if locale == l }}">{{ l|upper }}</a>{% endfor %}</span>
+</div></header>
+<div class="tip" id="tip"></div>
+
+<main>
+  <div class="hero reveal">
+    <div>
+      <div class="kicker">USTEM Foundation · {{ ev.starts_at|d if ev.starts_at }}</div>
+      <h1 class="grad-text">{{ (ev.title|loc).split('·')[0] }}</h1>
+      <div class="lead">{{ ev.subtitle|loc }}</div>
+    </div>
+    <div class="big">
+      <div class="n" data-k="viewers" data-count="{{ data.kpi.viewers }}">0</div>
+      <div class="l">{{ t('live.st_viewers') }}</div>
+      <div class="s">{{ t('live.st_peak', n=data.kpi.peak, at=data.kpi.peak_at or '-') }}</div>
+    </div>
+  </div>
+
+  <div class="kpis">
+    {% set k = data.kpi %}
+    <div class="kpi reveal"><div class="n" data-k="profiles" data-count="{{ k.profiles }}">0</div><div class="l">{{ t('live.st_profiles') }}</div><div class="s">{{ t('live.st_of_viewers', p=(100 * k.profiles // k.viewers) if k.viewers else 0) }}</div><div class="bar"><i data-w="{{ (100 * k.profiles / k.viewers) if k.viewers else 0 }}"></i></div></div>
+    <div class="kpi reveal"><div class="n" data-k="schools" data-count="{{ k.schools }}">0</div><div class="l">{{ t('live.st_schools') }}</div><div class="s">{{ t('live.st_regions_n', n=k.regions) }}</div></div>
+    <div class="kpi reveal"><div class="n" data-k="avg_min" data-count="{{ k.avg_min }}" data-dec="1">0</div><div class="l">{{ t('live.st_avg_min') }}</div><div class="s">{{ t('live.st_hours', n=k.hours) }}</div></div>
+    <div class="kpi reveal"><div class="n" data-k="new_users" data-count="{{ k.new_users }}">0</div><div class="l">{{ t('live.st_new_users') }}</div><div class="s">{{ t('live.st_new_users_s') }}</div></div>
+    <div class="kpi reveal"><div class="n" data-k="answers" data-count="{{ k.answers }}">0</div><div class="l">{{ t('live.st_answers') }}</div><div class="s">{{ t('live.st_answered', n=k.answered) }}</div></div>
+    <div class="kpi reveal"><div class="n" data-k="asks" data-count="{{ k.asks }}">0</div><div class="l">{{ t('live.st_asks') }}</div><div class="s">{{ t('live.st_askers', n=k.askers) }}</div></div>
+    <div class="kpi reveal"><div class="n" data-k="peak" data-count="{{ k.peak }}">0</div><div class="l">{{ t('live.st_peak_l') }}</div><div class="s">{{ k.peak_at or '-' }}</div></div>
+    <div class="kpi reveal"><div class="n" data-k="regions" data-count="{{ k.regions }}">0</div><div class="l">{{ t('live.st_regions') }}</div><div class="s">{{ t('live.st_no_region', n=k.no_region) }}</div></div>
+  </div>
+
+  <section class="card reveal">
+    <h2>{{ t('live.st_tl_h') }}</h2>
+    <div class="sub">{{ t('live.st_tl_sub') }}</div>
+    <svg id="tl" role="img" aria-label="{{ t('live.st_tl_h') }}"></svg>
+    <div class="legend"><span><i style="background:linear-gradient(90deg,#2f5bff,#8a2be2)"></i>{{ t('live.st_tl_on') }}</span><span><i style="background:#ff6a1a"></i>{{ t('live.st_tl_join') }}</span><span><i style="background:#fff"></i>{{ t('live.st_tl_marks') }}</span></div>
+  </section>
+
+  <div class="grid2 rowgap">
+    <section class="card reveal">
+      <h2>{{ t('live.st_map_h') }}</h2>
+      <div class="sub">{{ t('live.st_map_sub', n=data.kpi.no_region) }}</div>
+      <div id="map"></div>
+    </section>
+    <section class="card reveal">
+      <h2>{{ t('live.st_reg_h') }}</h2>
+      <div class="sub">{{ t('live.st_reg_sub') }}</div>
+      <div id="regbars"></div>
+    </section>
+  </div>
+
+  <section class="card reveal">
+    <h2>{{ t('live.st_fun_h') }}</h2>
+    <div class="sub">{{ t('live.st_fun_sub') }}</div>
+    <div class="fun" id="fun"></div>
+  </section>
+
+  <div class="grid3 rowgap">
+    <section class="card reveal"><h2>{{ t('live.st_subj_h') }}</h2><div class="sub">{{ t('live.st_subj_sub') }}</div><div id="subj"></div></section>
+    <section class="card reveal"><h2>{{ t('live.st_rob_h') }}</h2><div class="sub">{{ t('live.st_rob_sub') }}</div><div id="rob"></div><div style="margin-top:22px" id="pos"></div></section>
+    <section class="card reveal"><h2>{{ t('live.st_watch_h') }}</h2><div class="sub">{{ t('live.st_watch_sub') }}</div><div class="hist" id="watch"></div></section>
+  </div>
+
+  <section class="card reveal">
+    <h2>{{ t('live.st_quiz_h') }}</h2>
+    <div class="sub">{{ t('live.st_quiz_sub') }}</div>
+    <div class="qz" id="quiz"></div>
+    <div class="unasked" id="unasked"></div>
+  </section>
+
+  <div class="grid2 rowgap">
+    <section class="card reveal">
+      <h2>{{ t('live.st_top_h') }}</h2>
+      <div class="sub">{{ t('live.st_top_sub') }}</div>
+      <table class="t" id="top"></table>
+    </section>
+    <section class="card reveal">
+      <h2>{{ t('live.st_sch_h') }}</h2>
+      <div class="sub">{{ t('live.st_sch_sub') }}</div>
+      <div id="sch"></div>
+    </section>
+  </div>
+
+  <section class="card reveal">
+    <h2>{{ t('live.st_asks_h') }}</h2>
+    <div class="sub">{{ t('live.st_asks_sub') }}</div>
+    <div class="tabs" id="asktabs"></div>
+    <div class="asks" id="asks"></div>
+  </section>
+
+  <div class="foot">{{ t('live.st_foot', at=data.generated) }}</div>
+</main>
+
+<script>
+(function () {
+  var DATA = {{ data|tojson }}, LANG = {{ locale|tojson }}, SLUG = {{ ev.slug|tojson }};
+  var BLOCKS = {{ blocks|tojson }};
+  var T = {{ {
+    'subj': dict(physics=t('live.subj_physics'), informatics=t('live.subj_informatics'), math=t('live.subj_math'), technology=t('live.subj_technology'),
+                 chemistry=t('live.subj_chemistry'), biology=t('live.subj_biology'), primary=t('live.subj_primary'), other=t('live.subj_other')),
+    'pos': dict(teacher=t('live.pos_teacher'), deputy=t('live.pos_deputy'), director=t('live.pos_director'), methodist=t('live.pos_methodist'), other=t('live.pos_other')),
+    'rob': dict(none=t('live.rob_none'), started=t('live.rob_started'), team=t('live.rob_team')),
+    'fun': dict(viewers=t('live.st_f_viewers'), profiles=t('live.st_f_profiles'), answered=t('live.st_f_answered'), asked=t('live.st_f_asked')),
+    'mode': dict(profile=t('live.m_profile'), leaderboard=t('live.m_leaderboard'), ask=t('live.m_ask'), finish=t('live.m_finish'), talk=t('live.m_talk'), waiting=t('live.m_waiting')),
+    'q': t('live.q_label'), 'min': t('live.st_min'), 'people': t('live.st_people'), 'right': t('live.st_right'), 'avgsec': t('live.st_avgsec'),
+    'unasked': t('live.st_unasked'), 'noans': t('live.st_noans'), 'all': t('live.st_all'), 'st_done': t('live.st_s_done'), 'st_new': t('live.st_s_new'),
+    'st_picked': t('live.st_s_picked'), 'st_hidden': t('live.st_s_hidden'), 'place': t('game.lb_place'), 'teacher': t('live.st_teacher'),
+    'score': t('live.points'), 'ok': t('live.st_ok'), 'none': t('live.st_none'), 'pos_h': t('live.position'), 'block': t('live.block')
+  }|tojson }};
+  var esc = window.liveEsc, L = function (o) { return window.liveLoc(o, LANG); };
+  var $ = function (id) { return document.getElementById(id); };
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var KCOL = ['var(--k0)', 'var(--k1)', 'var(--k2)', 'var(--k3)'];
+
+  // ─── Появление и счетчики ───────────────────────────────
+  function countUp(el) {
+    var to = parseFloat(el.dataset.count) || 0, dec = +(el.dataset.dec || 0), t0 = null, dur = 1300;
+    if (reduce) { el.textContent = to.toFixed(dec); return; }
+    function step(ts) { if (!t0) t0 = ts; var k = Math.min(1, (ts - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+      el.textContent = (to * e).toFixed(dec).replace(/\B(?=(\d{3})+(?!\d))/g, ' '); if (k < 1) requestAnimationFrame(step); }
+    requestAnimationFrame(step);
+  }
+  function grow(root) {
+    Array.prototype.forEach.call(root.querySelectorAll('[data-w]'), function (i) { i.style.width = i.dataset.w + '%'; });
+    Array.prototype.forEach.call(root.querySelectorAll('[data-h]'), function (i) { i.style.height = i.dataset.h + '%'; });
+    Array.prototype.forEach.call(root.querySelectorAll('[data-count]'), countUp);
+    Array.prototype.forEach.call(root.querySelectorAll('circle.fg[data-off]'), function (c) { c.style.strokeDashoffset = c.dataset.off; });
+    if (root.querySelector('#tl')) drawTl(true);
+    if (root.querySelector('#map')) mapIn();
+  }
+  var io = 'IntersectionObserver' in window ? new IntersectionObserver(function (es) {
+    es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); grow(e.target); io.unobserve(e.target); } });
+  }, {threshold: .15}) : null;
+
+  function bar(label, n, max, extra) {
+    return '<div class="hb"><div class="lab"><span>' + esc(label) + (extra ? ' <span class="m">' + esc(extra) + '</span>' : '') + '</span><b>' + n + '</b></div><div class="tr"><i data-w="' + (max ? 100 * n / max : 0) + '"></i></div></div>';
+  }
+
+  // ─── Таймлайн ───────────────────────────────────────────
+  function drawTl(animate) {
+    var svg = $('tl'), tl = DATA.timeline;
+    if (!tl.length) { svg.outerHTML = '<div class="muted">' + T.none + '</div>'; return; }
+    var W = svg.clientWidth || 1000, H = 300, pl = 40, pr = 30, pt = 44, pb = 30;
+    var maxN = Math.max.apply(null, tl.map(function (d) { return d.n; }).concat([1]));
+    var maxJ = Math.max.apply(null, tl.map(function (d) { return d.j; }).concat([1]));
+    var x = function (i) { return pl + (W - pl - pr) * (tl.length === 1 ? 0.5 : i / (tl.length - 1)); };
+    var y = function (v) { return pt + (H - pt - pb) * (1 - v / maxN); };
+    var line = tl.map(function (d, i) { return (i ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(d.n).toFixed(1); }).join('');
+    var area = line + 'L' + x(tl.length - 1).toFixed(1) + ',' + (H - pb) + 'L' + x(0).toFixed(1) + ',' + (H - pb) + 'Z';
+    var bw = Math.max(1.5, (W - pl - pr) / tl.length * 0.6), h = '';
+    h += '<defs><linearGradient id="ga" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#8a2be2" stop-opacity=".55"/><stop offset="1" stop-color="#2f5bff" stop-opacity="0"/></linearGradient>' +
+         '<linearGradient id="gl" x1="0" x2="1"><stop offset="0" stop-color="#2f5bff"/><stop offset=".45" stop-color="#8a2be2"/><stop offset=".75" stop-color="#e8323c"/><stop offset="1" stop-color="#ff6a1a"/></linearGradient></defs>';
+    for (var g = 0; g <= 4; g++) { var gv = Math.round(maxN * g / 4), gy = y(gv);
+      h += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + gy + '" y2="' + gy + '" stroke="#22222f"/><text x="' + (pl - 8) + '" y="' + (gy + 4) + '" fill="#77778a" font-size="11" text-anchor="end">' + gv + '</text>'; }
+    tl.forEach(function (d, i) { if (d.j) { var bh = (H - pt - pb) * 0.35 * d.j / maxJ; h += '<rect x="' + (x(i) - bw / 2).toFixed(1) + '" y="' + (H - pb - bh).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + bh.toFixed(1) + '" fill="#ff6a1a" opacity=".55" rx="1"/>'; } });
+    var idx = {}; tl.forEach(function (d, i) { idx[d.t] = i; });
+    var rowEnd = [-999, -999];  // подписи в две строки, чтобы не налезали друг на друга
+    DATA.marks.forEach(function (m) {
+      var i = idx[m.t]; if (i === undefined) return; var mx = x(i);
+      if (m.mode === 'talk' || m.mode === 'waiting') return;
+      var lab = m.mode === 'question' ? T.q[0] + m.q : (T.mode[m.mode] || m.mode), w = lab.length * 7.4 + 12;
+      var tx = Math.max(pl + w / 2, Math.min(W - pr - w / 2 + 14, mx));
+      var row = tx - w / 2 > rowEnd[0] ? 0 : (tx - w / 2 > rowEnd[1] ? 1 : -1);
+      h += '<line x1="' + mx + '" x2="' + mx + '" y1="' + (pt - 4) + '" y2="' + (H - pb) + '" stroke="#fff" stroke-opacity=".28" stroke-dasharray="3 4"/>';
+      if (row >= 0) { h += '<text x="' + tx + '" y="' + (row ? pt - 6 : pt - 20) + '" fill="#fff" font-size="11" font-weight="800" text-anchor="middle">' + esc(lab) + '</text>'; rowEnd[row] = tx + w / 2; }
+    });
+    h += '<path d="' + area + '" fill="url(#ga)" class="ar" style="opacity:' + (animate && !reduce ? 0 : 1) + ';transition:opacity 1.2s ease .5s"/>';
+    h += '<path d="' + line + '" fill="none" stroke="url(#gl)" stroke-width="3" stroke-linejoin="round" class="ln"/>';
+    var step = Math.max(1, Math.ceil(tl.length / Math.max(3, Math.floor((W - pl - pr) / 64))));
+    tl.forEach(function (d, i) { if ((i % step === 0 && tl.length - 1 - i >= step * 0.6) || i === tl.length - 1) h += '<text x="' + x(i) + '" y="' + (H - 8) + '" fill="#77778a" font-size="11" text-anchor="middle">' + d.t + '</text>'; });
+    h += '<line id="tlc" x1="0" x2="0" y1="' + pt + '" y2="' + (H - pb) + '" stroke="#fff" stroke-opacity=".6" style="display:none"/><circle id="tld" r="5" fill="#fff" style="display:none"/>';
+    h += '<rect x="' + pl + '" y="0" width="' + (W - pl - pr) + '" height="' + H + '" fill="transparent" id="tlhit"/>';
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.innerHTML = h;
+    var ln = svg.querySelector('.ln');
+    if (animate && !reduce) { var len = ln.getTotalLength(); ln.style.strokeDasharray = len; ln.style.strokeDashoffset = len; ln.getBoundingClientRect();
+      ln.style.transition = 'stroke-dashoffset 1.8s cubic-bezier(.4,.1,.2,1)'; ln.style.strokeDashoffset = 0; setTimeout(function () { svg.querySelector('.ar').style.opacity = 1; }, 50); }
+    var tip = $('tip'), hit = $('tlhit');
+    hit.onmousemove = function (e) {
+      var r = svg.getBoundingClientRect(), px = (e.clientX - r.left) * W / r.width;
+      var i = Math.max(0, Math.min(tl.length - 1, Math.round((px - pl) / (W - pl - pr) * (tl.length - 1)))), d = tl[i];
+      var c = $('tlc'), dot = $('tld'); c.style.display = dot.style.display = '';
+      c.setAttribute('x1', x(i)); c.setAttribute('x2', x(i)); dot.setAttribute('cx', x(i)); dot.setAttribute('cy', y(d.n));
+      tip.style.display = 'block'; tip.style.left = (e.clientX + 14) + 'px'; tip.style.top = (e.clientY - 10) + 'px';
+      tip.innerHTML = d.t + ' · ' + d.n + ' ' + T.people + (d.j ? ' · +' + d.j : '');
+    };
+    hit.onmouseleave = function () { tip.style.display = 'none'; $('tlc').style.display = $('tld').style.display = 'none'; };
+  }
+  window.addEventListener('resize', function () { drawTl(false); });
+
+  // ─── Карта ─────────────────────────────────────────────
+  var mapReady = null, mapShown = false;
+  function loadMap() {
+    mapReady = fetch({{ static_v('live/kzmap.json')|tojson }}).then(function (r) { return r.json(); }).then(function (g) {
+      var byCode = {}, max = 1;
+      DATA.regions.forEach(function (r) { if (r.code) { byCode[r.code] = r; max = Math.max(max, r.n); } });
+      var h = '<svg viewBox="0 0 ' + g.map.W + ' ' + g.map.H + '">';
+      h += '<path d="' + g.outline + '" fill="#16161f" stroke="#2a2a38" stroke-width="2"/>';
+      Object.keys(g.regions).forEach(function (code) {
+        var r = byCode[code];
+        h += '<path class="rg" data-code="' + code + '" d="' + g.regions[code] + '" fill="#1d1d2a" data-fill="' + (r ? 'rgba(138,43,226,' + (0.25 + 0.75 * r.n / max).toFixed(2) + ')' : '#1d1d2a') + '"/>';
+      });
+      h += '</svg>';
+      $('map').innerHTML = h;
+      var svg = $('map').querySelector('svg');
+      Array.prototype.forEach.call(svg.querySelectorAll('path.rg'), function (p) {
+        var r = byCode[p.dataset.code]; if (!r) return;
+        var b = p.getBBox(), cx = b.x + b.width / 2, cy = b.y + b.height / 2;
+        var c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        c.setAttribute('cx', cx); c.setAttribute('cy', cy); c.setAttribute('r', 0); c.setAttribute('class', 'bub');
+        c.setAttribute('fill', '#ff6a1a'); c.setAttribute('fill-opacity', '.9'); c.dataset.r = (6 + 22 * Math.sqrt(r.n / max)).toFixed(1);
+        svg.appendChild(c);
+        var tx = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        tx.setAttribute('x', cx); tx.setAttribute('y', cy + 5); tx.setAttribute('text-anchor', 'middle'); tx.textContent = r.n; tx.style.opacity = 0; tx.style.transition = 'opacity .6s ease .8s';
+        svg.appendChild(tx);
+        var show = function (e) { var tip = $('tip'); tip.style.display = 'block'; tip.style.left = (e.clientX + 14) + 'px'; tip.style.top = (e.clientY - 10) + 'px'; tip.textContent = (LANG === 'ru' ? r.ru : r.kk) + ': ' + r.n; };
+        [p, c].forEach(function (el) { el.addEventListener('mousemove', show); el.addEventListener('mouseleave', function () { $('tip').style.display = 'none'; }); });
+      });
+      if (mapShown) mapIn();
+    }).catch(function () {});
+  }
+  function mapIn() {
+    mapShown = true;
+    var svg = $('map').querySelector('svg'); if (!svg) return;
+    Array.prototype.forEach.call(svg.querySelectorAll('path.rg'), function (p, i) { setTimeout(function () { p.style.fill = p.dataset.fill; }, reduce ? 0 : 40 * i); });
+    Array.prototype.forEach.call(svg.querySelectorAll('circle.bub'), function (c, i) { setTimeout(function () { c.setAttribute('r', c.dataset.r); }, reduce ? 0 : 600 + 60 * i); });
+    Array.prototype.forEach.call(svg.querySelectorAll('text'), function (t) { t.style.opacity = 1; });
+  }
+
+  // ─── Остальные блоки ───────────────────────────────────
+  function render() {
+    var regMax = Math.max.apply(null, DATA.regions.map(function (r) { return r.n; }).concat([1]));
+    $('regbars').innerHTML = DATA.regions.map(function (r) { return bar(LANG === 'ru' ? r.ru : r.kk, r.n, regMax, r.avg ? '· ' + r.avg + ' ' + T.score : ''); }).join('') || '<div class="muted">' + T.none + '</div>';
+
+    var f0 = (DATA.funnel[0] || {}).n || 1;
+    $('fun').innerHTML = DATA.funnel.map(function (s) {
+      var p = Math.round(100 * s.n / f0);
+      return '<div class="st"><div class="nm">' + esc(T.fun[s.key]) + '</div><div class="tr"><i data-w="' + Math.max(p, 4) + '">' + s.n + '</i></div><div class="pc">' + p + '%</div></div>';
+    }).join('');
+
+    var sm = Math.max.apply(null, DATA.subjects.map(function (s) { return s.n; }).concat([1]));
+    $('subj').innerHTML = DATA.subjects.map(function (s) { return bar(T.subj[s.key] || s.key, s.n, sm); }).join('') || '<div class="muted">' + T.none + '</div>';
+
+    var rt = DATA.robotics.reduce(function (a, r) { return a + r.n; }, 0) || 1, rc = ['#3a3a52', '#8a2be2', '#ff6a1a'];
+    $('rob').innerHTML = '<div class="seg">' + DATA.robotics.map(function (r, i) { var p = 100 * r.n / rt; return '<i data-w="' + p + '" style="background:' + rc[i] + '">' + (p >= 12 ? Math.round(p) + '%' : '') + '</i>'; }).join('') + '</div>' +
+      '<div class="segleg">' + DATA.robotics.map(function (r, i) { return '<span><i style="background:' + rc[i] + '"></i>' + esc(T.rob[r.key]) + ' · ' + r.n + '</span>'; }).join('') + '</div>';
+    var pm = Math.max.apply(null, DATA.positions.map(function (s) { return s.n; }).concat([1]));
+    $('pos').innerHTML = '<div style="font-weight:800;margin-bottom:4px">' + esc(T.pos_h) + '</div>' + DATA.positions.map(function (s) { return bar(T.pos[s.key] || s.key, s.n, pm); }).join('');
+
+    var wm = Math.max.apply(null, DATA.watch.map(function (s) { return s.n; }).concat([1]));
+    $('watch').innerHTML = DATA.watch.map(function (w) {
+      var lab = w.hi > 1000 ? w.lo + '+ ' + T.min : w.lo + '-' + w.hi + ' ' + T.min;
+      return '<div class="c"><b>' + w.n + '</b><i data-h="' + (100 * w.n / wm * 0.82) + '"></i><span>' + lab + '</span></div>';
+    }).join('');
+
+    var asked = DATA.quiz.filter(function (q) { return q.answers > 0; }), un = DATA.quiz.filter(function (q) { return !q.answers; });
+    $('quiz').innerHTML = asked.map(function (q) {
+      var pct = q.pct || 0, C = 2 * Math.PI * 30, mx = Math.max.apply(null, q.dist.concat([1]));
+      var ring = '<div class="ring"><svg viewBox="0 0 74 74"><circle cx="37" cy="37" r="30" fill="none" stroke="#24243a" stroke-width="8"/>' +
+        '<circle class="fg" cx="37" cy="37" r="30" fill="none" stroke="' + (pct >= 50 ? '#22c55e' : pct >= 30 ? '#ff6a1a' : '#e8323c') + '" stroke-width="8" stroke-linecap="round" stroke-dasharray="' + C.toFixed(1) + '" style="stroke-dashoffset:' + C.toFixed(1) + '" data-off="' + (C * (1 - pct / 100)).toFixed(1) + '"/></svg><div class="v">' + pct + '%</div></div>';
+      var ops = q.options.map(function (o, i) {
+        return '<div class="op' + (i === q.correct ? ' ok' : '') + '"><span class="sh" style="background:' + KCOL[i] + '">' + window.LIVE_SHAPES[i] + '</span>' +
+          '<div class="tr"><i data-w="' + (100 * q.dist[i] / mx) + '" style="background:' + KCOL[i] + '"></i><span>' + esc(L(o)) + (i === q.correct ? ' ✓' : '') + '</span></div><span class="c">' + q.dist[i] + '</span></div>';
+      }).join('');
+      return '<div class="qc"><div class="hd">' + ring + '<div><div class="qn">' + T.q + ' ' + q.n + ' · ' + esc(L(BLOCKS[q.block]) || (T.block + ' ' + q.block)) + '</div><div class="qt">' + esc(L(q.text)) + '</div>' +
+        '<div class="meta">' + q.answers + ' ' + T.people + ' · ' + T.right + ' ' + q.ok + (q.sec ? ' · ' + T.avgsec.replace('{s}', q.sec) : '') + '</div></div></div>' + ops + '</div>';
+    }).join('') || '<div class="muted">' + T.noans + '</div>';
+    $('unasked').textContent = un.length ? T.unasked.replace('{list}', un.map(function (q) { return q.n; }).join(', ')) : '';
+
+    $('top').innerHTML = DATA.top.length ? '<tr><th>' + T.place + '</th><th>' + T.teacher + '</th><th class="r">' + T.ok + '</th><th class="r">' + T.score + '</th></tr>' +
+      DATA.top.map(function (r, i) { return '<tr><td><span class="medal' + (i < 3 ? ' m' + (i + 1) : '') + '">' + (i + 1) + '</span></td><td><b>' + esc(r.name) + '</b><div class="muted" style="font-size:12px">' + esc([r.school, LANG === 'ru' ? r.ru : r.kk].filter(Boolean).join(' · ')) + '</div></td><td class="r">' + r.ok + '</td><td class="r"><b>' + r.score + '</b></td></tr>'; }).join('')
+      : '<tr><td class="muted">' + T.none + '</td></tr>';
+
+    var shm = Math.max.apply(null, DATA.schools.map(function (s) { return s.n; }).concat([1]));
+    $('sch').innerHTML = DATA.schools.map(function (s) { return bar(s.name, s.n, shm); }).join('') || '<div class="muted">' + T.none + '</div>';
+
+    renderAsks('all');
+  }
+  function renderAsks(filter) {
+    var tabs = [['all', T.all], ['done', T.st_done], ['picked', T.st_picked], ['new', T.st_new], ['hidden', T.st_hidden]];
+    $('asktabs').innerHTML = tabs.map(function (t) {
+      var n = t[0] === 'all' ? DATA.asks.length : DATA.asks.filter(function (a) { return a.status === t[0]; }).length;
+      return n || t[0] === 'all' ? '<button data-f="' + t[0] + '" class="' + (filter === t[0] ? 'on' : '') + '">' + esc(t[1]) + ' · ' + n + '</button>' : '';
+    }).join('');
+    Array.prototype.forEach.call($('asktabs').querySelectorAll('button'), function (b) { b.onclick = function () { renderAsks(b.dataset.f); }; });
+    var list = DATA.asks.filter(function (a) { return filter === 'all' || a.status === filter; });
+    $('asks').innerHTML = list.map(function (a) {
+      return '<div class="ask"><div>' + esc(a.text) + '<span class="st st-' + a.status + '">' + esc(T['st_' + a.status] || a.status) + '</span></div><div class="w">' +
+        esc([a.at, a.name, a.school, LANG === 'ru' ? a.region_ru : a.region].filter(Boolean).join(' · ')) + '</div></div>';
+    }).join('') || '<div class="muted">' + T.none + '</div>';
+  }
+
+  render();
+  loadMap();
+  drawTl(false);
+  Array.prototype.forEach.call(document.querySelectorAll('.reveal'), function (el) { if (io) io.observe(el); else { el.classList.add('in'); grow(el); } });
+  if (DATA.live) setInterval(function () {
+    fetch('/live/' + SLUG + '/stats.json', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (d) {
+      DATA = d; render(); drawTl(false);
+      Array.prototype.forEach.call(document.querySelectorAll('[data-k]'), function (el) { var v = d.kpi[el.dataset.k]; if (v !== undefined) el.textContent = v; });
+      Array.prototype.forEach.call(document.querySelectorAll('.reveal.in'), function (el) {
+        Array.prototype.forEach.call(el.querySelectorAll('[data-w]'), function (i) { i.style.width = i.dataset.w + '%'; });
+        Array.prototype.forEach.call(el.querySelectorAll('[data-h]'), function (i) { i.style.height = i.dataset.h + '%'; });
+        Array.prototype.forEach.call(el.querySelectorAll('circle.fg[data-off]'), function (c) { c.style.strokeDashoffset = c.dataset.off; });
+      });
+    }).catch(function () {});
+  }, 30000);
+})();
+</script>
+</body>
+</html>

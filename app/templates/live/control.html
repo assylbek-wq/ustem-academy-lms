@@ -108,7 +108,7 @@
       <div class="copy"><code>{{ screen_url }}</code><button class="b sm" data-copy="{{ screen_url }}">⧉</button></div>
       <div class="hint">{{ t('live.c_l_overlay') }}</div>
       <div class="copy"><code>{{ overlay_url }}</code><button class="b sm" data-copy="{{ overlay_url }}">⧉</button></div>
-      <div class="row"><a class="b sm" href="{{ url_for('live.export', slug=ev.slug) }}">⬇ {{ t('live.c_export') }}</a><a class="b sm" target="_blank" href="{{ screen_url }}">{{ t('live.c_open_screen') }}</a></div>
+      <div class="row"><a class="b sm" href="{{ url_for('live.export', slug=ev.slug) }}">⬇ {{ t('live.c_export') }}</a><a class="b sm" target="_blank" href="{{ screen_url }}">{{ t('live.c_open_screen') }}</a><a class="b sm" target="_blank" href="{{ url_for('live.stats_page', slug=ev.slug) }}">📊 {{ t('live.st_title') }}</a></div>
       {% if user.is_admin %}
       <div class="row" style="margin-top:14px;padding-top:12px;border-top:1px solid #eee">
         <button class="b sm" id="reset" style="border-color:#e8323c;color:#e8323c">⟲ {{ t('live.c_reset') }}</button>

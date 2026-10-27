@@ -1,0 +1,3 @@
+kzmap.json: regions of Kazakhstan (2022 division) as SVG paths, equirectangular projection.
+Shapes from @abez/kazakhstan-map (MIT License), districts regrouped into Abai, Jetisu, Ulytau and Shymkent;
+outline from world-atlas / Natural Earth (public domain). Same data as the USTEM CRM map (app/src/kzmap.ts).

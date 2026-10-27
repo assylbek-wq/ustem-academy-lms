@@ -329,6 +329,24 @@ def control_ask(slug, ask_id):
     return jsonify({"ok": True})
 
 
+@bp.route("/<slug>/stats")
+@role_required("methodist", "trainer")
+def stats_page(slug):
+    """Статистика и аналитика эфира для команды USTEM."""
+    from ..services import live_stats
+    ev = _event(slug)
+    return render_template("live/stats.html", ev=ev, data=live_stats.compute(ev), blocks=svc.blocks(slug))
+
+
+@bp.route("/<slug>/stats.json")
+@role_required("methodist", "trainer")
+def stats_json(slug):
+    from ..services import live_stats
+    resp = jsonify(live_stats.compute(_event(slug)))
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
 @bp.route("/<slug>/control/question", methods=["POST"])
 @bp.route("/<slug>/control/question/<int:qid>", methods=["POST"])
 @role_required("methodist", "trainer")

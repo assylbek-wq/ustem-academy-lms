@@ -150,3 +150,26 @@ class LiveTest(AppTestCase):
         self.assertEqual(op.post(f"/live/keleshek/control/question/{q.id}/delete", json={}).status_code, 400)
         self.assertEqual(self.client.post(f"/live/keleshek/control/question/{q.id}", json=body).status_code, 302)
         self.assertIn('data-edit="new"', op.get("/live/keleshek/control").get_data(as_text=True))
+
+    def test_stats_page(self):
+        teacher = self.new_client("teacher1@academy.demo")
+        teacher.get("/live/keleshek")
+        teacher.post("/live/keleshek/profile", json={"region": "zko", "school": "№5", "subjects": ["physics", "math"],
+                                                     "position": "teacher", "robotics": "team"})
+        admin = self.new_client("admin@academy.demo")
+        q = LiveQuestion.query.filter_by(event_id=self.ev.id, key="q2").first()
+        admin.post("/live/keleshek/control/state", json={"mode": "question", "qid": q.id})
+        teacher.post("/live/keleshek/answer", json={"qid": q.id, "choice": q.correct, "ms": 1000})
+        teacher.post("/live/keleshek/ask", json={"text": "Сұрақ бар"})
+        self.assertEqual(teacher.get("/live/keleshek/stats").status_code, 403)
+        for lang in ("kk", "ru", "en"):
+            self.assertEqual(admin.get(f"/live/keleshek/stats?lang={lang}").status_code, 200)
+        d = admin.get("/live/keleshek/stats.json").get_json()
+        self.assertEqual((d["kpi"]["viewers"], d["kpi"]["profiles"], d["kpi"]["answers"], d["kpi"]["asks"]), (1, 1, 1, 1))
+        self.assertEqual(d["regions"][0]["code"], "KZ-ZAP")
+        self.assertEqual({s["key"] for s in d["subjects"]}, {"physics", "math"})
+        asked = [x for x in d["quiz"] if x["answers"]]
+        self.assertEqual((len(asked), asked[0]["n"], asked[0]["pct"]), (1, 2, 100))
+        self.assertTrue(any(m["mode"] == "question" and m["q"] == 2 for m in d["marks"]))
+        self.assertGreaterEqual(d["kpi"]["peak"], 1)
+        self.assertEqual(d["top"][0]["ok"], 1)
