@@ -55,8 +55,8 @@ def create_app(config: type = Config, **overrides) -> Flask:
         g.locale = session.get("locale") or (g.user.locale if g.user else None) or "ru"
         if g.locale not in LOCALES:
             g.locale = "ru"
-        # самостоятельная регистрация: пока почта не подтверждена, открыты только вход, выход и страница подтверждения
-        if g.user and request.endpoint and not request.endpoint.startswith(("auth.", "static", "public.")):
+        # самостоятельная регистрация: пока почта не подтверждена, открыты вход, выход, страница подтверждения и эфиры
+        if g.user and request.endpoint and not request.endpoint.startswith(("auth.", "static", "public.", "live.")):
             from .blueprints.auth import needs_verification
             if needs_verification(g.user):
                 if request.path.startswith("/api/"):

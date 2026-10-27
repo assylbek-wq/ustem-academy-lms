@@ -28,7 +28,8 @@ class LiveTest(AppTestCase):
         self.assertEqual(r.status_code, 200)
         self.assertIn("/register?next=", r.get_data(as_text=True))
         r = self.client.post("/register?next=/live/keleshek", data={
-            "full_name": "Ахметова Айгерим", "email": "a@school.kz", "password": "password123", "consent": "1"})
+            "full_name": "Ахметова Айгерим", "email": "a@school.kz", "password": "password123", "consent": "1",
+            "phone": "+7 701 000 00 01"})
         self.assertEqual(r.status_code, 302)
         self.assertTrue(r.headers["Location"].endswith("/live/keleshek"))
         self.assertEqual(self.client.get("/live/keleshek").status_code, 200)
