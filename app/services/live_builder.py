@@ -125,6 +125,9 @@ def create(title: dict, starts_at: str | None, user_id: int | None, source: Live
         ev.blocks = [{"kk": "Негізгі бөлім", "ru": "Основная часть"}]
     db.session.add(ev)
     db.session.flush()
+    if source:
+        from . import live_deck
+        live_deck.copy(source, ev)
     if source and with_questions:
         for i, q in enumerate(LiveQuestion.query.filter_by(event_id=source.id).order_by(LiveQuestion.position)):
             db.session.add(LiveQuestion(event_id=ev.id, key=f"c{i + 1}", block=q.block, position=i, text=dict(q.text or {}),
@@ -443,6 +446,8 @@ def ai_translate(ev: LiveEvent) -> int:
 def delete(ev: LiveEvent) -> None:
     if has_viewers(ev) or LiveAnswer.query.filter_by(event_id=ev.id).first():
         raise BuildError("live.b_err_delete")
+    from . import live_deck
+    live_deck.remove_all(ev)
     LiveQuestion.query.filter_by(event_id=ev.id).delete()
     db.session.delete(ev)
     db.session.commit()

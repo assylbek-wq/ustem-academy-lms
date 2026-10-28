@@ -171,3 +171,61 @@ class LiveBuilderTest(AppTestCase):
         self.assertEqual(ev.title["kk"], "FIRST LEGO League нөлден")
         self.assertEqual(ev.subtitle, {"ru": "Как начать", "kk": "Қалай бастау"})
         self.assertEqual(ev.blocks[0]["ru"], "Основная часть")  # уже заполненное не меняется
+
+    def test_deck(self):
+        from fpdf import FPDF
+        from app.services import live_deck
+        pdf = FPDF(orientation="L", unit="pt", format=(1080, 1920))
+        for i in range(3):
+            pdf.add_page()
+            pdf.set_font("Helvetica", "B", 80)
+            pdf.cell(0, 200, f"Slide {i + 1}")
+        data = bytes(pdf.output())
+        ev = self._new()
+        import io
+        r = self.m.post(f"/live/{ev.slug}/build/deck/upload", data={"pdf": (io.BytesIO(data), "deck.pdf")},
+                        content_type="multipart/form-data").get_json()
+        self.assertEqual(r["added"], 3, r)
+        slides = r["deck"]["slides"]
+        self.assertEqual((slides[0]["w"], slides[0]["layout"]), (1920, "side"))
+        self.assertEqual(self.m.post(f"/live/{ev.slug}/build/deck/upload", data={"pdf": (io.BytesIO(b"nope"), "x.pdf")},
+                                     content_type="multipart/form-data").status_code, 400)
+        # картинки: команде и экрану по ключу, остальным нет
+        img = f"/live/{ev.slug}/slides/{slides[0]['id']}.jpg"
+        self.assertEqual(self.m.get(img).mimetype, "image/jpeg")
+        self.assertEqual(self.client.get(img).status_code, 404)
+        self.assertEqual(self.client.get(img + f"?key={ev.screen_key}").status_code, 200)
+        self.assertEqual(self.m.get(f"/live/{ev.slug}/slides/..%2Fx.jpg").status_code, 404)
+        # раскладка, QR, порядок, удаление
+        ids = [s["id"] for s in slides]
+        r = self.m.post(f"/live/{ev.slug}/build/deck", json={"cam": "br", "slides": [
+            {"id": ids[2], "layout": "cam", "qr": {"on": True, "to": "url", "url": "forms.gle/abc", "label": "Анкета", "pos": "bl"}},
+            {"id": ids[0], "layout": "full", "qr": {"on": True, "to": "connect"}}]}).get_json()
+        d = r["deck"]
+        self.assertEqual([s["id"] for s in d["slides"]], [ids[2], ids[0]])
+        self.assertEqual(d["cam"], "br")
+        self.assertEqual(d["slides"][0]["qr"]["url"], "https://forms.gle/abc")
+        folder = live_deck.folder(LiveEvent.query.get(ev.id))
+        self.assertFalse((folder / f"{ids[1]}.jpg").exists())
+        # пульт: слайды
+        r = self.m.post(f"/live/{ev.slug}/control/state", json={"mode": "slides", "slide": 5}).get_json()
+        self.assertEqual(r["state"]["slide"], 1)
+        self.assertIn("sl-strip", self.m.get(f"/live/{ev.slug}/control").get_data(as_text=True))
+        # экран получает презентацию, когда версия изменилась, с готовыми QR
+        svc._cache.clear()
+        j = self.client.get(f"/live/{ev.slug}/screen.json?key={ev.screen_key}&dv=0").get_json()
+        self.assertEqual(j["state"]["mode"], "slides")
+        self.assertEqual(len(j["deck"]["slides"]), 2)
+        self.assertIn("<svg", j["deck"]["slides"][0]["qr"]["svg"])
+        self.assertEqual(j["deck"]["slides"][1]["qr"]["show"], "connect.ustem.kz/register")
+        self.assertEqual(j["deck"]["cam"]["y"], 540)
+        j2 = self.client.get(f"/live/{ev.slug}/screen.json?key={ev.screen_key}&dv={j['deck']['v']}").get_json()
+        self.assertNotIn("deck", j2)
+        # копия эфира получает свои файлы, удаление эфира убирает папку
+        cp = self._new(title="Копия", copy=ev.slug)
+        self.assertEqual(len(live_deck.get(cp)["slides"]), 2)
+        self.assertTrue((live_deck.folder(cp) / f"{ids[2]}.jpg").exists())
+        self.m.post(f"/live/{ev.slug}/build/deck", json={"slides": []})
+        self.assertEqual(LiveEvent.query.get(ev.id).state["mode"], "talk")
+        self.m.post(f"/live/{cp.slug}/build/delete", json={"confirm": cp.slug})
+        self.assertFalse(folder.parent.joinpath(str(cp.id)).exists())

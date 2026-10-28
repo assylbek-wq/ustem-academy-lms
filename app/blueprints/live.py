@@ -24,6 +24,7 @@ from ..i18n import t
 from ..models import LiveAnswer, LiveAsk, LiveEvent, LiveQuestion, LiveViewer, User, db, utcnow
 from ..services import live as svc
 from ..services import live_builder as lb
+from ..services import live_deck as deck_svc
 from ..services.mail import absolute
 
 bp = Blueprint("live", __name__, url_prefix="/live")
@@ -207,7 +208,8 @@ def screen(slug):
                            key=request.args.get("key", ""), subjects=svc.SUBJECTS, blocks_json=svc.blocks(slug),
                            starts=ev.starts_at.strftime("%Y-%m-%dT%H:%M:%S") if ev.starts_at else "",
                            kicker=lb.kicker(ev, get_locale()), finish_text=_finish(ev) or t("live.scr_finish_sub_def"),
-                           bot_handle=lb.bot_handle(links.get("bot")), demo=_demo(ev))
+                           bot_handle=lb.bot_handle(links.get("bot")), demo=_demo(ev),
+                           deck=deck_svc.for_screen(ev, links, request.args.get("key", "")))
 
 
 def _finish(ev: LiveEvent) -> str:
@@ -225,6 +227,11 @@ def _demo(ev: LiveEvent) -> dict | None:
     import time as _t
     qs = LiveQuestion.query.filter_by(event_id=ev.id).order_by(LiveQuestion.position).all()
     st = {"mode": mode, "v": 0, "now": _t.time()}
+    if mode == "slides":
+        try:
+            st["slide"] = int(request.args.get("slide") or 0)
+        except ValueError:
+            st["slide"] = 0
     if mode in ("question", "reveal"):
         q = next((x for x in qs if str(x.id) == request.args.get("qid")), qs[0] if qs else None)
         if not q:
@@ -265,6 +272,9 @@ def screen_json(slug):
     if not _screen_ok(ev):
         abort(403)
     out = {"state": svc.public_state(slug), "stats": svc.stats(slug)}
+    st = out["state"] or {}
+    if request.args.get("dv") is not None and str(st.get("dv", 0)) != request.args.get("dv"):
+        out["deck"] = deck_svc.for_screen(ev, _links(ev), request.args.get("key", ""))
     picked = (LiveAsk.query.filter_by(event_id=ev.id, status="picked").order_by(LiveAsk.created_at.desc()).first())
     if picked:
         v = LiveViewer.query.filter_by(event_id=ev.id, user_id=picked.user_id).first()
@@ -287,7 +297,8 @@ def control(slug):
                            qdata={str(q.id): {"block": q.block, "text": q.text, "options": q.options, "correct": q.correct,
                                               "note": q.note or {}, "seconds": q.seconds} for q in qs},
                            screen_url=absolute(url_for("live.screen", slug=slug, key=ev.screen_key, lang="kk")),
-                           overlay_url=absolute(url_for("live.overlay", slug=slug, key=ev.screen_key, lang="kk")))
+                           overlay_url=absolute(url_for("live.overlay", slug=slug, key=ev.screen_key, lang="kk")),
+                           deck=deck_svc.for_screen(ev, links))
 
 
 @bp.route("/<slug>/control.json")
@@ -326,6 +337,17 @@ def control_state(slug):
         extra = {"qid": st["qid"], "at": st.get("at", 0), "block": st.get("block")}
     elif mode == "profile":
         extra = {}
+    elif mode == "slides":
+        n = len(deck_svc.get(ev)["slides"])
+        if not n:
+            abort(400)
+        try:
+            extra = {"slide": max(0, min(int(f.get("slide") or 0), n - 1))}
+        except (TypeError, ValueError):
+            abort(400)
+        if (ev.state or {}).get("mode") == "slides":  # листание не засоряет журнал: пишем только вход в слайды
+            svc.set_state(ev, mode, **extra)
+            return jsonify({"ok": True, "state": ev.state})
     audit("live.state", "live_event", ev.id, mode=mode, qid=extra.get("qid"))
     svc.set_state(ev, mode, **extra)
     return jsonify({"ok": True, "state": ev.state})
@@ -528,6 +550,7 @@ def _builder_json(ev: LiveEvent) -> dict:
         "questions": [{"id": q.id, "block": q.block, "text": q.text, "options": q.options, "correct": q.correct,
                        "note": q.note or {}, "seconds": q.seconds, "used": q.id in used} for q in qs],
         "ready": lb.readiness(ev),
+        "deck": _deck_json(ev),
         "urls": {
             "watch": absolute(url_for("live.watch", slug=ev.slug, lang=ev.lang or "kk")),
             "screen": absolute(url_for("live.screen", slug=ev.slug, key=ev.screen_key, lang=ev.lang or "kk")),
@@ -538,6 +561,12 @@ def _builder_json(ev: LiveEvent) -> dict:
             "qr": url_for("live.qr_file", slug=ev.slug),
         },
     }
+
+
+def _deck_json(ev: LiveEvent) -> dict:
+    d = deck_svc.get(ev)
+    return {"cam": d["cam"], "camrect": deck_svc.CAM[d["cam"]],
+            "slides": [dict(s, thumb=url_for("live.slide_img", slug=ev.slug, name=f"{s['id']}-t.jpg")) for s in d["slides"]]}
 
 
 def _bad(key: str, code: int = 400):
@@ -735,3 +764,45 @@ def qr_file(slug):
     svg = segno.make(url, error="m").svg_inline(scale=12, border=3, dark="#0b0b12", light="#ffffff")
     return Response('<?xml version="1.0" encoding="UTF-8"?>\n' + svg, mimetype="image/svg+xml",
                     headers={"Content-Disposition": f'attachment; filename="qr-{ev.slug}.svg"'})
+
+
+# ─── Презентация ─────────────────────────────────────────────────────────
+@bp.route("/<slug>/slides/<name>")
+def slide_img(slug, name):
+    """Картинка слайда: для экрана OBS (по ключу) и команды. Имена неизменяемые, кешируются надолго."""
+    ev = _event(slug)
+    if not _screen_ok(ev) or not re.fullmatch(r"[0-9a-f]{16}(-t)?\.jpg", name):
+        abort(404)
+    path = deck_svc.folder(ev) / name
+    if not path.exists():
+        abort(404)
+    return send_file(path, mimetype="image/jpeg", max_age=30 * 24 * 3600)
+
+
+@bp.route("/<slug>/build/deck/upload", methods=["POST"])
+@role_required("methodist", "trainer")
+def build_deck_upload(slug):
+    ev = _event(slug)
+    up = request.files.get("pdf")
+    if not up or not up.filename:
+        return _bad("live.d_err_pdf")
+    try:
+        n = deck_svc.render_pdf(ev, up.read(), replace=request.form.get("replace") == "1")
+    except deck_svc.DeckError as e:
+        return _bad(str(e))
+    audit("live.deck", "live_event", ev.id, added=n)
+    db.session.commit()
+    return jsonify({"ok": True, "added": n, "deck": _deck_json(ev)})
+
+
+@bp.route("/<slug>/build/deck", methods=["POST"])
+@role_required("methodist", "trainer")
+def build_deck(slug):
+    ev = _event(slug)
+    deck_svc.save(ev, request.get_json(silent=True) or {})
+    svc.drop_cache(ev.slug)
+    st = ev.state or {}
+    n = len(deck_svc.get(ev)["slides"])
+    if st.get("mode") == "slides" and (not n or st.get("slide", 0) >= n):  # удалили показанный слайд
+        svc.set_state(ev, "slides" if n else "talk", **({"slide": n - 1} if n else {}))
+    return jsonify({"ok": True, "deck": _deck_json(ev)})

@@ -13,3 +13,4 @@ bleach==6.4.0
 markdown==3.10.3
 anthropic==1.15.0
 gunicorn==26.2.0
+pypdfium2==5.13.0

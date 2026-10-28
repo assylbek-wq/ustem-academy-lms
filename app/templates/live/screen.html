@@ -68,6 +68,23 @@
     .sect{font-size:26px;font-weight:800;color:#9a9ab0;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
     .quote{font-size:64px;line-height:1.15;font-weight:800;letter-spacing:-.01em;margin:40px 0 30px;max-width:1650px}
     .who{font-size:32px;color:#b9b9cc;font-weight:700}
+    /* Слайды: окно камеры прозрачное, в OBS камера стоит под этим источником */
+    html.cut,html.cut body,html.cut #stage{background:transparent!important}
+    html.cut .bg{display:none}
+    #stage.slides .foot{display:none}
+    #s-slides{padding:0}
+    .sl-full{position:absolute;left:0;top:0;width:1920px;height:1080px}
+    #sl-bg{background:#0b0b12}
+    #sl-bg i{position:absolute;inset:0;background:radial-gradient(900px 600px at 0% 0%,rgba(47,91,255,.22),transparent 60%),radial-gradient(800px 600px at 100% 100%,rgba(255,106,26,.16),transparent 60%)}
+    .sl-img{position:absolute;object-fit:contain;opacity:0;transition:opacity .35s ease}
+    .sl-img.on{opacity:1}
+    #sl-ring{background:var(--grad)}
+    #sl-camph{display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:linear-gradient(160deg,#3b3b52,#1f1f2c);color:#c9c9d6;font-size:28px;font-weight:800;border-radius:24px}
+    #sl-camph span{font-size:84px}
+    .sl-qr{position:absolute;background:#fff;color:#0b0b12;border-radius:26px;padding:18px;display:none;flex-direction:column;align-items:center;text-align:center;box-shadow:0 20px 60px -20px rgba(0,0,0,.6)}
+    .sl-qr svg{width:100%;height:auto;display:block}
+    .sl-qr b{display:block;font-size:26px;line-height:1.15;margin-top:10px;font-weight:900}
+    .sl-qr small{display:block;font-size:18px;color:#2f5bff;font-weight:800;margin-top:6px;overflow-wrap:anywhere;line-height:1.2}
   </style>
 </head>
 <body>
@@ -100,6 +117,14 @@
   </section>
 
   <!-- Спикер говорит: фон с QR (обычно поверх идет камера) -->
+  <section class="scene" id="s-slides">
+    <div class="sl-full" id="sl-camph"><span>🎥</span>{{ t('live.d_cam_here') }}</div>
+    <div class="sl-full" id="sl-bg"><i></i></div>
+    <img class="sl-img" id="sl-a" alt=""><img class="sl-img" id="sl-b" alt="">
+    <div class="sl-full" id="sl-ring"></div>
+    <div class="sl-qr" id="sl-qr"></div>
+  </section>
+
   <section class="scene" id="s-talk">
     <div style="display:flex;flex-direction:column;justify-content:center;height:100%">
       <div class="kicker">{{ kicker }}</div>
@@ -201,7 +226,61 @@
                  chemistry=t('live.subj_chemistry'), biology=t('live.subj_biology'), primary=t('live.subj_primary'), other=t('live.subj_other')),
     'online': t('live.scr_online'), 'joined': t('live.scr_joined'), 'schools': t('live.scr_schools')
   }|tojson }};
-  var BLOCKS = {{ blocks_json|tojson }}, DEMO = {{ demo|tojson }};
+  var BLOCKS = {{ blocks_json|tojson }}, DEMO = {{ demo|tojson }}, DECK = {{ deck|tojson }};
+  var QR_LBL = {{ {'watch': t('live.d_qr_watch'), 'connect': t('live.d_qr_connect'), 'bot': t('live.d_qr_bot'), 'url': ''}|tojson }};
+  // ─── Слайды ───
+  function rr(x, y, w, h, r) {
+    return 'M' + (x + r) + ' ' + y + 'H' + (x + w - r) + 'A' + r + ' ' + r + ' 0 0 1 ' + (x + w) + ' ' + (y + r) + 'V' + (y + h - r) +
+      'A' + r + ' ' + r + ' 0 0 1 ' + (x + w - r) + ' ' + (y + h) + 'H' + (x + r) + 'A' + r + ' ' + r + ' 0 0 1 ' + x + ' ' + (y + h - r) +
+      'V' + (y + r) + 'A' + r + ' ' + r + ' 0 0 1 ' + (x + r) + ' ' + y + 'Z';
+  }
+  var preloaded = {};
+  function preload() { (DECK.slides || []).forEach(function (s) { if (!preloaded[s.img]) { preloaded[s.img] = new Image(); preloaded[s.img].src = s.img; } }); }
+  preload();
+  var slCur = null, slFront = 'sl-a';
+  function placeImg(el, s) {
+    var box = s.layout === 'side' ? [24, DECK.cam_pos === 'br' ? 124 : 148, 1436, 808] : [0, 0, 1920, 1080];
+    el.style.left = box[0] + 'px'; el.style.top = box[1] + 'px'; el.style.width = box[2] + 'px'; el.style.height = box[3] + 'px';
+    var hole = s.layout === 'cam' ? "path(evenodd, 'M" + (-box[0]) + ' ' + (-box[1]) + 'h1920v1080h-1920Z ' + rr(DECK.cam.x - box[0], DECK.cam.y - box[1], DECK.cam.w, DECK.cam.h, 24) + "')" : 'none';
+    el.style.clipPath = hole;
+  }
+  function renderSlide(i) {
+    var s = (DECK.slides || [])[i];
+    var cut = !!s && s.layout !== 'full';
+    document.documentElement.classList.toggle('cut', cut);
+    if (!s) return;
+    var c = DECK.cam, full = 'M0 0H1920V1080H0Z ';
+    $('sl-bg').style.clipPath = cut ? "path(evenodd, '" + full + rr(c.x, c.y, c.w, c.h, 24) + "')" : 'none';
+    $('sl-ring').style.display = cut ? 'block' : 'none';
+    if (cut) $('sl-ring').style.clipPath = "path(evenodd, '" + rr(c.x - 6, c.y - 6, c.w + 12, c.h + 12, 30) + ' ' + rr(c.x, c.y, c.w, c.h, 24) + "')";
+    var ph = $('sl-camph');
+    ph.style.display = DEMO && cut ? 'flex' : 'none';
+    if (DEMO && cut) { ph.style.left = c.x + 'px'; ph.style.top = c.y + 'px'; ph.style.width = c.w + 'px'; ph.style.height = c.h + 'px'; }
+    var key = s.id + '|' + s.layout;
+    if (key !== slCur) {
+      var back = slFront === 'sl-a' ? 'sl-b' : 'sl-a', img = $(back);
+      placeImg(img, s);
+      img.onload = function () { $(back).classList.add('on'); $(slFront).classList.remove('on'); slFront = back; };
+      if (img.getAttribute('src') === s.img && img.complete) img.onload(); else img.src = s.img;
+      if (slCur && slCur.split('|')[0] === s.id) placeImg($(slFront), s);
+      slCur = key;
+    }
+    var q = s.qr || {}, box = $('sl-qr');
+    if (q.on && q.svg) {
+      var lbl = q.label || QR_LBL[q.to] || '';
+      box.innerHTML = q.svg + (lbl ? '<b>' + esc(lbl) + '</b>' : '') + '<small>' + esc(q.show) + '</small>';
+      box.style.display = 'flex';
+      if (s.layout === 'side') {
+        var top = DECK.cam_pos === 'br' ? 148 : c.y + c.h + 30;
+        box.style.left = c.x + 'px'; box.style.top = top + 'px'; box.style.bottom = 'auto'; box.style.width = c.w + 'px';
+        box.querySelector('svg').style.width = (DECK.cam_pos === 'br' ? 230 : 250) + 'px';
+      } else {
+        box.style.width = '300px'; box.style.top = 'auto'; box.style.bottom = '40px';
+        box.style.left = q.pos === 'bl' ? '40px' : (1920 - 340) + 'px';
+        box.querySelector('svg').style.width = '100%';
+      }
+    } else box.style.display = 'none';
+  }
   var esc = window.liveEsc, L = function (o) { return window.liveLoc(o, LANG); };
   var stage = document.getElementById('stage');
   function fit() { var s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080); stage.style.transform = 'scale(' + s + ')'; stage.style.left = ((window.innerWidth - 1920 * s) / 2) + 'px'; stage.style.top = ((window.innerHeight - 1080 * s) / 2) + 'px'; }
@@ -238,6 +317,8 @@
     var st = data.state, s = data.stats || {}, mode = st.mode, q = st.q;
     $('c-online').textContent = s.online || 0; $('c-joined').textContent = s.joined || 0;
     show(mode === 'reveal' ? 'question' : mode);
+    stage.classList.toggle('slides', mode === 'slides');
+    if (mode === 'slides') renderSlide(st.slide || 0); else document.documentElement.classList.remove('cut');
     if (mode === 'profile') {
       $('pf-n').textContent = s.profiles || 0; $('pf-s').textContent = s.schools || 0;
       var sub = Object.keys(s.subjects || {}).map(function (k) { return {label: T.subj[k] || k, n: s.subjects[k]}; }).sort(function (a, b) { return b.n - a.n; }).slice(0, 6);
@@ -281,7 +362,8 @@
     }
   }
   function poll() {
-    fetch('/live/' + SLUG + '/screen.json?key=' + encodeURIComponent(KEY), {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (d) {
+    fetch('/live/' + SLUG + '/screen.json?key=' + encodeURIComponent(KEY) + '&dv=' + DECK.v, {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (d) {
+      if (d.deck) { DECK = d.deck; slCur = null; preload(); }
       data = d; if (d.state) offset = d.state.now - Date.now() / 1000; render();
     }).catch(function () {}).finally(function () { setTimeout(poll, 1500); });
   }

@@ -137,6 +137,39 @@
     .saved.err{color:#ff8a8f}
     .lw{display:flex;align-items:center;gap:8px;color:var(--mute);font-size:12px;font-weight:700}
     .lw .miss{color:#e6b84a}
+    /* Презентация */
+    .dprog{display:flex;align-items:center;gap:12px;margin-top:12px;color:var(--soft);font-weight:700}
+    .dprog .bar{flex:1;height:8px;border-radius:4px;background:#22222f;overflow:hidden}
+    .dprog .bar i{display:block;height:100%;width:0;background:var(--grad);transition:width .2s}
+    .dtop{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+    .dtop .in-l{margin-bottom:6px}
+    .obs{color:var(--mute);font-size:12px;line-height:1.45;max-width:330px}
+    .obs b{color:var(--soft)}
+    .dgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+    .th{position:relative;aspect-ratio:16/9;border-radius:10px;overflow:hidden;background:#0b0b12;border:2px solid transparent;cursor:pointer;transition:border-color .15s,transform .15s}
+    .th:hover{transform:translateY(-2px)}
+    .th.on{border-color:#8a2be2;box-shadow:0 0 0 3px rgba(138,43,226,.3)}
+    .th img{position:absolute;object-fit:contain;width:100%;height:100%;left:0;top:0}
+    .th.side img{left:1.25%;top:13.7%;width:74.8%;height:74.8%}
+    .th .cm{position:absolute;border-radius:4px;background:linear-gradient(160deg,#4a4a66,#2a2a3a);box-shadow:0 0 0 1.5px #b78cff}
+    .th .qm{position:absolute;width:13%;aspect-ratio:1;background:#fff;border-radius:3px}
+    .th .qm:after{content:"";position:absolute;inset:22%;background:repeating-linear-gradient(90deg,#0b0b12 0 2px,transparent 2px 4px)}
+    .th .no{position:absolute;left:5px;top:5px;background:rgba(11,11,18,.82);color:#fff;font-size:11px;font-weight:900;border-radius:6px;padding:2px 6px}
+    .dset{background:#111119;border:1px solid var(--line);border-radius:18px;padding:16px}
+    .dset .hd{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+    .dset .hd b{font-size:15px;font-weight:900}
+    .los{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+    @media(max-width:640px){.los{grid-template-columns:1fr}}
+    .lo{border:1px solid var(--line);border-radius:14px;padding:10px;cursor:pointer;background:#0f0f17;transition:border-color .15s}
+    .lo.on{border-color:var(--focus);box-shadow:0 0 0 3px rgba(109,139,255,.18)}
+    .lo .pic{position:relative;aspect-ratio:16/9;border-radius:6px;background:#1c1c27;overflow:hidden;margin-bottom:8px}
+    .lo .pic i{position:absolute;background:#d6d6e2;border-radius:2px}
+    .lo .pic u{position:absolute;background:linear-gradient(160deg,#8a2be2,#2f5bff);border-radius:3px}
+    .lo b{display:block;font-size:13px}
+    .lo span{display:block;color:var(--mute);font-size:11.5px;margin-top:2px;line-height:1.35}
+    .qrrow{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:center}
+    @media(max-width:640px){.qrrow{grid-template-columns:1fr}}
+    .dset .acts2{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
     /* Модальные окна */
     .drop{border:1.5px dashed #3a3a50;border-radius:16px;padding:22px;text-align:center;color:var(--soft);cursor:pointer;transition:all .15s;background:#0f0f17}
     .drop:hover,.drop.over{border-color:#8a2be2;background:rgba(138,43,226,.07);color:#fff}
@@ -172,9 +205,10 @@
   <nav class="nav" id="nav">
     <a href="#s-main"><span class="n">1</span>{{ t('live.b_s_main') }}<span class="dot" data-dot="main"></span></a>
     <a href="#s-prog"><span class="n">2</span>{{ t('live.b_s_prog') }}<span class="dot ok"></span></a>
-    <a href="#s-q"><span class="n">3</span>{{ t('live.b_s_q') }}<span class="dot" data-dot="q"></span></a>
-    <a href="#s-screen"><span class="n">4</span>{{ t('live.b_s_screen') }}<span class="dot ok"></span></a>
-    <a href="#s-go"><span class="n">5</span>{{ t('live.b_s_go') }}<span class="dot" data-dot="go"></span></a>
+    <a href="#s-deck"><span class="n">3</span>{{ t('live.d_title') }}<span class="dot" data-dot="deck"></span></a>
+    <a href="#s-q"><span class="n">4</span>{{ t('live.b_s_q') }}<span class="dot" data-dot="q"></span></a>
+    <a href="#s-screen"><span class="n">5</span>{{ t('live.b_s_screen') }}<span class="dot ok"></span></a>
+    <a href="#s-go"><span class="n">6</span>{{ t('live.b_s_go') }}<span class="dot" data-dot="go"></span></a>
   </nav>
 
   <main>
@@ -208,9 +242,29 @@
       <button class="btn soft sm" type="button" id="add-block" style="margin-top:12px">＋ {{ t('live.b_add_block') }}</button>
     </section>
 
-    <!-- 3. Вопросы -->
+    <!-- 3. Презентация -->
+    <section class="sec" id="s-deck">
+      <h2><span class="n">3</span>{{ t('live.d_title') }} <span class="chip" id="d-count">0</span></h2>
+      <div class="sub">{{ t('live.d_sub') }}</div>
+      <input type="file" id="d-file" accept="application/pdf,.pdf" hidden>
+      <label class="drop" id="d-drop" for="d-file"><b>📄 {{ t('live.d_drop') }}</b><span>{{ t('live.d_drop_sub') }}</span></label>
+      <div class="dprog" id="d-prog" hidden><div class="bar"><i id="d-bar"></i></div><span id="d-ptxt"></span></div>
+      <div id="d-body" hidden>
+        <div class="dtop">
+          <div><span class="in-l">{{ t('live.d_cam') }}</span><span class="seg" id="d-cam"><button type="button" data-c="tr">↗ {{ t('live.d_cam_tr') }}</button><button type="button" data-c="br">↘ {{ t('live.d_cam_br') }}</button></span></div>
+          <div class="obs" id="d-obs"></div>
+          <span class="sp"></span>
+          <button class="btn soft sm" type="button" id="d-add">＋ {{ t('live.d_add_pdf') }}</button>
+          <button class="btn ghost sm" type="button" id="d-rep">⟲ {{ t('live.d_replace') }}</button>
+        </div>
+        <div class="dgrid" id="d-grid"></div>
+        <div class="dset" id="d-set"></div>
+      </div>
+    </section>
+
+    <!-- 4. Вопросы -->
     <section class="sec" id="s-q">
-      <h2><span class="n">3</span>{{ t('live.b_s_q') }} <span class="chip" id="q-count">0</span></h2>
+      <h2><span class="n">4</span>{{ t('live.b_s_q') }} <span class="chip" id="q-count">0</span></h2>
       <div class="sub">{{ t('live.b_s_q_sub') }}</div>
       <div class="qbar">
         <button class="btn soft sm" type="button" data-addq="last">＋ {{ t('live.q_add') }}</button>
@@ -223,7 +277,7 @@
 
     <!-- 4. Экран и ссылки -->
     <section class="sec" id="s-screen">
-      <h2><span class="n">4</span>{{ t('live.b_s_screen') }}</h2>
+      <h2><span class="n">5</span>{{ t('live.b_s_screen') }}</h2>
       <div class="sub">{{ t('live.b_s_screen_sub') }}</div>
       <div class="fld"><label class="in-l">{{ t('live.b_f_partners') }}</label>
         <input class="f" id="f-partners" maxlength="160" placeholder="USTEM Foundation × ..."></div>
@@ -238,7 +292,7 @@
 
     <!-- 5. Запуск -->
     <section class="sec" id="s-go">
-      <h2><span class="n">5</span>{{ t('live.b_s_go') }}</h2>
+      <h2><span class="n">6</span>{{ t('live.b_s_go') }}</h2>
       <div class="sub">{{ t('live.b_s_go_sub') }}</div>
       <div class="ready" id="ready"></div>
       <div id="links"></div>
@@ -257,6 +311,7 @@
       <div class="scenes" id="scenes">
         <button type="button" data-s="waiting">{{ t('live.m_waiting') }}</button>
         <button type="button" data-s="talk">{{ t('live.m_talk') }}</button>
+        <button type="button" data-s="slides">{{ t('live.m_slides') }}</button>
         <button type="button" data-s="profile">{{ t('live.m_profile') }}</button>
         <button type="button" data-s="question">{{ t('live.m_question') }}</button>
         <button type="button" data-s="reveal">{{ t('live.b_answer') }}</button>
@@ -670,6 +725,125 @@
   }
   all('[data-addq]').forEach(function (b) { b.onclick = function () { var adds = all('.addq'); if (adds.length) adds[adds.length - 1].click(); }; });
 
+  // ─── Презентация ────────────────────────────────────────────────────
+  var TD = {{ {
+    'slide': t('live.d_slide'), 'of': t('live.d_of'), 'l_full': t('live.d_l_full'), 'l_full_s': t('live.d_l_full_s'),
+    'l_cam': t('live.d_l_cam'), 'l_cam_s': t('live.d_l_cam_s'), 'l_side': t('live.d_l_side'), 'l_side_s': t('live.d_l_side_s'),
+    'qr': t('live.d_qr'), 'qr_to': {'watch': t('live.d_qr_watch'), 'connect': t('live.d_qr_connect'), 'bot': t('live.d_qr_bot'), 'url': t('live.d_qr_url')},
+    'qr_label': t('live.d_qr_label'), 'qr_url_ph': t('live.d_qr_url_ph'), 'pos_bl': t('live.d_pos_bl'), 'pos_br': t('live.d_pos_br'),
+    'all': t('live.d_all'), 'all_done': t('live.d_all_done'), 'left': t('live.d_left'), 'right': t('live.d_right'), 'del': t('live.d_del'),
+    'del_c': t('live.d_del_c'), 'up': t('live.d_uploading'), 'work': t('live.d_working'), 'added': t('live.d_added'),
+    'rep_c': t('live.d_replace_c'), 'obs': t('live.d_obs'), 'show': t('live.b_show')
+  }|tojson }};
+  var DK = D.deck || {cam: 'tr', slides: []}, dSel = 0, dT = null, dReplace = false;
+  var CAMR = {tr: {x: 1484, y: 148, w: 392, h: 392}, br: {x: 1484, y: 540, w: 392, h: 392}};
+  function pct(v, of) { return (v / of * 100).toFixed(2) + '%'; }
+  function camBox(cls) {
+    var c = CAMR[DK.cam];
+    return '<span class="' + cls + '" style="left:' + pct(c.x, 1920) + ';top:' + pct(c.y, 1080) + ';width:' + pct(c.w, 1920) + ';height:' + pct(c.h, 1080) + '"></span>';
+  }
+  function qrMark(sl) {
+    var c = CAMR[DK.cam];
+    if (sl.layout === 'side') return '<span class="qm" style="left:' + pct(c.x + 70, 1920) + ';top:' + pct(DK.cam === 'br' ? 170 : c.y + c.h + 40, 1080) + '"></span>';
+    return '<span class="qm" style="' + (sl.qr.pos === 'bl' ? 'left:3%' : 'right:3%') + ';bottom:5%"></span>';
+  }
+  function renderDeck() {
+    var n = DK.slides.length;
+    $('d-count').textContent = n;
+    $('d-body').hidden = !n; $('d-drop').hidden = !!n;
+    var dot = document.querySelector('[data-dot="deck"]'); if (dot) dot.className = 'dot ' + (n ? 'ok' : '');
+    all('#d-cam button').forEach(function (b) { b.classList.toggle('on', b.dataset.c === DK.cam); });
+    var c = CAMR[DK.cam];
+    $('d-obs').innerHTML = TD.obs.replace('{x}', c.x).replace('{y}', c.y).replace('{w}', c.w).replace('{h}', c.h);
+    if (dSel >= n) dSel = Math.max(0, n - 1);
+    $('d-grid').innerHTML = DK.slides.map(function (sl, i) {
+      return '<div class="th ' + sl.layout + (i === dSel ? ' on' : '') + '" data-th="' + i + '"><img src="' + esc(sl.thumb) + '" alt="" loading="lazy">' +
+        (sl.layout !== 'full' ? camBox('cm') : '') + (sl.qr && sl.qr.on ? qrMark(sl) : '') + '<span class="no">' + (i + 1) + '</span></div>';
+    }).join('');
+    all('[data-th]').forEach(function (el) { el.onclick = function () { dSel = +el.dataset.th; renderDeck(); showSlide(); }; });
+    renderDset();
+  }
+  function layPic(kind) {
+    var c = CAMR[DK.cam], cam = '<u style="left:' + pct(c.x, 1920) + ';top:' + pct(c.y, 1080) + ';width:' + pct(c.w, 1920) + ';height:' + pct(c.h, 1080) + '"></u>';
+    if (kind === 'full') return '<i style="inset:0"></i>';
+    if (kind === 'cam') return '<i style="inset:0"></i>' + cam;
+    return '<i style="left:1.25%;top:13.7%;width:74.8%;height:74.8%"></i>' + cam;
+  }
+  function renderDset() {
+    var sl = DK.slides[dSel]; if (!sl) { $('d-set').innerHTML = ''; return; }
+    var q = sl.qr;
+    var lays = ['side', 'cam', 'full'].map(function (k) {
+      return '<div class="lo' + (sl.layout === k ? ' on' : '') + '" data-lay="' + k + '"><div class="pic">' + layPic(k) + '</div><b>' + esc(TD['l_' + k]) + '</b><span>' + esc(TD['l_' + k + '_s']) + '</span></div>';
+    }).join('');
+    var opts = ['watch', 'connect', 'bot', 'url'].map(function (k) { return '<option value="' + k + '"' + (q.to === k ? ' selected' : '') + '>' + esc(TD.qr_to[k]) + '</option>'; }).join('');
+    $('d-set').innerHTML = '<div class="hd"><b>' + esc(TD.slide) + ' ' + (dSel + 1) + ' ' + esc(TD.of) + ' ' + DK.slides.length + '</b><span class="sp"></span>' +
+      '<button class="btn ghost sm" type="button" data-mv="-1" ' + (dSel ? '' : 'disabled') + ' title="' + esc(TD.left) + '">←</button>' +
+      '<button class="btn ghost sm" type="button" data-mv="1" ' + (dSel < DK.slides.length - 1 ? '' : 'disabled') + ' title="' + esc(TD.right) + '">→</button>' +
+      '<button class="btn ghost sm" type="button" id="d-del" title="' + esc(TD.del) + '">🗑</button></div>' +
+      '<div class="los">' + lays + '</div>' +
+      '<div class="qrrow"><div class="sw" style="border:0;padding:0"><label class="tg"><input type="checkbox" id="d-qon"' + (q.on ? ' checked' : '') + '><i></i></label><b>' + esc(TD.qr) + '</b></div>' +
+      '<select class="f" id="d-qto"' + (q.on ? '' : ' disabled') + '>' + opts + '</select>' +
+      '<input class="f" id="d-qlabel" maxlength="80" value="' + esc(q.label || '') + '" placeholder="' + esc(TD.qr_label) + '"' + (q.on ? '' : ' disabled') + '></div>' +
+      '<div id="d-qurlbox" style="margin-top:10px"' + (q.on && q.to === 'url' ? '' : ' hidden') + '><input class="f" id="d-qurl" value="' + esc(q.url || '') + '" placeholder="' + esc(TD.qr_url_ph) + '"></div>' +
+      '<div style="margin-top:10px"' + (q.on && sl.layout !== 'side' ? '' : ' hidden') + '><span class="seg" id="d-qpos"><button type="button" data-p="bl"' + (q.pos === 'bl' ? ' class="on"' : '') + '>↙ ' + esc(TD.pos_bl) + '</button><button type="button" data-p="br"' + (q.pos !== 'bl' ? ' class="on"' : '') + '>↘ ' + esc(TD.pos_br) + '</button></span></div>' +
+      '<div class="acts2"><button class="btn soft sm" type="button" id="d-all">⧉ ' + esc(TD.all) + '</button></div>';
+    all('[data-lay]').forEach(function (el) { el.onclick = function () { sl.layout = el.dataset.lay; deckChanged(true); }; });
+    all('[data-mv]').forEach(function (b) { b.onclick = function () {
+      var j = dSel + +b.dataset.mv; var x = DK.slides.splice(dSel, 1)[0]; DK.slides.splice(j, 0, x); dSel = j; deckChanged(true);
+    }; });
+    $('d-del').onclick = function () { if (!confirm(TD.del_c)) return; DK.slides.splice(dSel, 1); deckChanged(true); };
+    $('d-qon').onchange = function () { q.on = this.checked; deckChanged(true); };
+    $('d-qto').onchange = function () { q.to = this.value; deckChanged(true); };
+    $('d-qlabel').oninput = function () { q.label = this.value; deckChanged(false); };
+    var qu = $('d-qurl'); if (qu) qu.oninput = function () { q.url = this.value; deckChanged(false); };
+    all('#d-qpos button').forEach(function (b) { b.onclick = function () { q.pos = b.dataset.p; deckChanged(true); }; });
+    $('d-all').onclick = function () {
+      DK.slides.forEach(function (x) { x.layout = sl.layout; x.qr = JSON.parse(JSON.stringify(sl.qr)); });
+      deckChanged(true); toast(TD.all_done);
+    };
+  }
+  function deckChanged(redraw) {
+    if (redraw) renderDeck();
+    status('saving'); clearTimeout(dT);
+    dT = setTimeout(function () {
+      api('/build/deck', {cam: DK.cam, slides: DK.slides.map(function (x) { return {id: x.id, layout: x.layout, qr: x.qr}; })}).then(function (d) {
+        if (!d.ok) { status('err'); return; }
+        status('ok'); showSlide();
+      }).catch(function () { status('err'); toast(T.net, true); });
+    }, redraw ? 250 : 700);
+  }
+  function showSlide() { if (DK.slides.length) { PV.slide = dSel; PV.scene = 'slides'; all('#scenes button').forEach(function (b) { b.classList.toggle('on', b.dataset.s === 'slides'); }); reloadPreview(); } }
+  all('#d-cam button').forEach(function (b) { b.onclick = function () { DK.cam = b.dataset.c; deckChanged(true); }; });
+  function upload(file) {
+    if (!file) return;
+    var fd = new FormData(); fd.append('pdf', file); if (dReplace) fd.append('replace', '1');
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', BASE + '/build/deck/upload'); xhr.setRequestHeader('X-CSRF-Token', CSRF);
+    $('d-prog').hidden = false; $('d-bar').style.width = '0'; $('d-ptxt').textContent = TD.up;
+    xhr.upload.onprogress = function (e) {
+      if (!e.lengthComputable) return;
+      var p = Math.round(e.loaded / e.total * 100); $('d-bar').style.width = p + '%';
+      $('d-ptxt').innerHTML = p < 100 ? TD.up + ' ' + p + '%' : '<span class="spin" style="width:12px;height:12px"></span> ' + TD.work;
+    };
+    xhr.onload = function () {
+      $('d-prog').hidden = true; $('d-file').value = '';
+      var d = {}; try { d = JSON.parse(xhr.responseText); } catch (e) {}
+      if (!d.ok) { toast(d.error || T.err, true); return; }
+      var first = dReplace ? 0 : DK.slides.length;
+      DK = d.deck; dSel = Math.min(first, DK.slides.length - 1); renderDeck(); showSlide();
+      toast(TD.added.replace('{n}', d.added));
+    };
+    xhr.onerror = function () { $('d-prog').hidden = true; toast(T.net, true); };
+    xhr.send(fd);
+  }
+  $('d-file').onchange = function () { upload(this.files[0]); };
+  $('d-add').onclick = function () { dReplace = false; $('d-file').click(); };
+  $('d-rep').onclick = function () { if (confirm(TD.rep_c)) { dReplace = true; $('d-file').click(); } };
+  $('d-drop').addEventListener('click', function () { dReplace = false; });
+  ['dragover', 'dragenter'].forEach(function (ev) { $('d-drop').addEventListener(ev, function (e) { e.preventDefault(); $('d-drop').classList.add('over'); }); });
+  $('d-drop').addEventListener('dragleave', function () { $('d-drop').classList.remove('over'); });
+  $('d-drop').addEventListener('drop', function (e) { e.preventDefault(); $('d-drop').classList.remove('over'); dReplace = false; upload(e.dataTransfer.files[0]); });
+
   // ─── Недостающий перевод ────────────────────────────────────────────
   function updateMissing() {
     var miss = {kk: 0, ru: 0};
@@ -722,8 +896,8 @@
   };
 
   // ─── Предпросмотр ───────────────────────────────────────────────────
-  var PV = {scene: 'waiting', qid: null}, pvT = null;
-  function pvSrc() { return BASE + '/screen?demo=' + PV.scene + '&lang=' + (D.lang || 'kk') + (PV.qid ? '&qid=' + PV.qid : '') + '&_=' + Date.now(); }
+  var PV = {scene: 'waiting', qid: null, slide: 0}, pvT = null;
+  function pvSrc() { return BASE + '/screen?demo=' + PV.scene + '&lang=' + (D.lang || 'kk') + (PV.qid ? '&qid=' + PV.qid : '') + (PV.scene === 'slides' ? '&slide=' + PV.slide : '') + '&_=' + Date.now(); }
   function reloadPreview() {
     clearTimeout(pvT);
     pvT = setTimeout(function () { $('frame').classList.add('loading'); $('pv').src = pvSrc(); }, 350);
@@ -842,6 +1016,7 @@
   }
   window.addEventListener('beforeunload', function (e) { if (Object.keys(pending).length) { flush(); } });
 
+  renderDeck();
   initMain(); setEL(EL); renderReady(); renderLinks(); renderDanger(); updateMissing(); setScene('waiting');
 })();
 </script>

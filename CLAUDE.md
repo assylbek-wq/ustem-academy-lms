@@ -122,3 +122,7 @@ USTEM Academy - LMS для подготовки учителей. Flask + SQLAlc
   базе (`LiveEvent.blocks`, `texts`, `lang`). `app/content/live_*.py` только создает эфир при первом старте и больше его не
   трогает. Предпросмотр сцены: `/live/<slug>/screen?demo=<режим>` (только для команды). Учителям `/live/<slug>`, пульт
   `/control`, аналитика `/stats` (гостевая ссылка с ключом из `stats_key`).
+  Презентация эфира (`services/live_deck.py`, `LiveEvent.deck`): PDF -> JPEG 1920 px (pypdfium2) в `UPLOAD_DIR/live/<id>/`,
+  у слайда раскладка `full` / `cam` (окно камеры в углу) / `side` (слайд слева, камера справа) и QR. Окно камеры на экране
+  прозрачное (`html.cut`, clip-path), в OBS камера ставится под Browser source в `CAM` (1484, 148, 392 x 392 или внизу).
+  Режим `slides` листается на пульте кнопками, клавишами и кликером; экран берет презентацию из `screen.json?dv=`.

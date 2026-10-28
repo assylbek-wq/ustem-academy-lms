@@ -15,7 +15,7 @@ from sqlalchemy import func
 from ..models import LiveAnswer, LiveAsk, LiveEvent, LiveQuestion, LiveViewer, User, db, utcnow
 
 SOURCES = ("live_keleshek",)
-MODES = ("waiting", "talk", "profile", "question", "reveal", "leaderboard", "ask", "finish")
+MODES = ("waiting", "talk", "slides", "profile", "question", "reveal", "leaderboard", "ask", "finish")
 ONLINE_WINDOW = 45          # секунд: «смотрит сейчас», если страница отвечала за это время
 HEARTBEAT_EVERY = 20        # секунд между записями пульса одного учителя
 GRACE = 25                  # секунд к таймеру вопроса: задержка YouTube и медленная сеть
@@ -165,7 +165,8 @@ def public_state(slug: str) -> dict | None:
         if not ev:
             return None
         st = dict(ev.state or {})
-        out = {"mode": st.get("mode", "waiting"), "v": st.get("v", 0), "now": time.time(), "block": st.get("block")}
+        out = {"mode": st.get("mode", "waiting"), "v": st.get("v", 0), "now": time.time(), "block": st.get("block"),
+               "slide": st.get("slide", 0), "dv": int((ev.deck or {}).get("v", 0))}
         qid = st.get("qid")
         if out["mode"] in ("question", "reveal") and qid:
             q = db.session.get(LiveQuestion, qid)
