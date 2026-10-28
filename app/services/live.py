@@ -12,7 +12,7 @@ from datetime import timedelta
 
 from sqlalchemy import func
 
-from ..models import LiveAnswer, LiveAsk, LiveEvent, LiveQuestion, LiveViewer, User, db, utcnow
+from ..models import LiveAnswer, LiveAsk, LiveEvent, LiveFeedback, LiveQuestion, LiveViewer, User, db, utcnow
 
 SOURCES = ("live_keleshek",)
 MODES = ("waiting", "talk", "slides", "profile", "question", "reveal", "leaderboard", "ask", "finish")
@@ -325,8 +325,81 @@ def asks(ev: LiveEvent, limit: int = 60) -> list[dict]:
         v = LiveViewer.query.filter_by(event_id=ev.id, user_id=a.user_id).first()
         out.append({"id": a.id, "text": a.text, "status": a.status, "name": a.user.full_name if a.user else "",
                     "school": (v.school if v else "") or "", "region": region_name(v.region if v else None, "kk"),
-                    "at": local_hm(a.created_at)})
+                    "at": local_hm(a.created_at), "uid": a.user_id})
     return out
+
+
+# ─── Вопросы спикеру: защита от спама ────────────────────────────────────
+ASK_COOLDOWN = 15     # секунд между вопросами одного учителя
+ASK_MAX = 30          # вопросов от одного учителя за эфир
+ASK_MIN, ASK_LEN = 3, 600
+
+
+def _norm(text: str) -> str:
+    return " ".join("".join(ch for ch in text.lower() if ch.isalnum() or ch.isspace()).split())
+
+
+def add_ask(ev: LiveEvent, user: User, text: str) -> tuple[bool, str | None, int]:
+    """Сохранить вопрос спикеру. Возвращает (ok, ключ ошибки, сколько секунд подождать).
+    Модератор видит не все: вопросы скрытого автора (LiveViewer.muted) сохраняются со статусом hidden,
+    сам автор об этом не узнает и не начинает писать с другого аккаунта."""
+    text = " ".join((text or "").split())
+    if len(text) < ASK_MIN:
+        return False, "live.ask_short", 0
+    text = text[:ASK_LEN]
+    mine = LiveAsk.query.filter_by(event_id=ev.id, user_id=user.id).order_by(LiveAsk.created_at.desc()).all()
+    if mine and mine[0].created_at:
+        wait = ASK_COOLDOWN - int((utcnow() - mine[0].created_at).total_seconds())
+        if wait > 0:
+            return False, "live.ask_wait", wait
+    if len(mine) >= ASK_MAX:
+        return False, "live.ask_limit", 0
+    n = _norm(text)
+    if any(_norm(a.text) == n for a in mine):
+        return False, "live.ask_dup", 0
+    v = LiveViewer.query.filter_by(event_id=ev.id, user_id=user.id).first()
+    db.session.add(LiveAsk(event_id=ev.id, user_id=user.id, text=text, status="hidden" if v and v.muted else "new"))
+    db.session.commit()
+    return True, None, 0
+
+
+def mute(ev: LiveEvent, user_id: int, on: bool = True) -> int:
+    """Скрыть автора: его вопросы прячутся от модератора и экрана, новые сразу скрытые. Возвращает число скрытых."""
+    v = LiveViewer.query.filter_by(event_id=ev.id, user_id=user_id).first()
+    if v:
+        v.muted = on
+    n = 0
+    if on:
+        n = LiveAsk.query.filter(LiveAsk.event_id == ev.id, LiveAsk.user_id == user_id,
+                                 LiveAsk.status != "hidden").update({"status": "hidden"}, synchronize_session=False)
+    db.session.commit()
+    return n
+
+
+# ─── Отзывы ──────────────────────────────────────────────────────────────
+FB_LIKED = ("topic", "speaker", "quiz", "examples", "format", "materials")
+FB_IMPROVE = ("sound", "video", "length", "pace", "practice", "nothing")
+
+
+def save_feedback(ev: LiveEvent, user: User, data: dict) -> tuple[LiveFeedback | None, str | None]:
+    try:
+        rating = int(data.get("rating"))
+    except (TypeError, ValueError):
+        return None, "live.fb_err"
+    if not 1 <= rating <= 5:
+        return None, "live.fb_err"
+    fb = LiveFeedback.query.filter_by(event_id=ev.id, user_id=user.id).first()
+    if not fb:
+        fb = LiveFeedback(event_id=ev.id, user_id=user.id)
+        db.session.add(fb)
+    fb.rating = rating
+    fb.liked = [x for x in (data.get("liked") or []) if x in FB_LIKED]
+    fb.improve = [x for x in (data.get("improve") or []) if x in FB_IMPROVE]
+    fb.comment = (data.get("comment") or "").strip()[:1500] or None
+    fb.topics = (data.get("topics") or "").strip()[:500] or None
+    fb.updated_at = utcnow()
+    db.session.commit()
+    return fb, None
 
 
 def reset(ev: LiveEvent) -> dict:
@@ -334,6 +407,7 @@ def reset(ev: LiveEvent) -> dict:
     counts = {
         "answers": LiveAnswer.query.filter_by(event_id=ev.id).delete(synchronize_session=False),
         "asks": LiveAsk.query.filter_by(event_id=ev.id).delete(synchronize_session=False),
+        "feedback": LiveFeedback.query.filter_by(event_id=ev.id).delete(synchronize_session=False),
         "viewers": LiveViewer.query.filter_by(event_id=ev.id).delete(synchronize_session=False),
     }
     db.session.flush()

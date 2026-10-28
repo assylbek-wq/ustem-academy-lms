@@ -12,7 +12,7 @@ from zoneinfo import ZoneInfo
 
 from flask import current_app
 
-from ..models import AuditLog, LiveAnswer, LiveAsk, LiveEvent, LiveQuestion, LiveViewer, User, db
+from ..models import AuditLog, LiveAnswer, LiveAsk, LiveEvent, LiveFeedback, LiveQuestion, LiveViewer, User, db
 from . import live as svc
 
 REGION_CODES = {
@@ -43,7 +43,8 @@ def compute(ev: LiveEvent) -> dict:
                .filter(LiveViewer.event_id == ev.id).all())
     qs = LiveQuestion.query.filter_by(event_id=ev.id).order_by(LiveQuestion.position).all()
     answers = LiveAnswer.query.filter_by(event_id=ev.id).all()
-    asks = LiveAsk.query.filter_by(event_id=ev.id).order_by(LiveAsk.created_at).all()
+    asks = (LiveAsk.query.filter(LiveAsk.event_id == ev.id, LiveAsk.status != "hidden")  # скрытые модератором - спам
+            .order_by(LiveAsk.created_at).all())
     vs = [v for v, _ in viewers]
 
     # ─── Присутствие по минутам ──────────────────────────────────────────
@@ -151,6 +152,18 @@ def compute(ev: LiveEvent) -> dict:
         {"key": "answered", "n": answered_people},
         {"key": "asked", "n": askers},
     ]
+    fbs = LiveFeedback.query.filter_by(event_id=ev.id).order_by(LiveFeedback.created_at.desc()).all()
+    if fbs:
+        funnel.append({"key": "feedback", "n": len(fbs)})
+    fb_dist = [sum(1 for f in fbs if f.rating == r) for r in range(1, 6)]
+    fb = {
+        "n": len(fbs), "avg": round(sum(f.rating for f in fbs) / len(fbs), 2) if fbs else None, "dist": fb_dist,
+        "nps": round(100 * (fb_dist[4] - sum(fb_dist[:3])) / len(fbs)) if fbs else None,
+        "liked": [{"key": k, "n": n} for k, n in Counter(x for f in fbs for x in (f.liked or [])).most_common()],
+        "improve": [{"key": k, "n": n} for k, n in Counter(x for f in fbs for x in (f.improve or [])).most_common()],
+        "comments": [{"rating": f.rating, "text": f.comment, "topics": f.topics, "at": svc.local_hm(f.created_at),
+                      "name": f.user.full_name if f.user else ""} for f in fbs if f.comment or f.topics][:300],
+    }
 
     ask_rows = []
     vmap = {v.user_id: v for v in vs}
@@ -176,7 +189,7 @@ def compute(ev: LiveEvent) -> dict:
         "robotics": [{"key": k, "n": robotics.get(k, 0)} for k in svc.ROBOTICS],
         "schools": [{"name": school_name[k], "n": n} for k, n in schools.most_common(12)],
         "watch": [{"lo": lo, "hi": hi, "n": watch[i]} for i, (lo, hi) in enumerate(WATCH_BUCKETS)],
-        "quiz": quiz, "top": top_rows, "funnel": funnel, "asks": ask_rows,
+        "quiz": quiz, "top": top_rows, "funnel": funnel, "asks": ask_rows, "feedback": fb,
         "generated": _local(datetime.now(timezone.utc).replace(tzinfo=None)).strftime("%H:%M"),
         "live": (ev.state or {}).get("mode") not in (None, "waiting", "finish"),
     }

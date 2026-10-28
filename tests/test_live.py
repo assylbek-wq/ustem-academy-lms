@@ -189,3 +189,49 @@ class LiveTest(AppTestCase):
         self.assertEqual(guest.get(f"/live/keleshek/export.xlsx?key={key}").status_code, 302)
         self.assertEqual(guest.get(f"/live/keleshek/control?key={key}").status_code, 302)
         self.assertIn(key.encode(), admin.get("/live/keleshek/stats").data)
+
+    def test_asks_antispam_and_feedback(self):
+        from datetime import timedelta
+        from app.models import LiveAsk, LiveFeedback
+        teacher = self.new_client("teacher1@academy.demo")
+        teacher.get("/live/keleshek")
+        ok = teacher.post("/live/keleshek/ask", json={"text": "Первый вопрос?"}).get_json()
+        self.assertTrue(ok["ok"])
+        r = teacher.post("/live/keleshek/ask", json={"text": "Второй вопрос сразу"})
+        self.assertEqual(r.status_code, 429)
+        self.assertGreater(r.get_json()["wait"], 0)
+        def age():  # сдвигаем время прошлых вопросов, чтобы не ждать паузу
+            for a in LiveAsk.query.filter_by(event_id=self.ev.id).all():
+                a.created_at -= timedelta(seconds=60)
+            from app.models import db
+            db.session.commit()
+        age()
+        self.assertEqual(teacher.post("/live/keleshek/ask", json={"text": "первый  вопрос"}).status_code, 400)  # повтор
+        for i in range(12):  # больше прежних 10
+            age()
+            self.assertTrue(teacher.post("/live/keleshek/ask", json={"text": f"Вопрос номер {i}"}).get_json()["ok"])
+        # модератор скрывает автора: старые и новые вопросы не видны на пульте и в аналитике
+        admin = self.new_client("admin@academy.demo")
+        uid = User.query.filter_by(email="teacher1@academy.demo").first().id
+        self.assertTrue(admin.post(f"/live/keleshek/control/mute/{uid}", json={"on": True}).get_json()["ok"])
+        age()
+        self.assertTrue(teacher.post("/live/keleshek/ask", json={"text": "Спам спам"}).get_json()["ok"])
+        self.assertEqual(admin.get("/live/keleshek/control.json").get_json().get("asks", []), [])
+        self.assertEqual(admin.get("/live/keleshek/stats.json").get_json()["kpi"]["asks"], 0)
+        # отзыв
+        self.assertEqual(teacher.post("/live/keleshek/feedback", json={"rating": 9}).status_code, 400)
+        r = teacher.post("/live/keleshek/feedback", json={"rating": 5, "liked": ["quiz", "bad"], "improve": ["sound"],
+                                                          "comment": "Отлично", "topics": "FTC"})
+        self.assertTrue(r.get_json()["ok"])
+        teacher.post("/live/keleshek/feedback", json={"rating": 4})  # повторно - обновляет
+        self.assertEqual(LiveFeedback.query.filter_by(event_id=self.ev.id).count(), 1)
+        teacher.post("/live/keleshek/feedback", json={"rating": 4, "liked": ["quiz"], "comment": "Отлично"})
+        d = admin.get("/live/keleshek/stats.json").get_json()["feedback"]
+        self.assertEqual((d["n"], d["avg"], d["dist"][3], d["liked"][0]["key"]), (1, 4.0, 1, "quiz"))
+        self.assertTrue(d["comments"][0]["name"])
+        from app.blueprints.live import stats_key
+        g = self.app.test_client().get(f"/live/keleshek/stats.json?key={stats_key(self.ev)}").get_json()
+        self.assertEqual(g["feedback"]["comments"][0]["name"], "")
+        self.assertIn("fb-rate", teacher.get("/live/keleshek").get_data(as_text=True))
+        x = admin.get("/live/keleshek/export.xlsx")
+        self.assertEqual(x.status_code, 200)

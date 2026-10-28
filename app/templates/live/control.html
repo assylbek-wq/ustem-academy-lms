@@ -153,7 +153,7 @@
   var QSEC = {{ qsec|tojson }};
   var MODES = {{ {'waiting': t('live.m_waiting'), 'talk': t('live.m_talk'), 'profile': t('live.m_profile'), 'question': t('live.m_question'),
                  'reveal': t('live.m_reveal'), 'slides': t('live.m_slides'), 'leaderboard': t('live.m_leaderboard'), 'ask': t('live.m_ask'), 'finish': t('live.m_finish')}|tojson }};
-  var T = {{ {'pick': t('live.c_pick'), 'done': t('live.c_done'), 'hide': t('live.c_hide'), 'saved': t('live.saved'), 'copied': t('live.c_copied'), 'confirm': t('live.c_confirm_restart')}|tojson }};
+  var T = {{ {'pick': t('live.c_pick'), 'done': t('live.c_done'), 'hide': t('live.c_hide'), 'mute': t('live.c_mute'), 'mute_c': t('live.c_mute_c'), 'muted': t('live.c_muted'), 'saved': t('live.saved'), 'copied': t('live.c_copied'), 'confirm': t('live.c_confirm_restart')}|tojson }};
   var csrf = document.querySelector('meta[name=csrf-token]').content, $ = function (id) { return document.getElementById(id); }, esc = window.liveEsc;
   var data = null, offset = 0, timerI = null;
   function post(url, body) { return fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf}, body: JSON.stringify(body)}).then(function (r) { return r.json(); }); }
@@ -241,8 +241,12 @@
     $('ask-n').textContent = asks.length ? '(' + asks.length + ')' : '';
     $('asks').innerHTML = asks.length ? asks.map(function (a) {
       return '<div class="ask ' + a.status + '"><div>' + esc(a.text) + '</div><div class="who">' + esc(a.at + ' · ' + a.name + (a.school ? ' · ' + a.school : '') + (a.region ? ' · ' + a.region : '')) + '</div>' +
-        '<div class="row"><button class="b sm" data-ask="' + a.id + '" data-st="picked">' + T.pick + '</button><button class="b sm" data-ask="' + a.id + '" data-st="done">' + T.done + '</button><button class="b sm" data-ask="' + a.id + '" data-st="hidden">' + T.hide + '</button></div></div>';
+        '<div class="row"><button class="b sm" data-ask="' + a.id + '" data-st="picked">' + T.pick + '</button><button class="b sm" data-ask="' + a.id + '" data-st="done">' + T.done + '</button><button class="b sm" data-ask="' + a.id + '" data-st="hidden">' + T.hide + '</button><button class="b sm" style="margin-left:auto;color:#e8323c" data-mute="' + a.uid + '" title="' + esc(T.mute_c) + '">🚫 ' + T.mute + '</button></div></div>';
     }).join('') : $('asks').innerHTML;
+    Array.prototype.forEach.call(document.querySelectorAll('[data-mute]'), function (b) { b.onclick = function () {
+      if (!confirm(T.mute_c)) return;
+      post('/live/' + SLUG + '/control/mute/' + b.dataset.mute, {on: true}).then(function (r) { if (r.ok) { load(); } });
+    }; });
     Array.prototype.forEach.call(document.querySelectorAll('[data-ask]'), function (b) { b.onclick = function () { post('/live/' + SLUG + '/control/ask/' + b.dataset.ask, {status: b.dataset.st}).then(load); }; });
   }
   function load() { return fetch('/live/' + SLUG + '/control.json', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (d) { data = d; render(); }); }

@@ -44,6 +44,12 @@
     .btn-w{background:#fff;color:var(--ink)}
     .btn-g{background:var(--grad);color:#fff}
     .btn-o{background:transparent;border:1px solid var(--line);color:#fff}
+    .btn[disabled]{opacity:.5;cursor:default}
+    .rate{display:flex;gap:6px;margin:14px 0 4px}
+    .rate button{flex:1;font-size:34px;line-height:1;background:#0f0f17;border:1px solid var(--line);border-radius:12px;padding:10px 0;color:#3a3a50;cursor:pointer;transition:color .15s,transform .1s}
+    .rate button.on{color:#ffd23f;border-color:#5a4a10}
+    .rate button:active{transform:scale(.94)}
+    .rate-l{text-align:center;font-weight:700;color:#ffd23f;min-height:20px;font-size:14px}
     .err{color:#ff8a8a;font-size:13px;margin-top:8px;min-height:1em}
     .pulse{animation:pulse 1.8s ease-in-out 3}
     @keyframes pulse{50%{box-shadow:0 0 0 6px rgba(138,43,226,.45)}}
@@ -147,6 +153,25 @@
       <div class="done-mark">✅ {{ t('live.profile_done') }} <a href="#" id="profile-edit" class="muted" style="margin-left:auto">{{ t('live.edit') }}</a></div>
     </div>
 
+    <!-- Обратная связь: в финале эфира -->
+    <form class="card hide" id="fb">
+      <h3>⭐ {{ t('live.fb_title') }}</h3>
+      <div class="muted">{{ t('live.fb_sub') }}</div>
+      <div class="rate" id="fb-rate">{% for r in range(1, 6) %}<button type="button" data-r="{{ r }}" class="{{ 'on' if fb and fb.rating >= r }}" aria-label="{{ r }}">★</button>{% endfor %}</div>
+      <div class="rate-l" id="fb-rl"></div>
+      <label class="l">👍 {{ t('live.fb_liked') }}</label>
+      <div class="chips">{% for k in fb_liked %}<label><input type="checkbox" name="liked" value="{{ k }}" {{ 'checked' if fb and k in (fb.liked or []) }}><span>{{ t('live.fbl_' ~ k) }}</span></label>{% endfor %}</div>
+      <label class="l">🛠 {{ t('live.fb_improve') }}</label>
+      <div class="chips">{% for k in fb_improve %}<label><input type="checkbox" name="improve" value="{{ k }}" {{ 'checked' if fb and k in (fb.improve or []) }}><span>{{ t('live.fbi_' ~ k) }}</span></label>{% endfor %}</div>
+      <label class="l">{{ t('live.fb_comment') }}</label>
+      <textarea class="in" name="comment" rows="3" maxlength="1500" placeholder="{{ t('live.fb_comment_ph') }}">{{ (fb.comment if fb else '') or '' }}</textarea>
+      <label class="l">{{ t('live.fb_topics') }}</label>
+      <input class="in" name="topics" maxlength="500" value="{{ (fb.topics if fb else '') or '' }}" placeholder="{{ t('live.fb_topics_ph') }}">
+      <div class="err" id="fb-err"></div>
+      <button class="btn btn-g" type="submit">{{ t('live.fb_send') }}</button>
+    </form>
+    <div class="card hide" id="fb-done"><div class="done-mark">💜 {{ t('live.fb_done') }} <a href="#" id="fb-edit" class="muted" style="margin-left:auto">{{ t('live.edit') }}</a></div></div>
+
     <!-- Вопрос спикеру -->
     <form class="card" id="ask">
       <h3>{{ t('live.ask_title') }}</h3>
@@ -178,11 +203,13 @@
     'ask_now': t('live.ask_now'), 'thanks': t('live.thanks'), 'thanks_sub': finish_text or t('live.thanks_sub'), 'saved': t('live.saved'),
     'ask_ok': t('live.ask_ok'), 'late': t('live.late'), 'closed': t('live.closed'), 'already': t('live.already'),
     'sec': t('live.sec'), 'net': t('live.net'), 'waiting': t('live.waiting'), 'waiting_sub': t('live.waiting_sub'),
-    'your_score': t('live.your_score')
+    'your_score': t('live.your_score'), 'fb_r': [t('live.fb_r1'), t('live.fb_r2'), t('live.fb_r3'), t('live.fb_r4'), t('live.fb_r5')],
+    'fb_need': t('live.fb_need'), 'ask_wait': t('live.ask_wait_btn'), 'ask_send': t('live.ask_send')
   }|tojson }};
   var csrf = document.querySelector('meta[name=csrf-token]').content;
   var $ = function (id) { return document.getElementById(id); };
   var esc = window.liveEsc, L = function (o) { return window.liveLoc(o, LANG); };
+  var FB = {{ {'rating': fb.rating if fb else 0, 'sent': fb is not none}|tojson }}, fbEditing = false;
   var editing = false, state = null, offset = 0, lastKey = '', shownAt = 0, me = {score: 0}, ytId = null, player = null, timerI = null;
 
   function toast(msg) { var el = $('toast'); el.textContent = msg; el.style.display = 'block'; clearTimeout(toast._t); toast._t = setTimeout(function () { el.style.display = 'none'; }, 2600); }
@@ -230,6 +257,10 @@
     $('profile-done').classList.toggle('hide', !hasProfile || quiz);
     if (!hasProfile && mode === 'profile') { $('profile').classList.add('pulse'); }
     $('ask').classList.toggle('pulse', mode === 'ask');
+    var fbOn = mode === 'finish' || FB.sent;
+    $('fb').classList.toggle('hide', !fbOn || (FB.sent && !fbEditing));
+    $('fb-done').classList.toggle('hide', !FB.sent || fbEditing);
+    if (mode === 'finish' && !FB.sent && !showProfileCards.fbScrolled) { showProfileCards.fbScrolled = true; $('fb').classList.add('pulse'); }
   }
   function render() {
     if (!state) return;
@@ -350,14 +381,42 @@
     }).catch(function () { $('profile-err').textContent = T.net; });
   };
   $('profile-edit').onclick = function (e) { e.preventDefault(); editing = true; showProfileCards(); };
+  var askBtn = $('ask').querySelector('button[type=submit]'), askT = null;
+  function askCooldown(sec) {
+    clearInterval(askT); var left = sec;
+    var tick = function () {
+      if (left <= 0) { clearInterval(askT); askBtn.disabled = false; askBtn.textContent = T.ask_send; return; }
+      askBtn.disabled = true; askBtn.textContent = T.ask_wait.replace('{n}', left); left--;
+    };
+    tick(); askT = setInterval(tick, 1000);
+  }
   $('ask').onsubmit = function (e) {
     e.preventDefault();
-    var ta = e.target.text; if (ta.value.trim().length < 3) return;
+    var ta = e.target.text; if (ta.value.trim().length < 3 || askBtn.disabled) return;
+    askBtn.disabled = true;
     post('/live/' + SLUG + '/ask', {text: ta.value}).then(function (r) {
-      if (!r.ok) { $('ask-err').textContent = r.error || T.net; return; }
-      ta.value = ''; $('ask-err').textContent = ''; toast(T.ask_ok);
-    }).catch(function () { $('ask-err').textContent = T.net; });
+      askBtn.disabled = false;
+      if (!r.ok) { $('ask-err').textContent = r.error || T.net; if (r.wait) askCooldown(r.wait); return; }
+      ta.value = ''; $('ask-err').textContent = ''; toast(T.ask_ok); askCooldown(r.cooldown || 15);
+    }).catch(function () { askBtn.disabled = false; $('ask-err').textContent = T.net; });
   };
+  // ─── Обратная связь ───
+  function paintStars(r) {
+    Array.prototype.forEach.call(document.querySelectorAll('#fb-rate button'), function (b) { b.classList.toggle('on', +b.dataset.r <= r); });
+    $('fb-rl').textContent = r ? T.fb_r[r - 1] : '';
+  }
+  paintStars(FB.rating);
+  Array.prototype.forEach.call(document.querySelectorAll('#fb-rate button'), function (b) { b.onclick = function () { FB.rating = +b.dataset.r; paintStars(FB.rating); $('fb-err').textContent = ''; }; });
+  $('fb').onsubmit = function (e) {
+    e.preventDefault();
+    if (!FB.rating) { $('fb-err').textContent = T.fb_need; return; }
+    var f = e.target, pick = function (n) { return Array.prototype.map.call(f.querySelectorAll('input[name=' + n + ']:checked'), function (x) { return x.value; }); };
+    post('/live/' + SLUG + '/feedback', {rating: FB.rating, liked: pick('liked'), improve: pick('improve'), comment: f.comment.value, topics: f.topics.value}).then(function (r) {
+      if (!r.ok) { $('fb-err').textContent = r.error || T.net; return; }
+      FB.sent = true; fbEditing = false; f.classList.remove('pulse'); showProfileCards(); toast(T.saved);
+    }).catch(function () { $('fb-err').textContent = T.net; });
+  };
+  $('fb-edit').onclick = function (e) { e.preventDefault(); fbEditing = true; showProfileCards(); };
 })();
 </script>
 </body>

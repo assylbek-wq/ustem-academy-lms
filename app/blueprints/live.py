@@ -21,7 +21,7 @@ from markupsafe import Markup
 
 from ..core import audit, role_required
 from ..i18n import t
-from ..models import LiveAnswer, LiveAsk, LiveEvent, LiveQuestion, LiveViewer, User, db, utcnow
+from ..models import LiveAnswer, LiveAsk, LiveEvent, LiveFeedback, LiveQuestion, LiveViewer, User, db, utcnow
 from ..services import live as svc
 from ..services import live_builder as lb
 from ..services import live_deck as deck_svc
@@ -71,7 +71,9 @@ def watch(slug):
     links = _links(ev)
     return render_template("live/watch.html", ev=ev, v=v, regions=svc.KZ_REGIONS, subjects=svc.SUBJECTS,
                            positions=svc.POSITIONS, robotics=svc.ROBOTICS, links=links,
-                           bot_handle=lb.bot_handle(links.get("bot")), finish_text=_finish(ev))
+                           bot_handle=lb.bot_handle(links.get("bot")), finish_text=_finish(ev),
+                           fb=LiveFeedback.query.filter_by(event_id=ev.id, user_id=g.user.id).first(),
+                           fb_liked=svc.FB_LIKED, fb_improve=svc.FB_IMPROVE)
 
 
 @bp.route("/<slug>/state")
@@ -184,14 +186,19 @@ def ask(slug):
     _need_user()
     ev = _event(slug)
     f = request.get_json(silent=True) or request.form
-    text = (f.get("text") or "").strip()
-    if len(text) < 3:
-        return jsonify({"ok": False}), 400
-    recent = LiveAsk.query.filter_by(event_id=ev.id, user_id=g.user.id).count()
-    if recent >= 10:
-        return jsonify({"ok": False, "error": t("live.ask_limit")}), 429
-    db.session.add(LiveAsk(event_id=ev.id, user_id=g.user.id, text=text[:600]))
-    db.session.commit()
+    ok, err, wait = svc.add_ask(ev, g.user, f.get("text") or "")
+    if not ok:
+        return jsonify({"ok": False, "error": t(err, n=wait), "wait": wait}), 429 if err in ("live.ask_wait", "live.ask_limit") else 400
+    return jsonify({"ok": True, "cooldown": svc.ASK_COOLDOWN})
+
+
+@bp.route("/<slug>/feedback", methods=["POST"])
+def feedback(slug):
+    _need_user()
+    ev = _event(slug)
+    fb, err = svc.save_feedback(ev, g.user, request.get_json(silent=True) or {})
+    if err:
+        return jsonify({"ok": False, "error": t(err)}), 400
     return jsonify({"ok": True})
 
 
@@ -381,6 +388,17 @@ def control_settings(slug):
     return jsonify({"ok": True, "youtube_id": ev.youtube_id})
 
 
+@bp.route("/<slug>/control/mute/<int:user_id>", methods=["POST"])
+@role_required("methodist", "trainer")
+def control_mute(slug, user_id):
+    ev = _event(slug)
+    on = bool((request.get_json(silent=True) or {}).get("on", True))
+    n = svc.mute(ev, user_id, on)
+    audit("live.mute", "live_event", ev.id, user_id=user_id, on=on, hidden=n)
+    db.session.commit()
+    return jsonify({"ok": True, "hidden": n})
+
+
 @bp.route("/<slug>/control/ask/<int:ask_id>", methods=["POST"])
 @role_required("methodist", "trainer")
 def control_ask(slug, ask_id):
@@ -421,6 +439,8 @@ def _stats_data(ev: LiveEvent, guest: bool) -> dict:
         for a in data["asks"]:
             a["name"] = ""
             a["school"] = ""
+        for c in data["feedback"]["comments"]:
+            c["name"] = ""
     return data
 
 
@@ -529,6 +549,15 @@ def export(slug):
     ws2.append(["Время", "ФИО", "Школа", "Вопрос", "Статус"])
     for a in svc.asks(ev, limit=10000):
         ws2.append([a["at"], a["name"], a["school"], a["text"], a["status"]])
+    ws3 = wb.create_sheet("Отзывы")
+    ws3.append(["Время", "ФИО", "Email", "Школа", "Оценка", "Понравилось", "Улучшить", "Комментарий", "Темы следующих эфиров"])
+    vmap = {v.user_id: v for v, _ in rows}
+    for fb in LiveFeedback.query.filter_by(event_id=ev.id).order_by(LiveFeedback.created_at):
+        v = vmap.get(fb.user_id)
+        ws3.append([svc.local_hm(fb.created_at), fb.user.full_name if fb.user else "", fb.user.email if fb.user else "",
+                    (v.school if v else "") or "", fb.rating,
+                    ", ".join(t(f"live.fbl_{x}", locale="ru") for x in fb.liked or []),
+                    ", ".join(t(f"live.fbi_{x}", locale="ru") for x in fb.improve or []), fb.comment or "", fb.topics or ""])
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)

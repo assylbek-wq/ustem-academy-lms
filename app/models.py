@@ -671,6 +671,7 @@ class LiveViewer(db.Model):
     last_seen = db.Column(db.DateTime, default=utcnow, index=True)
     seconds = db.Column(db.Integer, nullable=False, default=0)   # сколько был на странице эфира
     score = db.Column(db.Integer, nullable=False, default=0)
+    muted = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())  # вопросы спикеру скрыты модератором
     user = db.relationship("User")
 
 
@@ -686,6 +687,23 @@ class LiveAnswer(db.Model):
     points = db.Column(db.Integer, nullable=False, default=0)
     ms = db.Column(db.Integer)
     created_at = db.Column(db.DateTime, default=utcnow)
+
+
+class LiveFeedback(db.Model):
+    """Отзыв участника в конце эфира: оценка 1-5, что понравилось, что улучшить, комментарий, темы следующих эфиров."""
+    __tablename__ = "live_feedback"
+    __table_args__ = (db.Index("uq_live_feedback", "event_id", "user_id", unique=True),)
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey("live_events.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    rating = db.Column(db.Integer, nullable=False)
+    liked = db.Column(JSON, default=list)
+    improve = db.Column(JSON, default=list)
+    comment = db.Column(db.Text)
+    topics = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=utcnow)
+    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
+    user = db.relationship("User")
 
 
 class LiveAsk(db.Model):

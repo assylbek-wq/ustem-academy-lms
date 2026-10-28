@@ -20,8 +20,8 @@
     .hin img{width:26px;height:26px}
     .hin .ttl{font-weight:800;font-size:15px}
     .hin .sp{flex:1}
-    .hin a.btn{color:#fff;text-decoration:none;border:1px solid var(--line);border-radius:10px;padding:7px 12px;font-weight:700;font-size:13px}
-    .hin a.btn:hover{border-color:#fff}
+    .hin .btn{color:#fff;text-decoration:none;background:transparent;border:1px solid var(--line);border-radius:10px;padding:7px 12px;font:700 13px Inter,sans-serif;cursor:pointer}
+    .hin .btn:hover{border-color:#fff}
     .langs a{color:var(--mute);text-decoration:none;font-size:12px;font-weight:800;margin-left:8px}
     .langs a.on{color:#fff}
     .live{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:900;letter-spacing:.06em;background:var(--red);border-radius:6px;padding:4px 8px}
@@ -55,6 +55,15 @@
     @media(max-width:900px){.grid2,.grid3{grid-template-columns:1fr}}
     .grid2>section.card,.grid3>section.card{margin-bottom:0}
     .rowgap{margin-bottom:22px}
+    .fbg{display:grid;grid-template-columns:220px 1fr 1fr 1fr;gap:26px;align-items:start}
+    @media(max-width:1000px){.fbg{grid-template-columns:1fr 1fr}}
+    @media(max-width:600px){.fbg{grid-template-columns:1fr}}
+    .fbbig{background:#111119;border:1px solid var(--line);border-radius:18px;padding:18px;text-align:center}
+    .fbbig .n{font-size:64px;font-weight:900;letter-spacing:-.04em;line-height:1}
+    .fbbig .stars{font-size:22px;letter-spacing:2px;margin:8px 0 4px;color:#3a3a50}
+    .fbbig .stars b{color:#ffd23f}
+    .fbbig .s{color:var(--mute);font-size:13px}
+    .fbt{font-weight:800;margin-bottom:4px}
     /* Полосы */
     .hb{margin:10px 0}
     .hb .lab{display:flex;justify-content:space-between;gap:10px;font-size:14px;font-weight:600;margin-bottom:6px}
@@ -220,6 +229,19 @@
     <div class="unasked" id="unasked"></div>
   </section>
 
+  <section class="card reveal" id="fbsec">
+    <h2>{{ t('live.fb_h') }}</h2>
+    <div class="sub">{{ t('live.fb_st_sub') }}</div>
+    <div class="fbg">
+      <div class="fbbig"><div class="n" id="fb-avg">-</div><div class="stars" id="fb-stars"></div><div class="s" id="fb-n"></div></div>
+      <div id="fb-dist"></div>
+      <div><div class="fbt">👍 {{ t('live.fb_liked') }}</div><div id="fb-liked"></div></div>
+      <div><div class="fbt">🛠 {{ t('live.fb_improve') }}</div><div id="fb-imp"></div></div>
+    </div>
+    <div class="tabs" id="fbtabs" style="margin-top:18px"></div>
+    <div class="asks" id="fb-com"></div>
+  </section>
+
   <div class="grid2 rowgap">
     <section class="card reveal">
       <h2>{{ t('live.st_top_h') }}</h2>
@@ -263,7 +285,10 @@
                  chemistry=t('live.subj_chemistry'), biology=t('live.subj_biology'), primary=t('live.subj_primary'), other=t('live.subj_other')),
     'pos': dict(teacher=t('live.pos_teacher'), deputy=t('live.pos_deputy'), director=t('live.pos_director'), methodist=t('live.pos_methodist'), other=t('live.pos_other')),
     'rob': dict(none=t('live.rob_none'), started=t('live.rob_started'), team=t('live.rob_team')),
-    'fun': dict(viewers=t('live.st_f_viewers'), profiles=t('live.st_f_profiles'), answered=t('live.st_f_answered'), asked=t('live.st_f_asked')),
+    'fun': dict(viewers=t('live.st_f_viewers'), profiles=t('live.st_f_profiles'), answered=t('live.st_f_answered'), asked=t('live.st_f_asked'), feedback=t('live.st_f_feedback')),
+    'fbl': dict(topic=t('live.fbl_topic'), speaker=t('live.fbl_speaker'), quiz=t('live.fbl_quiz'), examples=t('live.fbl_examples'), format=t('live.fbl_format'), materials=t('live.fbl_materials')),
+    'fbi': dict(sound=t('live.fbi_sound'), video=t('live.fbi_video'), length=t('live.fbi_length'), pace=t('live.fbi_pace'), practice=t('live.fbi_practice'), nothing=t('live.fbi_nothing')),
+    'fb_n': t('live.fb_n'), 'fb_com': t('live.fb_comments'), 'fb_top': t('live.fb_topics_h'), 'fb_none': t('live.fb_none'),
     'mode': dict(profile=t('live.m_profile'), leaderboard=t('live.m_leaderboard'), ask=t('live.m_ask'), finish=t('live.m_finish'), talk=t('live.m_talk'), waiting=t('live.m_waiting')),
     'q': t('live.q_label'), 'min': t('live.st_min'), 'people': t('live.st_people'), 'right': t('live.st_right'), 'avgsec': t('live.st_avgsec'),
     'unasked': t('live.st_unasked'), 'noans': t('live.st_noans'), 'all': t('live.st_all'), 'st_done': t('live.st_s_done'), 'st_new': t('live.st_s_new'),
@@ -437,6 +462,27 @@
     $('sch').innerHTML = DATA.schools.map(function (s) { return bar(s.name, s.n, shm); }).join('') || '<div class="muted">' + T.none + '</div>';
 
     renderAsks('all');
+    var F = DATA.feedback || {n: 0};
+    $('fb-avg').textContent = F.avg != null ? String(F.avg).replace('.', ',') : '-';
+    var full = Math.round(F.avg || 0);
+    $('fb-stars').innerHTML = [1, 2, 3, 4, 5].map(function (i) { return i <= full ? '<b>★</b>' : '★'; }).join('');
+    $('fb-n').textContent = T.fb_n.replace('{n}', F.n);
+    var dm = Math.max.apply(null, (F.dist || [0]).concat([1]));
+    $('fb-dist').innerHTML = F.n ? [5, 4, 3, 2, 1].map(function (r) { return bar('★'.repeat(r), F.dist[r - 1], dm); }).join('') : '<div class="muted">' + T.fb_none + '</div>';
+    var lm = Math.max.apply(null, (F.liked || []).map(function (x) { return x.n; }).concat([1]));
+    $('fb-liked').innerHTML = (F.liked || []).map(function (x) { return bar(T.fbl[x.key] || x.key, x.n, lm); }).join('') || '<div class="muted">' + T.none + '</div>';
+    var im = Math.max.apply(null, (F.improve || []).map(function (x) { return x.n; }).concat([1]));
+    $('fb-imp').innerHTML = (F.improve || []).map(function (x) { return bar(T.fbi[x.key] || x.key, x.n, im); }).join('') || '<div class="muted">' + T.none + '</div>';
+    renderFb('com');
+  }
+  function renderFb(kind) {
+    var F = DATA.feedback || {comments: []}, list = (F.comments || []).filter(function (c) { return kind === 'com' ? c.text : c.topics; });
+    var nc = (F.comments || []).filter(function (c) { return c.text; }).length, nt = (F.comments || []).filter(function (c) { return c.topics; }).length;
+    $('fbtabs').innerHTML = '<button data-k="com" class="' + (kind === 'com' ? 'on' : '') + '">' + esc(T.fb_com) + ' · ' + nc + '</button><button data-k="top" class="' + (kind === 'top' ? 'on' : '') + '">' + esc(T.fb_top) + ' · ' + nt + '</button>';
+    Array.prototype.forEach.call($('fbtabs').querySelectorAll('button'), function (b) { b.onclick = function () { renderFb(b.dataset.k); }; });
+    $('fb-com').innerHTML = list.map(function (c) {
+      return '<div class="ask"><div>' + esc(kind === 'com' ? c.text : c.topics) + '<span class="st">' + '★'.repeat(c.rating) + '</span></div><div class="w">' + esc([c.at, c.name].filter(Boolean).join(' · ')) + '</div></div>';
+    }).join('') || '<div class="muted">' + T.none + '</div>';
   }
   function renderAsks(filter) {
     var tabs = [['all', T.all], ['done', T.st_done], ['picked', T.st_picked], ['new', T.st_new], ['hidden', T.st_hidden]];
