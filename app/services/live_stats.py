@@ -57,14 +57,17 @@ def compute(ev: LiveEvent) -> dict:
     if spans:
         start = min(a for a, _ in spans)
         end = max(b for _, b in spans)
-        if ev.starts_at:  # ось от 30 минут до начала, если кто-то пришел раньше
+        if ev.starts_at:  # окно графика: за 45 минут до начала и до 5 часов после (поздние заходы по ссылке не растягивают ось)
             start = max(start, ev.starts_at - timedelta(minutes=45))
+            end = min(end, ev.starts_at + timedelta(hours=5))
         diff = Counter()
         joins = Counter()
         for a, b in spans:
-            a2 = max(a, start)
+            if b < start or a > end:  # был на странице вне окна эфира: в общих цифрах есть, на графике нет
+                continue
+            a2, b2 = max(a, start), min(b, end)
             diff[a2] += 1
-            diff[b + timedelta(minutes=1)] -= 1
+            diff[b2 + timedelta(minutes=1)] -= 1
             joins[a2] += 1
         cur, t = 0, start
         while t <= end:

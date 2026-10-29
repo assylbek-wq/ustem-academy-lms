@@ -152,6 +152,11 @@ class LiveTest(AppTestCase):
         self.assertIn('data-edit="new"', op.get("/live/keleshek/control").get_data(as_text=True))
 
     def test_stats_page(self):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        from app.models import db
+        self.ev.starts_at = datetime.now(ZoneInfo("Asia/Almaty")).replace(tzinfo=None, second=0, microsecond=0)
+        db.session.commit()
         teacher = self.new_client("teacher1@academy.demo")
         teacher.get("/live/keleshek")
         teacher.post("/live/keleshek/profile", json={"region": "zko", "school": "№5", "subjects": ["physics", "math"],
@@ -235,3 +240,17 @@ class LiveTest(AppTestCase):
         self.assertIn("fb-rate", teacher.get("/live/keleshek").get_data(as_text=True))
         x = admin.get("/live/keleshek/export.xlsx")
         self.assertEqual(x.status_code, 200)
+
+    def test_timeline_ignores_visits_outside_window(self):
+        from datetime import datetime
+        from app.models import db
+        from app.services import live_stats
+        t1 = self.new_client("teacher1@academy.demo")
+        t1.get("/live/keleshek")
+        v = LiveViewer.query.filter_by(event_id=self.ev.id).first()
+        # был в 09:00-09:10 по Астане (до окна 10:15), а пик считался бы весь эфир
+        v.first_seen, v.last_seen = datetime(2026, 10, 27, 4, 0), datetime(2026, 10, 27, 4, 10)
+        db.session.commit()
+        d = live_stats.compute(self.ev)
+        self.assertEqual(d["kpi"]["viewers"], 1)
+        self.assertEqual(d["kpi"]["peak"], 0)
