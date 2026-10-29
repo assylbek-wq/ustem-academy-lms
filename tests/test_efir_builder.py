@@ -284,4 +284,15 @@ class EfirBuilderTest(AppTestCase):
         self.assertEqual(EfirQuestion.query.filter_by(event_id=ev.id).count(), EfirQuestion.query.filter_by(event_id=self.ev.id).count())
         self.assertGreater(EfirQuestion.query.count(), n)
         self.assertEqual(self.m.post("/efir/import", json={"slug": "nope"}).status_code, 404)
+        # фото спикера и слайды переносятся вместе с вебинаром
+        import io
+        from PIL import Image
+        from app.services import live_deck
+        b = io.BytesIO(); Image.new("RGB", (400, 400), (10, 120, 200)).save(b, "JPEG")
+        live_deck.save_speaker(src, b.getvalue())
+        r2 = self.m.post("/efir/import", json={"slug": "keleshek"}).get_json()
+        ev2 = EfirEvent.query.filter_by(slug=r2["slug"]).first()
+        from app.services import efir_deck
+        self.assertTrue(efir_deck.speaker_path(ev2).exists())
+        self.assertTrue(self.m.get(f"/efir/{ev2.slug}/build.json").get_json()["has_photo"])
         self.assertIn("keleshek", self.m.get("/efir/").get_data(as_text=True))

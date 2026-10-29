@@ -148,6 +148,9 @@ def import_live(src, user_id: int | None, slug: str | None = None) -> EfirEvent:
                    created_by=user_id, screen_key=new_token(18), guest_key=new_token(18))
     db.session.add(ev)
     db.session.flush()
+    from . import efir_deck as _ed
+    if live_deck.speaker_path(src).exists():  # фото спикера для обложки YouTube
+        shutil.copy2(live_deck.speaker_path(src), _ed.speaker_path(ev))
     deck = live_deck.get(src)
     if deck["slides"]:
         from . import efir_deck
