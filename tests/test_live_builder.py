@@ -246,3 +246,25 @@ class LiveBuilderTest(AppTestCase):
         self.assertEqual(LiveEvent.query.get(ev.id).state["mode"], "talk")
         self.m.post(f"/live/{cp.slug}/build/delete", json={"confirm": cp.slug})
         self.assertFalse(folder.parent.joinpath(str(cp.id)).exists())
+
+    def test_youtube_cover(self):
+        import io
+        from PIL import Image
+        ev = self._new()
+        r = self.m.get(f"/live/{ev.slug}/youtube-cover.jpg?lang=ru&dl=1")
+        self.assertEqual((r.status_code, r.mimetype), (200, "image/jpeg"))
+        self.assertIn("attachment", r.headers["Content-Disposition"])
+        im = Image.open(io.BytesIO(r.data))
+        self.assertEqual(im.size, (1280, 720))
+        self.assertLess(len(r.data), 2 * 1024 * 1024)
+        b = io.BytesIO()
+        Image.new("RGB", (600, 900), (200, 150, 120)).save(b, "JPEG")
+        r = self.m.post(f"/live/{ev.slug}/build/speaker", data={"photo": (io.BytesIO(b.getvalue()), "me.jpg")},
+                        content_type="multipart/form-data").get_json()
+        self.assertTrue(r["ok"])
+        self.m.post(f"/live/{ev.slug}/build/save", json={"speaker_name": "Асылбек", "speaker_role": "CEO"})
+        self.assertTrue(self.m.get(f"/live/{ev.slug}/build.json").get_json()["has_photo"])
+        self.assertEqual(self.m.get(f"/live/{ev.slug}/youtube-cover.jpg?lang=kk").status_code, 200)
+        self.assertEqual(self.m.post(f"/live/{ev.slug}/build/speaker", data={"photo": (io.BytesIO(b"nope"), "x.jpg")},
+                                     content_type="multipart/form-data").status_code, 400)
+        self.assertEqual(self.client.get(f"/live/{ev.slug}/youtube-cover.jpg").status_code, 302)

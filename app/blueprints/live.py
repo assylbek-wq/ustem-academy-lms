@@ -573,7 +573,9 @@ def _builder_json(ev: LiveEvent) -> dict:
         "slug": ev.slug, "title": ev.title or {}, "subtitle": ev.subtitle or {}, "lang": ev.lang or "kk",
         "starts_at": ev.starts_at.strftime("%Y-%m-%dT%H:%M") if ev.starts_at else "",
         "youtube": f"https://youtu.be/{ev.youtube_id}" if ev.youtube_id else "",
-        "partners": (ev.texts or {}).get("partners", ""), "kicker": (ev.texts or {}).get("kicker") or {},
+        "partners": (ev.texts or {}).get("partners", ""),
+        "speaker_name": (ev.texts or {}).get("speaker_name", ""), "speaker_role": (ev.texts or {}).get("speaker_role", ""),
+        "has_photo": deck_svc.speaker_path(ev).exists(), "kicker": (ev.texts or {}).get("kicker") or {},
         "finish": (ev.texts or {}).get("finish") or {}, "links": ev.links or {}, "blocks": ev.blocks or [],
         "archived": bool(ev.archived), "has_viewers": lb.has_viewers(ev),
         "questions": [{"id": q.id, "block": q.block, "text": q.text, "options": q.options, "correct": q.correct,
@@ -852,3 +854,35 @@ def build_deck_export(slug, kind):
     except deck_svc.DeckError as e:
         return _bad(str(e))
     return Response(data, mimetype=mime, headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+
+@bp.route("/<slug>/youtube-cover.jpg")
+@role_required("methodist", "trainer")
+def youtube_cover(slug):
+    """Обложка для YouTube 1280 x 720. ?lang=kk|ru, ?dl=1 - скачать файлом."""
+    from flask import Response
+    ev = _event(slug)
+    lang = request.args.get("lang") if request.args.get("lang") in ("kk", "ru") else (ev.lang or "kk")
+    labels = {"live": t("live.yt_live", locale=lang)}
+    data = deck_svc.youtube_cover(ev, lang, labels, absolute(url_for("live.watch", slug=ev.slug)))
+    headers = {"Cache-Control": "no-store"}
+    if request.args.get("dl"):
+        headers["Content-Disposition"] = f'attachment; filename="youtube-{ev.slug}-{lang}.jpg"'
+    return Response(data, mimetype="image/jpeg", headers=headers)
+
+
+@bp.route("/<slug>/build/speaker", methods=["POST"])
+@role_required("methodist", "trainer")
+def build_speaker(slug):
+    ev = _event(slug)
+    if request.form.get("remove"):
+        deck_svc.speaker_path(ev).unlink(missing_ok=True)
+        return jsonify({"ok": True})
+    up = request.files.get("photo")
+    if not up or not up.filename:
+        return _bad("live.yt_err_photo")
+    try:
+        deck_svc.save_speaker(ev, up.read())
+    except deck_svc.DeckError as e:
+        return _bad(str(e))
+    return jsonify({"ok": True})

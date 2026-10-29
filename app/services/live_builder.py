@@ -171,6 +171,9 @@ def save_settings(ev: LiveEvent, f: dict) -> list[str]:
     texts = dict(ev.texts or {})
     if "partners" in f:
         texts["partners"] = (f.get("partners") or "").strip()[:160]
+    for k in ("speaker_name", "speaker_role"):
+        if k in f:
+            texts[k] = (f.get(k) or "").strip()[:120]
     for k in ("kicker", "finish"):
         if k in f:
             v = _ml(f.get(k), 300)

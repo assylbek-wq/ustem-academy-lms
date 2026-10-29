@@ -137,6 +137,16 @@
     .saved.err{color:#ff8a8f}
     .lw{display:flex;align-items:center;gap:8px;color:#cdeeff;font-size:12px;font-weight:700}
     .lw .miss{color:#ffe08a}
+    /* Обложка YouTube */
+    .ytg{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:22px;align-items:start}
+    @media(max-width:900px){.ytg{grid-template-columns:1fr}}
+    .ytprev{position:relative;aspect-ratio:16/9;border-radius:12px;overflow:hidden;background:var(--chip);box-shadow:var(--shadow)}
+    .ytprev img{display:block;width:100%;height:100%;object-fit:cover;transition:opacity .2s}
+    .ytprev .ld{position:absolute;right:10px;top:10px;opacity:0;transition:opacity .2s}
+    .ytprev.loading .ld{opacity:1}
+    .ytprev.loading img{opacity:.6}
+    .ytacts{display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap}
+    .ytphoto{display:flex;gap:8px;flex-wrap:wrap}
     /* Презентация */
     .dprog{display:flex;align-items:center;gap:12px;margin-top:12px;color:var(--soft);font-weight:700}
     .dprog .bar{flex:1;height:8px;border-radius:4px;background:var(--chip);overflow:hidden}
@@ -208,6 +218,7 @@
     <a href="#s-deck"><span class="n">3</span>{{ t('live.d_title') }}<span class="dot" data-dot="deck"></span></a>
     <a href="#s-q"><span class="n">4</span>{{ t('live.b_s_q') }}<span class="dot" data-dot="q"></span></a>
     <a href="#s-screen"><span class="n">5</span>{{ t('live.b_s_screen') }}<span class="dot ok"></span></a>
+    <a href="#s-yt"><span class="n">▶</span>YouTube<span class="dot ok"></span></a>
     <a href="#s-go"><span class="n">6</span>{{ t('live.b_s_go') }}<span class="dot" data-dot="go"></span></a>
   </nav>
 
@@ -290,6 +301,31 @@
       <label class="in-l" style="margin-top:6px">{{ t('live.b_f_links') }}</label>
       <div class="sw"><label class="tg"><input type="checkbox" data-link="connect"><i></i></label><div class="lbl">USTEM Connect<small>{{ t('live.scr_step2_sub') }}</small></div><input class="f" data-linkurl="connect" placeholder="https://connect.ustem.kz/register"></div>
       <div class="sw"><label class="tg"><input type="checkbox" data-link="bot"><i></i></label><div class="lbl">Telegram<small>{{ t('live.scr_step3_sub') }}</small></div><input class="f" data-linkurl="bot" placeholder="https://t.me/UstemConnectBot"></div>
+    </section>
+
+    <!-- Обложка YouTube -->
+    <section class="sec" id="s-yt">
+      <h2><span class="n">▶</span>{{ t('live.yt_h') }}</h2>
+      <div class="sub">{{ t('live.yt_sub') }}</div>
+      <div class="ytg">
+        <div>
+          <div class="ytprev" id="yt-prev"><img id="yt-cover" alt=""><span class="ld spin"></span></div>
+          <div class="ytacts">
+            <span class="seg" id="yt-lang"><button type="button" data-l="kk">Қазақша</button><button type="button" data-l="ru">Русский</button></span>
+            <span class="sp"></span>
+            <a class="btn pri sm" id="yt-dl" download>⬇ {{ t('live.yt_dl') }}</a>
+          </div>
+          <div class="hintx">{{ t('live.yt_hint') }}</div>
+        </div>
+        <div>
+          <label class="in-l">{{ t('live.yt_photo') }} <small>· {{ t('live.yt_photo_hint') }}</small></label>
+          <input type="file" id="yt-file" accept="image/*" hidden>
+          <div class="ytphoto"><button class="btn soft sm" type="button" id="yt-up">📷 {{ t('live.yt_photo_up') }}</button><button class="btn ghost sm" type="button" id="yt-rm">✕ {{ t('live.yt_photo_rm') }}</button></div>
+          <div class="fld" style="margin-top:14px"><label class="in-l">{{ t('live.yt_name') }}</label><input class="f" id="f-spk" maxlength="120" placeholder="{{ t('live.yt_name_ph') }}"></div>
+          <div class="fld"><label class="in-l">{{ t('live.yt_role') }}</label><input class="f" id="f-role" maxlength="120" placeholder="{{ t('live.yt_role_ph') }}"></div>
+          <div class="hintx">{{ t('live.yt_text_hint') }}</div>
+        </div>
+      </div>
     </section>
 
     <!-- 5. Запуск -->
@@ -432,7 +468,7 @@
     var body = pending; pending = {};
     api('/build/save', body).then(function (d) {
       if (!d.ok) { status('err'); toast(d.error || T.err, true); return; }
-      status('ok'); applyServer(d.data); reloadPreview();
+      status('ok'); applyServer(d.data); reloadPreview(); ytRefresh();
     }).catch(function () { status('err'); toast(T.net, true); });
   }
   function applyServer(nd) {
@@ -1017,6 +1053,34 @@
     all('.sec').forEach(function (s) { io.observe(s); });
   }
   window.addEventListener('beforeunload', function (e) { if (Object.keys(pending).length) { flush(); } });
+
+  // ─── Обложка YouTube ───
+  var YL = D.lang || 'kk', ytT = null;
+  function ytUrl(dl) { return BASE + '/youtube-cover.jpg?lang=' + YL + (dl ? '&dl=1' : '&_=' + Date.now()); }
+  function ytRefresh() {
+    clearTimeout(ytT);
+    ytT = setTimeout(function () { $('yt-prev').classList.add('loading'); $('yt-cover').src = ytUrl(false); $('yt-dl').href = ytUrl(true); }, 500);
+  }
+  $('yt-cover').onload = function () { $('yt-prev').classList.remove('loading'); };
+  function ytSeg() { all('#yt-lang button').forEach(function (b) { b.classList.toggle('on', b.dataset.l === YL); }); }
+  all('#yt-lang button').forEach(function (b) { b.onclick = function () { YL = b.dataset.l; ytSeg(); ytRefresh(); }; });
+  ytSeg();
+  $('f-spk').value = D.speaker_name || ''; $('f-role').value = D.speaker_role || '';
+  $('f-spk').oninput = function () { queue({speaker_name: this.value}); };
+  $('f-role').oninput = function () { queue({speaker_role: this.value}); };
+  $('yt-rm').hidden = !D.has_photo;
+  $('yt-up').onclick = function () { $('yt-file').click(); };
+  $('yt-file').onchange = function () {
+    var f = this.files[0]; if (!f) return;
+    var fd = new FormData(); fd.append('photo', f);
+    $('yt-prev').classList.add('loading');
+    api('/build/speaker', null, fd).then(function (d) { $('yt-file').value = ''; if (!d.ok) { toast(d.error, true); return; } D.has_photo = true; $('yt-rm').hidden = false; ytRefresh(); });
+  };
+  $('yt-rm').onclick = function () {
+    var fd = new FormData(); fd.append('remove', '1');
+    api('/build/speaker', null, fd).then(function () { D.has_photo = false; $('yt-rm').hidden = true; ytRefresh(); });
+  };
+  ytRefresh();
 
   renderDeck();
   initMain(); setEL(EL); renderReady(); renderLinks(); renderDanger(); updateMissing(); setScene('waiting');

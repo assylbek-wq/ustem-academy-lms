@@ -342,3 +342,147 @@ def export(ev: LiveEvent, links: dict, kind: str, labels: dict) -> tuple[bytes, 
             render(ev, s, links, True, cover, labels).save(b, "PNG", optimize=True)
             z.writestr(f"slide-{i + 1:02d}.png", b.getvalue())
     return buf.getvalue(), "application/zip", f"slides-{ev.slug}-obs.zip"
+
+
+# ─── Обложка для YouTube 1280 x 720 ──────────────────────────────────────
+def speaker_path(ev: LiveEvent) -> Path:
+    return folder(ev) / "speaker.jpg"
+
+
+def save_speaker(ev: LiveEvent, data: bytes) -> None:
+    from PIL import Image, ImageOps
+    import io
+    try:
+        im = ImageOps.exif_transpose(Image.open(io.BytesIO(data))).convert("RGB")
+    except Exception as exc:
+        raise DeckError("live.yt_err_photo") from exc
+    side = min(im.size)  # квадрат по центру, сверху чуть больше: лицо обычно в верхней части кадра
+    left, top = (im.width - side) // 2, max(0, (im.height - side) // 4)
+    im.crop((left, top, left + side, top + side)).resize((800, 800), Image.LANCZOS).save(speaker_path(ev), "JPEG", quality=90)
+
+
+def _dots(img, step=26):
+    from PIL import ImageDraw
+    import math
+    from PIL import Image
+    w, h = img.size
+    layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer)
+    cx, cy, R = w * .72, h * .35, max(w, h) * .75
+    for y in range(step // 2, h, step):
+        for x in range(step // 2, w, step):
+            dd = math.hypot(x - cx, y - cy) / R
+            a = max(0, .06 + .22 * dd * (.5 + .5 * math.sin(dd * 14)))
+            d.ellipse((x - 1.6, y - 1.6, x + 1.6, y + 1.6), fill=(255, 255, 255, int(255 * a)))
+    out = img.copy()
+    out.alpha_composite(layer)
+    return out
+
+
+def youtube_cover(ev: LiveEvent, lang: str, labels: dict, url: str) -> bytes:
+    """Обложка эфира для YouTube (1280 x 720, JPEG до 2 МБ) в стиле экрана эфира."""
+    from PIL import Image, ImageDraw, ImageFilter
+    from pathlib import Path as _P
+    import io
+    from . import live_builder as lb
+    Wc, Hc = 1280, 720
+    img = _cover().resize((Wc, Hc), Image.LANCZOS)
+    blobs = Image.new("RGBA", (Wc, Hc), (0, 0, 0, 0))
+    bd = ImageDraw.Draw(blobs)
+    bd.ellipse((Wc - 200, -220, Wc + 180, 160), fill=(127, 214, 255, 120))
+    bd.ellipse((-200, Hc - 200, 160, Hc + 220), fill=(0, 63, 166, 140))
+    img.alpha_composite(blobs.filter(ImageFilter.GaussianBlur(70)))
+    img = _dots(img)
+    d = ImageDraw.Draw(img)
+    pad = 64
+    # логотип
+    logo_p = _P(current_app.static_folder) / "img" / "ustem-foundation-white.webp"
+    try:
+        logo = Image.open(logo_p).convert("RGBA")
+        logo = logo.resize((int(logo.width * 58 / logo.height), 58), Image.LANCZOS)
+        img.alpha_composite(logo, (pad, 48))
+    except OSError:
+        pass
+    # плашка LIVE и дата справа сверху
+    fm = _font(True, 24)
+    when = ""
+    if ev.starts_at:
+        when = f"{lb.date_label(ev.starts_at, lang)} · {ev.starts_at.strftime('%H:%M')}"
+    x = Wc - pad
+    if when:
+        tw = d.textlength(when, font=fm)
+        d.rounded_rectangle((x - tw - 36, 52, x, 100), radius=24, fill=(255, 255, 255, 255))
+        d.text((x - tw - 18, 61), when, font=fm, fill=(0, 87, 200))
+        x -= tw + 36 + 12
+    live = labels.get("live", "LIVE")
+    tw = d.textlength(live, font=fm)
+    d.rounded_rectangle((x - tw - 58, 52, x, 100), radius=24, fill=(229, 72, 77, 255))
+    d.ellipse((x - tw - 40, 70, x - tw - 28, 82), fill=(255, 255, 255))
+    d.text((x - tw - 18, 61), live, font=fm, fill=(255, 255, 255))
+    # фото спикера
+    texts = ev.texts or {}
+    photo = speaker_path(ev)
+    has_photo = photo.exists()
+    col_w = Wc - 2 * pad
+    if has_photo:
+        size = 380
+        px, py = Wc - pad - size, 170
+        ph = Image.open(photo).convert("RGBA").resize((size, size), Image.LANCZOS)
+        mask = Image.new("L", (size, size), 0)
+        ImageDraw.Draw(mask).ellipse((0, 0, size - 1, size - 1), fill=255)
+        ring = Image.new("RGBA", (size + 20, size + 20), (0, 0, 0, 0))
+        ImageDraw.Draw(ring).ellipse((0, 0, size + 19, size + 19), fill=(255, 255, 255, 255))
+        img.alpha_composite(ring, (px - 10, py - 10))
+        img.paste(ph, (px, py), mask)
+        name, role = (texts.get("speaker_name") or "").strip(), (texts.get("speaker_role") or "").strip()
+        if name:
+            fn, fr = _font(True, 30), _font(False, 22)
+            nl = _wrap(d, name, fn, size + 40)[:1]
+            rl = _wrap(d, role, fr, size + 40)[:2] if role else []
+            bh = 22 + 38 * len(nl) + 28 * len(rl) + 16
+            by = py + size + 26
+            d.rounded_rectangle((px - 20, by, px + size + 20, by + bh), radius=18, fill=(255, 255, 255, 255))
+            ty = by + 14
+            for ln in nl:
+                d.text((px + size / 2 - d.textlength(ln, font=fn) / 2, ty), ln, font=fn, fill=(27, 31, 36))
+                ty += 38
+            for ln in rl:
+                d.text((px + size / 2 - d.textlength(ln, font=fr) / 2, ty), ln, font=fr, fill=(92, 102, 112))
+                ty += 28
+        col_w = px - pad - 50
+    # надпись над названием
+    kick = (texts.get("partners") or "USTEM Foundation").upper()
+    fk = _font(True, 22)
+    kl = _wrap(d, kick, fk, col_w)[:1]
+    y = 190
+    for ln in kl:
+        d.text((pad, y), ln, font=fk, fill=(205, 238, 255))
+        y += 34
+    y += 8
+    # название: подбираем размер, чтобы влезло в 3 строки
+    title = ((ev.title or {}).get(lang) or (ev.title or {}).get("kk") or (ev.title or {}).get("ru") or "").split("·")[0].strip()
+    for size in (104, 96, 88, 80, 72, 64, 58, 52):
+        ft = _font(True, size)
+        lines = _wrap(d, title, ft, col_w)
+        if len(lines) <= 3 and all(d.textlength(l, font=ft) <= col_w for l in lines):
+            break
+    lh = int(size * 1.06)
+    for ln in lines:
+        d.text((pad, y), ln, font=ft, fill=(255, 255, 255))
+        y += lh
+    sub = ((ev.subtitle or {}).get(lang) or "").strip()
+    if sub:
+        fs = _font(False, 30)
+        y += 14
+        for ln in _wrap(d, sub, fs, col_w)[:2]:
+            d.text((pad, y), ln, font=fs, fill=(234, 243, 255))
+            y += 40
+    # ссылка на эфир внизу
+    show = re.sub(r"^https?://", "", url).split("?")[0]
+    fu = _font(True, 26)
+    tw = d.textlength(show, font=fu)
+    d.rounded_rectangle((pad, Hc - 98, pad + tw + 44, Hc - 48), radius=25, fill=(0, 40, 110, 90), outline=(255, 255, 255, 120), width=2)
+    d.text((pad + 22, Hc - 88), show, font=fu, fill=(255, 255, 255))
+    out = io.BytesIO()
+    img.convert("RGB").save(out, "JPEG", quality=90, optimize=True, progressive=True)
+    return out.getvalue()
