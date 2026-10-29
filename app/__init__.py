@@ -35,8 +35,8 @@ def create_app(config: type = Config, **overrides) -> Flask:
             and app.config["SECRET_KEY"] == "dev-secret-change-me"):
         raise RuntimeError("Задайте SECRET_KEY в окружении для продакшена")
 
-    from .blueprints import admin, api, auth, cohorts, game, lab, learn, live, public, reports, review, studio
-    for bp in (public.bp, auth.bp, learn.bp, lab.bp, game.bp, live.bp, review.bp, cohorts.bp, studio.bp, admin.bp, reports.bp, api.bp):
+    from .blueprints import admin, api, auth, cohorts, game, lab, learn, live, private_pages, public, reports, review, studio
+    for bp in (public.bp, private_pages.bp, auth.bp, learn.bp, lab.bp, game.bp, live.bp, review.bp, cohorts.bp, studio.bp, admin.bp, reports.bp, api.bp):
         app.register_blueprint(bp)
 
     @app.before_request
@@ -60,7 +60,7 @@ def create_app(config: type = Config, **overrides) -> Flask:
         if g.locale not in LOCALES:
             g.locale = "ru"
         # самостоятельная регистрация: пока почта не подтверждена, открыты вход, выход, страница подтверждения и эфиры
-        if g.user and request.endpoint and not request.endpoint.startswith(("auth.", "static", "public.", "live.")):
+        if g.user and request.endpoint and not request.endpoint.startswith(("auth.", "static", "public.", "live.", "private.")):
             from .blueprints.auth import needs_verification
             if needs_verification(g.user):
                 if request.path.startswith("/api/"):
