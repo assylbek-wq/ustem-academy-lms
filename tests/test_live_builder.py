@@ -207,6 +207,23 @@ class LiveBuilderTest(AppTestCase):
         self.assertEqual(d["slides"][0]["qr"]["url"], "https://forms.gle/abc")
         folder = live_deck.folder(LiveEvent.query.get(ev.id))
         self.assertFalse((folder / f"{ids[1]}.jpg").exists())
+        # скачивание: PDF и PNG с прозрачным окном камеры
+        r = self.m.get(f"/live/{ev.slug}/build/deck/export.pdf")
+        self.assertEqual((r.status_code, r.mimetype), (200, "application/pdf"))
+        self.assertTrue(r.data.startswith(b"%PDF"))
+        r = self.m.get(f"/live/{ev.slug}/build/deck/export.zip")
+        import zipfile
+        from PIL import Image
+        z = zipfile.ZipFile(io.BytesIO(r.data))
+        self.assertEqual(z.namelist(), ["slide-01.png", "slide-02.png"])
+        open(self.upload_dir + "/s1.png", "wb").write(z.read("slide-01.png")) if isinstance(self.upload_dir, str) else None
+        im = Image.open(io.BytesIO(z.read("slide-01.png")))
+        self.assertEqual(im.size, (1920, 1080))
+        self.assertEqual(im.getpixel((1484 + 196, 540 + 196))[3], 0)   # окно камеры внизу справа прозрачное
+        self.assertEqual(im.getpixel((300, 500))[3], 255)
+        im2 = Image.open(io.BytesIO(z.read("slide-02.png")))
+        self.assertEqual(im2.getpixel((1680, 700))[3], 255)  # full: без окна
+        self.assertEqual(self.client.get(f"/live/{ev.slug}/build/deck/export.zip").status_code, 302)
         # пульт: слайды
         r = self.m.post(f"/live/{ev.slug}/control/state", json={"mode": "slides", "slide": 5}).get_json()
         self.assertEqual(r["state"]["slide"], 1)

@@ -180,3 +180,165 @@ def for_screen(ev: LiveEvent, links: dict, key: str = "") -> dict:
         out.append({"id": s["id"], "layout": s.get("layout", "side"), "w": s.get("w"), "h": s.get("h"), "qr": q,
                     "img": url_for("live.slide_img", slug=ev.slug, name=f"{s['id']}.jpg", key=key or None)})
     return {"v": deck["v"], "cam": CAM[deck["cam"]], "cam_pos": deck["cam"], "slides": out}
+
+
+# ─── Скачивание: слайды с окном камеры и QR ──────────────────────────────
+W, H = 1920, 1080
+_FONTS = {}
+
+
+def _font(bold: bool, size: int):
+    from PIL import ImageFont
+    key = (bold, size)
+    if key not in _FONTS:
+        from pathlib import Path as _P
+        f = _P(current_app.static_folder) / "fonts" / ("UstemSans-Bold.ttf" if bold else "UstemSans.ttf")
+        try:
+            _FONTS[key] = ImageFont.truetype(str(f), size)
+        except OSError:
+            _FONTS[key] = ImageFont.load_default()
+    return _FONTS[key]
+
+
+def _cover():
+    """Синий фон как на экране эфира (обложка отчетов «Келешек»)."""
+    from PIL import Image
+    stops = [(0, (0, 87, 200)), (.38, (0, 117, 242)), (.72, (24, 156, 217)), (1, (82, 189, 234))]
+    strip = Image.new("RGB", (W + H // 2, 1))
+    px = strip.load()
+    n = W + H // 2
+    for x in range(n):
+        tt = x / (n - 1)
+        for i in range(len(stops) - 1):
+            a, ca = stops[i]
+            b, cb = stops[i + 1]
+            if a <= tt <= b:
+                k = (tt - a) / (b - a)
+                px[x, 0] = tuple(round(ca[j] + (cb[j] - ca[j]) * k) for j in range(3))
+                break
+    img = Image.new("RGB", (W, H))
+    for y in range(H):  # наклон 120 градусов: каждая строка сдвинута
+        off = (H - y) // 2
+        img.paste(strip.crop((off, 0, off + W, 1)), (0, y))
+    return img.convert("RGBA")
+
+
+def _rr_mask(size, box, r):
+    from PIL import Image, ImageDraw
+    m = Image.new("L", size, 0)
+    ImageDraw.Draw(m).rounded_rectangle(box, radius=r, fill=255)
+    return m
+
+
+def _fit(img, bw, bh):
+    from PIL import Image
+    k = min(bw / img.width, bh / img.height)
+    return img.resize((max(1, round(img.width * k)), max(1, round(img.height * k))), Image.LANCZOS)
+
+
+def _wrap(draw, text, font, width):
+    words, lines, cur = text.split(), [], ""
+    for w in words:
+        t = (cur + " " + w).strip()
+        if draw.textlength(t, font=font) <= width or not cur:
+            cur = t
+        else:
+            lines.append(cur)
+            cur = w
+    if cur:
+        lines.append(cur)
+    return lines[:3]
+
+
+def render(ev: LiveEvent, s: dict, links: dict, transparent: bool, cover=None, labels: dict | None = None):
+    """Один слайд 1920 x 1080 так же, как его показывает экран эфира. transparent - окно камеры прозрачное (PNG для OBS),
+    иначе в окне заглушка «Камера спикера» (PDF для просмотра и печати)."""
+    from PIL import Image, ImageDraw
+    import io
+    import segno
+    deck = get(ev)
+    cam = CAM[deck["cam"]]
+    lay = s.get("layout", "side")
+    src = Image.open(folder(ev) / f"{s['id']}.jpg").convert("RGBA")
+    canvas = (cover or _cover()).copy() if lay != "full" else Image.new("RGBA", (W, H), (11, 19, 34, 255))
+    if lay == "side":
+        top = 124 if deck["cam"] == "br" else 148
+        im = _fit(src, 1436, 808)
+        canvas.alpha_composite(im, (24 + (1436 - im.width) // 2, top + (808 - im.height) // 2))
+    else:
+        im = _fit(src, W, H)
+        canvas.alpha_composite(im, ((W - im.width) // 2, (H - im.height) // 2))
+    d = ImageDraw.Draw(canvas)
+    if lay != "full":
+        x, y, w, h = cam["x"], cam["y"], cam["w"], cam["h"]
+        ring = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        rd = ImageDraw.Draw(ring)
+        rd.rounded_rectangle((x - 6, y - 6, x + w + 6, y + h + 6), radius=30, fill=(0, 117, 242, 255))
+        canvas.alpha_composite(ring)
+        hole = _rr_mask((W, H), (x, y, x + w, y + h), 24)
+        if transparent:
+            a = canvas.getchannel("A")
+            a.paste(0, mask=hole)
+            canvas.putalpha(a)
+        else:
+            ph = Image.new("RGBA", (W, H), (31, 47, 74, 255))
+            canvas.paste(ph, (0, 0), hole)
+            lab = (labels or {}).get("cam", "Камера")
+            f = _font(True, 28)
+            tw = d.textlength(lab, font=f)
+            d.text((x + (w - tw) / 2, y + h / 2 - 16), lab, font=f, fill=(201, 214, 232))
+    q = s.get("qr") or {}
+    url = qr_url(s, links) if q.get("on") else ""
+    if url:
+        buf = io.BytesIO()
+        segno.make(url, error="m").save(buf, kind="png", scale=10, border=1, dark="#0b0b12", light="#ffffff")
+        qimg = Image.open(io.BytesIO(buf.getvalue())).convert("RGBA")
+        label = q.get("label") or (labels or {}).get(q.get("to", "watch"), "")
+        show = re.sub(r"^https?://", "", url).split("?")[0].rstrip("/")
+        if lay == "side":
+            bw = cam["w"]
+            qs = 230 if deck["cam"] == "br" else 250
+            bx = cam["x"]
+            by = 148 if deck["cam"] == "br" else cam["y"] + cam["h"] + 30
+        else:
+            bw, qs = 300, 264
+            bx = 40 if q.get("pos") == "bl" else W - 340
+            by = None
+        fb, fm = _font(True, 26), _font(False, 17)
+        lines = _wrap(d, label, fb, bw - 36) if label else []
+        slines = _wrap(d, show, fm, bw - 36)
+        bh = 18 + qs + (10 + 31 * len(lines) if lines else 0) + 6 + 22 * len(slines) + 18
+        if by is None:
+            by = H - 40 - bh
+        d.rounded_rectangle((bx, by, bx + bw, by + bh), radius=26, fill=(255, 255, 255, 255))
+        canvas.alpha_composite(qimg.resize((qs, qs), Image.NEAREST), (bx + (bw - qs) // 2, by + 18))
+        ty = by + 18 + qs + 10
+        for ln in lines:
+            d.text((bx + (bw - d.textlength(ln, font=fb)) / 2, ty), ln, font=fb, fill=(27, 31, 36))
+            ty += 31
+        ty += 6
+        for ln in slines:
+            d.text((bx + (bw - d.textlength(ln, font=fm)) / 2, ty), ln, font=fm, fill=(0, 105, 218))
+            ty += 22
+    return canvas
+
+
+def export(ev: LiveEvent, links: dict, kind: str, labels: dict) -> tuple[bytes, str, str]:
+    """kind = pdf (все слайды, окно камеры с заглушкой) или zip (PNG с прозрачным окном для OBS)."""
+    import io
+    import zipfile
+    deck = get(ev)
+    if not deck["slides"]:
+        raise DeckError("live.d_none")
+    cover = _cover()
+    buf = io.BytesIO()
+    if kind == "pdf":
+        pages = [render(ev, s, links, False, cover, labels).convert("RGB") for s in deck["slides"]]
+        pages[0].save(buf, "PDF", save_all=True, append_images=pages[1:], resolution=144)
+        return buf.getvalue(), "application/pdf", f"slides-{ev.slug}.pdf"
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for i, s in enumerate(deck["slides"]):
+            b = io.BytesIO()
+            render(ev, s, links, True, cover, labels).save(b, "PNG", optimize=True)
+            z.writestr(f"slide-{i + 1:02d}.png", b.getvalue())
+    return buf.getvalue(), "application/zip", f"slides-{ev.slug}-obs.zip"

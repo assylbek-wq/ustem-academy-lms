@@ -835,3 +835,20 @@ def build_deck(slug):
     if st.get("mode") == "slides" and (not n or st.get("slide", 0) >= n):  # удалили показанный слайд
         svc.set_state(ev, "slides" if n else "talk", **({"slide": n - 1} if n else {}))
     return jsonify({"ok": True, "deck": _deck_json(ev)})
+
+
+@bp.route("/<slug>/build/deck/export.<kind>")
+@role_required("methodist", "trainer")
+def build_deck_export(slug, kind):
+    """Скачать презентацию с окном камеры и QR: PDF для просмотра или ZIP с PNG (прозрачное окно) для OBS."""
+    from flask import Response
+    ev = _event(slug)
+    if kind not in ("pdf", "zip"):
+        abort(404)
+    labels = {"cam": t("live.d_cam_here"), "watch": t("live.d_qr_watch"), "connect": t("live.d_qr_connect"),
+              "bot": t("live.d_qr_bot"), "url": ""}
+    try:
+        data, mime, name = deck_svc.export(ev, _links(ev), kind, labels)
+    except deck_svc.DeckError as e:
+        return _bad(str(e))
+    return Response(data, mimetype=mime, headers={"Content-Disposition": f'attachment; filename="{name}"'})

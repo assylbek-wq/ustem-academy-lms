@@ -256,6 +256,8 @@
           <span class="sp"></span>
           <button class="btn soft sm" type="button" id="d-add">＋ {{ t('live.d_add_pdf') }}</button>
           <button class="btn ghost sm" type="button" id="d-rep">⟲ {{ t('live.d_replace') }}</button>
+          <a class="btn soft sm" id="d-pdf" href="{{ url_for('live.build_deck_export', slug=ev.slug, kind='pdf') }}" title="{{ t('live.d_dl_pdf_t') }}">⬇ PDF</a>
+          <a class="btn soft sm" id="d-zip" href="{{ url_for('live.build_deck_export', slug=ev.slug, kind='zip') }}" title="{{ t('live.d_dl_zip_t') }}">⬇ {{ t('live.d_dl_zip') }}</a>
         </div>
         <div class="dgrid" id="d-grid"></div>
         <div class="dset" id="d-set"></div>

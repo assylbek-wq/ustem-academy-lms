@@ -1487,6 +1487,10 @@ _S.update({
     'live.b_k_viewers': ('Участников всего', 'Барлық қатысушы', 'Viewers in total'),
     'live.b_k_questions': ('Вопросов викторины', 'Викторина сұрағы', 'Quiz questions'),
     'live.b_all': ('Все вебинары', 'Барлық вебинарлар', 'All webinars'),
+    'live.d_dl_zip': ('PNG для OBS', 'OBS-ке PNG', 'PNG for OBS'),
+    'live.d_dl_pdf_t': ('Все слайды одним PDF: с окном камеры и QR, как на экране эфира', 'Барлық слайд бір PDF-те: камера терезесі мен QR эфир экранындағыдай', 'All slides as one PDF with the camera window and QR, as on the live screen'),
+    'live.d_dl_zip_t': ('Архив PNG 1920 x 1080 с прозрачным окном камеры: можно вставить в OBS или PowerPoint', 'Камера терезесі мөлдір PNG 1920 x 1080 мұрағаты: OBS-ке не PowerPoint-ке қоюға болады', 'ZIP of 1920 x 1080 PNGs with a transparent camera window for OBS or PowerPoint'),
+    'live.d_none': ('Сначала загрузите презентацию.', 'Алдымен презентацияны жүктеңіз.', 'Upload slides first.'),
     'live.st_none': ('Пока нет данных.', 'Әзірге дерек жоқ.', 'No data yet.'),
 })
 
