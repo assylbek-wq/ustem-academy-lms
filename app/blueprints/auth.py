@@ -184,7 +184,7 @@ def register():
             send_verification(user)
             if join_code:
                 session["join_code"] = join_code  # запишем в группу после подтверждения почты
-            if nxt.startswith("/live/"):
+            if nxt.startswith(("/live/", "/efir/")):
                 return redirect(nxt)  # прямой эфир смотрят сразу, курсы откроются после подтверждения почты
             return redirect(url_for("auth.verify_needed"))
         if join_code:

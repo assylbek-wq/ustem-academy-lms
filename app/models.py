@@ -716,3 +716,114 @@ class LiveAsk(db.Model):
     status = db.Column(db.String(16), nullable=False, default="new")   # new | picked | done | hidden
     created_at = db.Column(db.DateTime, default=utcnow)
     user = db.relationship("User")
+
+
+# ─── Студия эфиров /efir: копия эфиров /live со спикерами по ссылке и эфиром в YouTube без OBS ─────
+class EfirEvent(db.Model):
+    """Эфир: видео идет с YouTube, а анкета, вопросы, рейтинг и счетчики - в Академии (blueprints/live.py).
+    state - что сейчас показывают всем: {"mode": "waiting|talk|profile|question|reveal|leaderboard|ask|finish",
+    "qid": id вопроса, "at": время начала вопроса (unix, секунды), "v": номер версии}."""
+    __tablename__ = "efir_events"
+    id = db.Column(db.Integer, primary_key=True)
+    slug = db.Column(db.String(64), unique=True, nullable=False)
+    title = db.Column(JSON, nullable=False, default=dict)
+    subtitle = db.Column(JSON, default=dict)
+    youtube_id = db.Column(db.String(32))
+    starts_at = db.Column(db.DateTime)            # местное время Академии
+    screen_key = db.Column(db.String(64), nullable=False, default=lambda: new_token(18))  # экран для OBS без входа
+    state = db.Column(JSON, nullable=False, default=dict)
+    links = db.Column(JSON, default=dict)          # QR в заставке: {"connect": url, "bot": url}
+    blocks = db.Column(JSON, default=list)         # программа эфира: [{"kk","ru"}, ...], блок N = blocks[N-1]
+    texts = db.Column(JSON, default=dict)          # экран: {"partners": str, "kicker": {kk,ru}, "finish": {kk,ru}}
+    deck = db.Column(JSON, default=dict)           # презентация: {"cam": "tr|br", "v": n, "slides": [...]}, services/efir_deck.py
+    lang = db.Column(db.String(8), nullable=False, default="kk", server_default="kk")  # язык экрана и ссылки
+    created_by = db.Column(db.Integer)             # кто собрал в конструкторе (users.id)
+    archived = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
+    # Студия: спикеры по ссылке и эфир в YouTube с видеосервера (services/efir_media.py)
+    guest_key = db.Column(db.String(64), nullable=False, default=lambda: new_token(18))   # ссылка для спикеров
+    stage = db.Column(JSON, default=dict)          # {"on": [identity, ...], "layout": "slide|side|duo|grid|solo", "names": {identity: {name, role}}}
+    stream_url = db.Column(db.String(255))         # rtmp://a.rtmp.youtube.com/live2
+    stream_key = db.Column(db.String(255))         # ключ трансляции YouTube (виден только команде)
+    egress = db.Column(JSON, default=dict)         # {"id", "status", "at", "error"} - отправка экрана в YouTube
+    created_at = db.Column(db.DateTime, default=utcnow)
+
+
+class EfirQuestion(db.Model):
+    __tablename__ = "efir_questions"
+    __table_args__ = (db.UniqueConstraint("event_id", "key", name="uq_efir_question_key"),)
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey("efir_events.id", ondelete="CASCADE"), nullable=False, index=True)
+    key = db.Column(db.String(32), nullable=False)       # q1, q2... (из app/content/efir_*.py)
+    block = db.Column(db.Integer, nullable=False, default=1)
+    position = db.Column(db.Integer, nullable=False, default=0)
+    text = db.Column(JSON, nullable=False, default=dict)
+    options = db.Column(JSON, nullable=False, default=list)  # [{"ru","kk","en"}, ...]
+    correct = db.Column(db.Integer, nullable=False, default=0)
+    note = db.Column(JSON, default=dict)                     # пояснение после ответа
+    seconds = db.Column(db.Integer, nullable=False, default=30)
+
+
+class EfirViewer(db.Model):
+    """Учитель на эфире: анкета, присутствие (пульс страницы), баллы."""
+    __tablename__ = "efir_viewers"
+    __table_args__ = (db.UniqueConstraint("event_id", "user_id", name="uq_efir_viewer"),)
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey("efir_events.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    region = db.Column(db.String(64))
+    city = db.Column(db.String(128))
+    school = db.Column(db.String(255))
+    subjects = db.Column(JSON, default=list)
+    position = db.Column(db.String(32))     # мұғалім, директор орынбасары...
+    robotics = db.Column(db.String(32))     # опыт: none | started | team
+    profile_at = db.Column(db.DateTime)
+    first_seen = db.Column(db.DateTime, default=utcnow)
+    last_seen = db.Column(db.DateTime, default=utcnow, index=True)
+    seconds = db.Column(db.Integer, nullable=False, default=0)   # сколько был на странице эфира
+    score = db.Column(db.Integer, nullable=False, default=0)
+    muted = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())  # вопросы спикеру скрыты модератором
+    user = db.relationship("User")
+
+
+class EfirAnswer(db.Model):
+    __tablename__ = "efir_answers"
+    __table_args__ = (db.UniqueConstraint("question_id", "user_id", name="uq_efir_answer"),)
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey("efir_events.id", ondelete="CASCADE"), nullable=False, index=True)
+    question_id = db.Column(db.Integer, db.ForeignKey("efir_questions.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    choice = db.Column(db.Integer, nullable=False)
+    is_correct = db.Column(db.Boolean, nullable=False, default=False)
+    points = db.Column(db.Integer, nullable=False, default=0)
+    ms = db.Column(db.Integer)
+    created_at = db.Column(db.DateTime, default=utcnow)
+
+
+class EfirFeedback(db.Model):
+    """Отзыв участника в конце эфира: оценка 1-5, что понравилось, что улучшить, комментарий, темы следующих эфиров."""
+    __tablename__ = "efir_feedback"
+    __table_args__ = (db.Index("uq_efir_feedback", "event_id", "user_id", unique=True),)
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey("efir_events.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    rating = db.Column(db.Integer, nullable=False)
+    liked = db.Column(JSON, default=list)
+    improve = db.Column(JSON, default=list)
+    comment = db.Column(db.Text)
+    topics = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=utcnow)
+    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
+    user = db.relationship("User")
+
+
+class EfirAsk(db.Model):
+    """Вопрос спикеру из страницы эфира."""
+    __tablename__ = "efir_asks"
+    id = db.Column(db.Integer, primary_key=True)
+    event_id = db.Column(db.Integer, db.ForeignKey("efir_events.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    text = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(16), nullable=False, default="new")   # new | picked | done | hidden
+    created_at = db.Column(db.DateTime, default=utcnow)
+    user = db.relationship("User")
+

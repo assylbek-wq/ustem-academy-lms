@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="{{ locale }}">
+<head>
+  <meta charset="utf-8">
+  <title>{{ t('live.screen_title') }} · {{ ev.title|loc }}</title>
+  {% include "efir/_style.html" %}
+  <style>
+    html,body{width:100%;height:100%;overflow:hidden;background:#000}
+    #stage{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;background:var(--cover);color:#fff;overflow:hidden}
+    .bg{position:absolute;inset:0;overflow:hidden}
+    .bg canvas{position:absolute;inset:0;width:100%;height:100%}
+    .bg .blob{position:absolute;border-radius:50%;filter:blur(90px);opacity:.45}
+    .bg .b1{width:760px;height:760px;background:#7fd6ff;right:-200px;top:-260px}
+    .bg .b2{width:640px;height:640px;background:#003fa6;left:-240px;bottom:-300px}
+    .scene{position:absolute;inset:0;padding:72px 96px 120px;opacity:0;transition:opacity .45s ease;pointer-events:none}
+    .scene.on{opacity:1}
+    .foot{position:absolute;left:96px;right:96px;bottom:44px;display:flex;align-items:center;gap:28px;font-size:26px;font-weight:700}
+    .foot .brand{display:flex;align-items:center;gap:14px}
+    .foot .brand img{width:40px;height:40px}
+    .foot .grad-line{flex:1;height:3px;background:rgba(255,255,255,.35)}
+    .counter{display:flex;gap:36px;font-size:26px;font-weight:600;color:#eaf3ff}
+    .counter b{font-size:34px;color:#fff;font-variant-numeric:tabular-nums}
+    .counter .dot{display:inline-block;width:12px;height:12px;border-radius:50%;background:#22c55e;margin-right:10px;box-shadow:0 0 0 6px rgba(34,197,94,.2);animation:blink 1.4s infinite}
+    @keyframes blink{50%{opacity:.35}}
+    .kicker{font-family:var(--f-mono);font-size:24px;font-weight:500;color:#cdeeff;letter-spacing:.08em;text-transform:uppercase}
+    h1{font-size:140px;line-height:1;margin:22px 0 26px;font-weight:800;letter-spacing:-.03em}
+    h2{font-size:84px;line-height:1.04;margin:0 0 24px;font-weight:800;letter-spacing:-.02em}
+    .lead{font-size:34px;line-height:1.35;color:#eaf3ff;max-width:1000px}
+    .qrcard{background:#fff;color:#1b1f24;box-shadow:0 30px 60px -30px rgba(0,30,90,.6);border-radius:28px;padding:26px;display:flex;gap:26px;align-items:center}
+    .qrcard svg{width:100%;height:100%;display:block}
+    .qrcard .qr{flex:none}
+    .qrcard .n{display:inline-flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:14px;background:var(--grad);color:#fff;font-weight:900;font-size:24px;margin-bottom:12px}
+    .qrcard .t1{font-size:32px;font-weight:900;line-height:1.1;overflow-wrap:anywhere}
+    .qrcard .t2{font-size:22px;color:#5c6670;margin-top:8px;line-height:1.3}
+    .qrcard .url{font-family:var(--f-mono);font-size:22px;font-weight:700;margin-top:12px;color:#0069da}
+    .cd{font-size:120px;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-.03em;line-height:1}
+    /* Вопрос */
+    .qmeta{display:flex;align-items:center;gap:18px;font-family:var(--f-mono);font-size:26px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:#cdeeff}
+    .qmeta .pill{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:10px 22px;color:#fff}
+    .qtext{font-size:68px;line-height:1.1;font-weight:900;letter-spacing:-.02em;margin:34px 0 40px;max-width:1500px}
+    .tiles{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+    .tile{position:relative;display:flex;align-items:center;gap:26px;border-radius:22px;padding:28px 32px;font-size:42px;font-weight:700;min-height:150px;overflow:hidden;background:#fff;color:#1b1f24;box-shadow:0 30px 60px -30px rgba(0,30,90,.6);transition:opacity .4s, transform .4s, background .4s}
+    .tile .shape{width:76px;height:76px;padding:16px;border-radius:18px;position:relative;z-index:1}
+    .tile span.tx{position:relative;z-index:1}
+    .tile.k0 .shape{background:var(--k0)}.tile.k1 .shape{background:var(--k1)}.tile.k2 .shape{background:var(--k2)}.tile.k3 .shape{background:var(--k3)}
+    .tile.dim{opacity:.55;transform:scale(.98)}
+    .tile.right{background:#1a9f5b;color:#fff;box-shadow:0 0 0 6px #fff,0 30px 60px -30px rgba(0,30,90,.6)}
+    .tile .cnt{position:relative;z-index:1;margin-left:auto;font-family:var(--f-mono);font-size:40px;font-weight:700}
+    .tile .fill{position:absolute;left:0;top:0;bottom:0;background:rgba(0,117,242,.12);transition:width .6s ease}
+    .tile.right .fill{background:rgba(255,255,255,.18)}
+    .ring{position:absolute;right:96px;top:64px;width:170px;height:170px}
+    .ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+    .ring .num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:64px;font-weight:900;font-variant-numeric:tabular-nums}
+    .answered{position:absolute;right:96px;top:250px;text-align:center;font-size:24px;color:#cdeeff;font-weight:600;width:170px}
+    .answered b{display:block;font-size:56px;color:#fff;font-weight:900}
+    .note{margin-top:30px;font-size:34px;line-height:1.35;color:#1b1f24;background:#fff;border:0;box-shadow:0 30px 60px -30px rgba(0,30,90,.6);border-radius:22px;padding:26px 32px;max-width:1700px}
+    .mini-qr{position:absolute;right:96px;bottom:120px;background:#fff;border-radius:18px;padding:12px;width:180px}
+    .mini-qr svg{width:100%;height:auto;display:block}
+    .mini-qr div{color:#1b1f24;text-align:center;font-weight:800;font-size:13px;margin-top:6px;overflow-wrap:anywhere;line-height:1.2}
+    /* Рейтинг */
+    .cols{display:grid;grid-template-columns:1.25fr 1fr;gap:56px;margin-top:30px}
+    .lb .r{display:flex;align-items:center;gap:22px;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.22);font-size:32px}
+    .lb .r .p{width:56px;font-weight:900;color:#8a8aa0}
+    .lb .r:nth-child(1) .p{color:#ffd23f}.lb .r:nth-child(2) .p{color:#d9d9e6}.lb .r:nth-child(3) .p{color:#e5a06a}
+    .lb .r .nm{flex:1;min-width:0;font-weight:800}
+    .lb .r .nm small{display:block;font-size:20px;color:#cdeeff;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .lb .r .sc{font-weight:900;font-variant-numeric:tabular-nums}
+    .bars .b{margin:16px 0}
+    .bars .b .lab{display:flex;justify-content:space-between;font-size:28px;font-weight:700;margin-bottom:8px}
+    .bars .b .track{height:22px;background:rgba(255,255,255,.2);border-radius:11px;overflow:hidden}
+    .bars .b .track i{display:block;height:100%;background:#fff;border-radius:11px;transition:width .8s ease}
+    .sect{font-family:var(--f-mono);font-size:22px;font-weight:500;color:#cdeeff;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
+    .quote{font-size:64px;line-height:1.15;font-weight:800;letter-spacing:-.01em;margin:40px 0 30px;max-width:1650px}
+    .who{font-size:32px;color:#cdeeff;font-weight:600}
+    /* Слайды: окно камеры прозрачное, в OBS камера стоит под этим источником */
+    html.cut,html.cut body,html.cut #stage{background:transparent!important}
+    html.cut .bg{display:none}
+    #stage.slides .foot{display:none}
+    #s-slides{padding:0}
+    .sl-full{position:absolute;left:0;top:0;width:1920px;height:1080px}
+    #sl-bg{background:var(--cover)}
+    #sl-bg i{position:absolute;inset:0;background:radial-gradient(900px 600px at 0% 0%,rgba(47,91,255,.22),transparent 60%),radial-gradient(800px 600px at 100% 100%,rgba(255,106,26,.16),transparent 60%)}
+    .sl-img{position:absolute;object-fit:contain;opacity:0;transition:opacity .35s ease}
+    .sl-img.on{opacity:1}
+    #sl-ring{background:var(--grad)}
+    #sl-camph{display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:linear-gradient(160deg,#3b3b52,#1f1f2c);color:#c9c9d6;font-size:28px;font-weight:800;border-radius:24px}
+    #sl-camph span{font-size:84px}
+    .sl-qr{position:absolute;background:#fff;color:#1b1f24;border-radius:26px;padding:18px;display:none;flex-direction:column;align-items:center;text-align:center;box-shadow:0 20px 60px -20px rgba(0,0,0,.6)}
+    .sl-qr svg{width:100%;height:auto;display:block}
+    .sl-qr b{display:block;font-size:26px;line-height:1.15;margin-top:10px;font-weight:900}
+    .sl-qr small{display:block;font-family:var(--f-mono);font-size:16px;color:#0069da;font-weight:700;margin-top:6px;overflow-wrap:anywhere;line-height:1.2}
+  </style>
+</head>
+<body>
+<div id="stage">
+  <div class="bg"><span class="blob b1"></span><span class="blob b2"></span><canvas class="dots" data-step="34" data-r="2"></canvas></div>
+
+  <!-- Заставка -->
+  <section class="scene" id="s-waiting">
+    <div style="display:grid;grid-template-columns:1.1fr 1fr;gap:70px;height:100%">
+      <div style="display:flex;flex-direction:column;justify-content:center">
+        <div class="kicker">{{ ((ev.texts or {}).get('partners') or 'USTEM Foundation') }} · {{ kicker }}</div>
+        <h1>{{ (ev.title|loc).split('·')[0] }}</h1>
+        <div class="lead">{{ ev.subtitle|loc }}</div>
+        <div style="margin-top:56px">
+          <div class="kicker" id="cd-label">{{ t('live.starts_in') }}</div>
+          <div class="cd" id="cd">--:--</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;justify-content:center;gap:22px">
+        <div class="qrcard"><div class="qr" style="width:300px;height:300px">{{ qrs.academy }}</div>
+          <div><div class="n">1</div><div class="t1">{{ t('live.scr_step1') }}</div><div class="t2">{{ t('live.scr_step1_sub') }}</div><div class="url">{{ pretty(links.academy) }}</div></div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:22px">
+          {% if qrs.connect %}<div class="qrcard" style="flex-direction:column;align-items:flex-start;padding:22px"><div style="display:flex;gap:18px;align-items:center"><div class="qr" style="width:150px;height:150px">{{ qrs.connect }}</div><div class="n" style="margin:0">2</div></div>
+            <div class="t1" style="font-size:26px;margin-top:14px">USTEM Connect</div><div class="t2" style="font-size:19px">{{ t('live.scr_step2_sub') }}</div></div>{% endif %}
+          {% if qrs.bot %}<div class="qrcard" style="flex-direction:column;align-items:flex-start;padding:22px"><div style="display:flex;gap:18px;align-items:center"><div class="qr" style="width:150px;height:150px">{{ qrs.bot }}</div><div class="n" style="margin:0">3</div></div>
+            <div class="t1" style="font-size:26px;margin-top:14px">Telegram-бот</div><div class="t2" style="font-size:19px">{{ bot_handle }} · {{ t('live.scr_step3_sub') }}</div></div>{% endif %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Спикер говорит: фон с QR (обычно поверх идет камера) -->
+  <section class="scene" id="s-slides">
+    <div class="sl-full" id="sl-camph"><span>🎥</span>{{ t('live.d_cam_here') }}</div>
+    <div class="sl-full" id="sl-bg"><i></i></div>
+    <img class="sl-img" id="sl-a" alt=""><img class="sl-img" id="sl-b" alt="">
+    <div class="sl-full" id="sl-ring"></div>
+    <div class="sl-qr" id="sl-qr"></div>
+  </section>
+
+  <section class="scene" id="s-talk">
+    <div style="display:flex;flex-direction:column;justify-content:center;height:100%">
+      <div class="kicker">{{ kicker }}</div>
+      <h2 style="font-size:120px">{{ (ev.title|loc).split('·')[0] }}</h2>
+      <div class="lead">{{ t('live.scr_talk') }}</div>
+    </div>
+    <div class="mini-qr" style="width:240px;bottom:140px">{{ qrs.academy }}<div>{{ pretty(links.academy) }}</div></div>
+  </section>
+
+  <!-- Анкета -->
+  <section class="scene" id="s-profile">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:70px">
+      <div>
+        <div class="kicker">{{ t('live.scr_profile_k') }}</div>
+        <h2>{{ t('live.scr_profile_h') }}</h2>
+        <div class="lead" style="font-size:30px">{{ t('live.scr_profile_sub') }}</div>
+        <div class="qrcard" style="margin-top:40px;max-width:760px"><div class="qr" style="width:240px;height:240px">{{ qrs.academy }}</div>
+          <div><div class="t1" style="font-size:28px">{{ pretty(links.academy) }}</div><div class="t2">{{ t('live.scr_profile_qr') }}</div></div></div>
+      </div>
+      <div>
+        <div style="display:flex;gap:40px;margin-bottom:30px">
+          <div><div class="sect">{{ t('live.scr_filled') }}</div><div class="cd" style="font-size:96px" id="pf-n">0</div></div>
+          <div><div class="sect">{{ t('live.scr_schools') }}</div><div class="cd" style="font-size:96px" id="pf-s">0</div></div>
+        </div>
+        <div class="sect">{{ t('live.scr_subjects') }}</div>
+        <div class="bars" id="pf-subj"></div>
+        <div class="sect" style="margin-top:26px">{{ t('live.scr_regions') }}</div>
+        <div class="bars" id="pf-reg"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Вопрос и ответ -->
+  <section class="scene" id="s-question">
+    <div class="qmeta"><span class="pill" id="q-block"></span><span id="q-num"></span></div>
+    <div class="qtext" id="q-text"></div>
+    <div class="tiles" id="q-tiles"></div>
+    <div class="note" id="q-note" style="display:none"></div>
+    <div class="ring" id="q-ring"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" stroke="rgba(255,255,255,.22)" stroke-width="10" fill="none"/><circle id="ring-c" cx="50" cy="50" r="44" stroke="url(#g)" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="276.5" stroke-dashoffset="0"/><defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#f2a900"/></linearGradient></defs></svg><div class="num" id="q-sec">30</div></div>
+    <div class="answered" id="q-ans">{{ t('live.scr_answered') }}<b id="q-ans-n">0</b></div>
+    <div class="mini-qr" id="q-qr">{{ qrs.academy }}<div>{{ pretty(links.academy) }}</div></div>
+  </section>
+
+  <!-- Рейтинг -->
+  <section class="scene" id="s-leaderboard">
+    <div class="kicker">{{ t('live.scr_lb_k') }}</div>
+    <h2>{{ t('live.scr_lb_h') }}</h2>
+    <div class="cols">
+      <div class="lb" id="lb"></div>
+      <div><div class="sect">{{ t('live.scr_lb_regions') }}</div><div class="bars" id="lb-reg"></div></div>
+    </div>
+  </section>
+
+  <!-- Вопросы спикеру -->
+  <section class="scene" id="s-ask">
+    <div id="ask-empty">
+      <div class="kicker">{{ t('live.scr_ask_k') }}</div>
+      <h2>{{ t('live.scr_ask_h') }}</h2>
+      <div class="qrcard" style="margin-top:40px;max-width:860px"><div class="qr" style="width:260px;height:260px">{{ qrs.academy }}</div>
+        <div><div class="t1" style="font-size:30px">{{ pretty(links.academy) }}</div><div class="t2">{{ t('live.scr_ask_sub') }}</div></div></div>
+    </div>
+    <div id="ask-picked" style="display:none">
+      <div class="kicker">{{ t('live.scr_ask_from') }}</div>
+      <div class="quote" id="ask-text"></div>
+      <div class="who" id="ask-who"></div>
+    </div>
+  </section>
+
+  <!-- Финал -->
+  <section class="scene" id="s-finish">
+    <div style="display:grid;grid-template-columns:1.1fr 1fr;gap:70px;height:100%">
+      <div style="display:flex;flex-direction:column;justify-content:center">
+        <h1 style="font-size:180px">{{ t('live.thanks') }}</h1>
+        <div class="lead">{{ finish_text }}</div>
+        <div class="lead" style="margin-top:24px;color:#ffd23f;font-weight:800">⭐ {{ t('live.fb_screen') }}</div>
+        <div class="counter" style="margin-top:50px" id="fin-count"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;justify-content:center;gap:22px">
+        {% if qrs.connect %}<div class="qrcard"><div class="qr" style="width:220px;height:220px">{{ qrs.connect }}</div><div><div class="t1">{{ t('live.scr_fin_connect') }}</div><div class="url">{{ pretty(links.connect) }}</div></div></div>{% endif %}
+        {% if qrs.bot %}<div class="qrcard"><div class="qr" style="width:220px;height:220px">{{ qrs.bot }}</div><div><div class="t1">{{ t('live.scr_fin_bot') }}</div><div class="url">{{ bot_handle }}</div></div></div>{% endif %}
+      </div>
+    </div>
+  </section>
+
+  <div class="foot">
+    <div class="brand"><img src="{{ url_for('static', filename='img/ustem-mark.png') }}" alt="">{{ (ev.title|loc).split('·')[0] }}</div>
+    <div class="grad-line"></div>
+    <div class="counter"><span><span class="dot"></span>{{ t('live.scr_online') }} <b id="c-online">0</b></span><span>{{ t('live.scr_joined') }} <b id="c-joined">0</b></span></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var SLUG = {{ ev.slug|tojson }}, KEY = {{ key|tojson }}, LANG = {{ locale|tojson }};
+  var STARTS = {{ starts|tojson }};
+  var T = {{ {
+    'q': t('live.q_label'), 'block': t('live.block'), 'starts_in': t('live.starts_in'), 'started': t('live.scr_started'),
+    'from': t('live.scr_from'), 'pts': t('live.points'),
+    'subj': dict(physics=t('live.subj_physics'), informatics=t('live.subj_informatics'), math=t('live.subj_math'), technology=t('live.subj_technology'),
+                 chemistry=t('live.subj_chemistry'), biology=t('live.subj_biology'), primary=t('live.subj_primary'), other=t('live.subj_other')),
+    'online': t('live.scr_online'), 'joined': t('live.scr_joined'), 'schools': t('live.scr_schools')
+  }|tojson }};
+  var BLOCKS = {{ blocks_json|tojson }}, DEMO = {{ demo|tojson }}, DECK = {{ deck|tojson }};
+  var QR_LBL = {{ {'watch': t('live.d_qr_watch'), 'connect': t('live.d_qr_connect'), 'bot': t('live.d_qr_bot'), 'url': ''}|tojson }};
+  // ─── Слайды ───
+  function rr(x, y, w, h, r) {
+    return 'M' + (x + r) + ' ' + y + 'H' + (x + w - r) + 'A' + r + ' ' + r + ' 0 0 1 ' + (x + w) + ' ' + (y + r) + 'V' + (y + h - r) +
+      'A' + r + ' ' + r + ' 0 0 1 ' + (x + w - r) + ' ' + (y + h) + 'H' + (x + r) + 'A' + r + ' ' + r + ' 0 0 1 ' + x + ' ' + (y + h - r) +
+      'V' + (y + r) + 'A' + r + ' ' + r + ' 0 0 1 ' + (x + r) + ' ' + y + 'Z';
+  }
+  var preloaded = {};
+  function preload() { (DECK.slides || []).forEach(function (s) { if (!preloaded[s.img]) { preloaded[s.img] = new Image(); preloaded[s.img].src = s.img; } }); }
+  preload();
+  var slCur = null, slFront = 'sl-a';
+  function placeImg(el, s) {
+    var box = s.layout === 'side' ? [24, DECK.cam_pos === 'br' ? 124 : 148, 1436, 808] : [0, 0, 1920, 1080];
+    el.style.left = box[0] + 'px'; el.style.top = box[1] + 'px'; el.style.width = box[2] + 'px'; el.style.height = box[3] + 'px';
+    var hole = s.layout === 'cam' ? "path(evenodd, 'M" + (-box[0]) + ' ' + (-box[1]) + 'h1920v1080h-1920Z ' + rr(DECK.cam.x - box[0], DECK.cam.y - box[1], DECK.cam.w, DECK.cam.h, 24) + "')" : 'none';
+    el.style.clipPath = hole;
+  }
+  function renderSlide(i) {
+    var s = (DECK.slides || [])[i];
+    var cut = !!s && s.layout !== 'full';
+    document.documentElement.classList.toggle('cut', cut);
+    if (!s) return;
+    var c = DECK.cam, full = 'M0 0H1920V1080H0Z ';
+    $('sl-bg').style.clipPath = cut ? "path(evenodd, '" + full + rr(c.x, c.y, c.w, c.h, 24) + "')" : 'none';
+    $('sl-ring').style.display = cut ? 'block' : 'none';
+    if (cut) $('sl-ring').style.clipPath = "path(evenodd, '" + rr(c.x - 6, c.y - 6, c.w + 12, c.h + 12, 30) + ' ' + rr(c.x, c.y, c.w, c.h, 24) + "')";
+    var ph = $('sl-camph');
+    ph.style.display = DEMO && cut ? 'flex' : 'none';
+    if (DEMO && cut) { ph.style.left = c.x + 'px'; ph.style.top = c.y + 'px'; ph.style.width = c.w + 'px'; ph.style.height = c.h + 'px'; }
+    var key = s.id + '|' + s.layout;
+    if (key !== slCur) {
+      var back = slFront === 'sl-a' ? 'sl-b' : 'sl-a', img = $(back);
+      placeImg(img, s);
+      img.onload = function () { $(back).classList.add('on'); $(slFront).classList.remove('on'); slFront = back; };
+      if (img.getAttribute('src') === s.img && img.complete) img.onload(); else img.src = s.img;
+      if (slCur && slCur.split('|')[0] === s.id) placeImg($(slFront), s);
+      slCur = key;
+    }
+    var q = s.qr || {}, box = $('sl-qr');
+    if (q.on && q.svg) {
+      var lbl = q.label || QR_LBL[q.to] || '';
+      box.innerHTML = q.svg + (lbl ? '<b>' + esc(lbl) + '</b>' : '') + '<small>' + esc(q.show) + '</small>';
+      box.style.display = 'flex';
+      if (s.layout === 'side') {
+        var top = DECK.cam_pos === 'br' ? 148 : c.y + c.h + 30;
+        box.style.left = c.x + 'px'; box.style.top = top + 'px'; box.style.bottom = 'auto'; box.style.width = c.w + 'px';
+        box.querySelector('svg').style.width = (DECK.cam_pos === 'br' ? 230 : 250) + 'px';
+      } else {
+        box.style.width = '300px'; box.style.top = 'auto'; box.style.bottom = '40px';
+        box.style.left = q.pos === 'bl' ? '40px' : (1920 - 340) + 'px';
+        box.querySelector('svg').style.width = '100%';
+      }
+    } else box.style.display = 'none';
+  }
+  var esc = window.liveEsc, L = function (o) { return window.liveLoc(o, LANG); };
+  var stage = document.getElementById('stage');
+  function fit() { var s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080); stage.style.transform = 'scale(' + s + ')'; stage.style.left = ((window.innerWidth - 1920 * s) / 2) + 'px'; stage.style.top = ((window.innerHeight - 1080 * s) / 2) + 'px'; }
+  window.addEventListener('resize', fit); fit();
+  var $ = function (id) { return document.getElementById(id); };
+  var data = null, offset = 0, lastKey = '', ringI = null;
+
+  function show(id) { Array.prototype.forEach.call(document.querySelectorAll('.scene'), function (s) { s.classList.toggle('on', s.id === 's-' + id); }); }
+  function startAt() { return STARTS ? Date.parse(STARTS + 'Z') - 300 * 60000 : null; }
+  setInterval(function () {
+    var s = startAt(); if (!s) return;
+    var d = Math.round((s - Date.now()) / 1000);
+    if (d <= 0) { $('cd-label').textContent = T.started; $('cd').textContent = '● LIVE'; return; }
+    var h = Math.floor(d / 3600), m = Math.floor(d % 3600 / 60), sec = d % 60;
+    $('cd').textContent = (h ? h + ':' + String(m).padStart(2, '0') : String(m).padStart(2, '0')) + ':' + String(sec).padStart(2, '0');
+  }, 500);
+
+  function bars(el, items, max) {
+    max = max || Math.max.apply(null, items.map(function (x) { return x.n; }).concat([1]));
+    var html = items.map(function (x) { return '<div class="b"><div class="lab"><span>' + esc(x.label) + '</span><span>' + x.n + '</span></div><div class="track"><i style="width:' + Math.round(x.n / max * 100) + '%"></i></div></div>'; }).join('');
+    el.innerHTML = html;
+  }
+  function tiles(q, reveal, counts) {
+    var total = counts ? counts.reduce(function (a, b) { return a + b; }, 0) : 0;
+    return q.options.map(function (o, i) {
+      var cls = 'tile k' + i + (reveal ? (i === q.correct ? ' right' : ' dim') : '');
+      var fill = reveal && total ? '<i class="fill" style="width:' + Math.round(counts[i] / total * 100) + '%"></i>' : '';
+      var cnt = reveal ? '<span class="cnt">' + (counts ? counts[i] : 0) + (i === q.correct ? ' ✓' : '') + '</span>' : '';
+      return '<div class="' + cls + '">' + fill + '<span class="shape">' + window.LIVE_SHAPES[i] + '</span><span class="tx">' + esc(L(o)) + '</span>' + cnt + '</div>';
+    }).join('');
+  }
+  function render() {
+    if (!data || !data.state) return;
+    var st = data.state, s = data.stats || {}, mode = st.mode, q = st.q;
+    $('c-online').textContent = s.online || 0; $('c-joined').textContent = s.joined || 0;
+    show(mode === 'reveal' ? 'question' : mode);
+    stage.classList.toggle('slides', mode === 'slides');
+    if (mode === 'slides') renderSlide(st.slide || 0); else document.documentElement.classList.remove('cut');
+    if (mode === 'profile') {
+      $('pf-n').textContent = s.profiles || 0; $('pf-s').textContent = s.schools || 0;
+      var sub = Object.keys(s.subjects || {}).map(function (k) { return {label: T.subj[k] || k, n: s.subjects[k]}; }).sort(function (a, b) { return b.n - a.n; }).slice(0, 6);
+      bars($('pf-subj'), sub);
+      bars($('pf-reg'), (s.regions || []).slice(0, 5).map(function (r) { return {label: LANG === 'ru' ? r.ru : r.kk, n: r.n}; }));
+    }
+    if ((mode === 'question' || mode === 'reveal') && q) {
+      var key = mode + q.id;
+      var counts = data.stats && data.stats.answers && data.stats.answers.qid === q.id ? data.stats.answers.by : [0, 0, 0, 0];
+      $('q-ans-n').textContent = data.stats && data.stats.answers && data.stats.answers.qid === q.id ? data.stats.answers.total : 0;
+      if (key !== lastKey || mode === 'reveal') {
+        lastKey = key;
+        $('q-block').textContent = L(BLOCKS[q.block]) || (T.block + ' ' + q.block);
+        $('q-num').textContent = T.q + ' ' + q.n + ' / ' + q.of;
+        $('q-text').textContent = L(q.text);
+        $('q-tiles').innerHTML = tiles(q, mode === 'reveal', counts);
+        var note = mode === 'reveal' && q.note ? L(q.note) : '';
+        $('q-note').style.display = note ? 'block' : 'none'; $('q-note').textContent = note ? '💡 ' + note : '';
+        $('q-ring').style.display = mode === 'reveal' ? 'none' : 'block';
+        $('q-qr').style.display = mode === 'reveal' ? 'none' : 'block';
+      }
+      clearInterval(ringI);
+      if (mode === 'question') {
+        var tick = function () {
+          var left = Math.max(0, q.at + q.seconds - (Date.now() / 1000 + offset));
+          $('q-sec').textContent = Math.ceil(left);
+          $('ring-c').setAttribute('stroke-dashoffset', String(276.5 * (1 - left / q.seconds)));
+        };
+        tick(); ringI = setInterval(tick, 200);
+      }
+    } else { lastKey = ''; clearInterval(ringI); }
+    if (mode === 'leaderboard' || mode === 'finish') {
+      $('lb').innerHTML = (s.top || []).map(function (r, i) { return '<div class="r"><span class="p">' + (i + 1) + '</span><span class="nm">' + esc(r.name) + '<small>' + esc([r.school, LANG === 'ru' ? r.region_ru : r.region].filter(Boolean).join(' · ')) + '</small></span><span class="sc">' + r.score + '</span></div>'; }).join('');
+      bars($('lb-reg'), (s.region_top || []).map(function (r) { return {label: (LANG === 'ru' ? r.ru : r.kk) + ' (' + r.n + ')', n: r.avg}; }));
+      $('fin-count').innerHTML = '<span>' + T.joined + ' <b>' + (s.joined || 0) + '</b></span><span>' + T.schools + ' <b>' + (s.schools || 0) + '</b></span>';
+    }
+    if (mode === 'ask') {
+      var p = data.picked;
+      $('ask-empty').style.display = p ? 'none' : 'block'; $('ask-picked').style.display = p ? 'block' : 'none';
+      if (p) { $('ask-text').textContent = '«' + p.text + '»'; $('ask-who').textContent = [p.name, p.school].filter(Boolean).join(' · '); }
+    }
+  }
+  function poll() {
+    fetch('/efir/' + SLUG + '/screen.json?key=' + encodeURIComponent(KEY) + '&dv=' + DECK.v, {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (d) {
+      if (d.deck) { DECK = d.deck; slCur = null; preload(); }
+      data = d; if (d.state) offset = d.state.now - Date.now() / 1000; render();
+    }).catch(function () {}).finally(function () { setTimeout(poll, 1500); });
+  }
+  if (DEMO) {  // предпросмотр в конструкторе: сцена без эфира и без опроса сервера
+    data = DEMO;
+    if (DEMO.state.q) DEMO.state.q.at = Date.now() / 1000 - 4;
+    offset = 0; render();
+    if (DEMO.state.mode === 'question') setTimeout(function () { clearInterval(ringI); }, 1200);
+  } else poll();
+})();
+</script>
+</body>
+</html>
