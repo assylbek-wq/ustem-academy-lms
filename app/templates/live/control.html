@@ -5,50 +5,52 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>{{ t('live.control') }} · {{ ev.title|loc }}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   {% include "live/_style.html" %}
   <style>
-    body{background:#f5f5f8;color:#14141c;font-size:14px}
-    header{position:sticky;top:0;z-index:10;background:#0b0b12;color:#fff;padding:12px 18px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
-    header h1{font-size:16px;margin:0;font-weight:800}
+    body{background:var(--bg);color:var(--text);font-size:14px;line-height:1.45}
+    header{position:sticky;top:0;z-index:10;background:var(--cover);color:#fff;padding:12px 18px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;box-shadow:0 6px 20px -12px rgba(0,60,160,.6)}
+    header img{height:30px;width:auto}
+    header h1{font-size:15px;margin:0;font-weight:700}
     .stat{display:flex;flex-direction:column;line-height:1.1}
     .stat b{font-size:22px;font-variant-numeric:tabular-nums}
-    .stat span{font-size:11px;color:#a0a0b5;text-transform:uppercase;letter-spacing:.05em;font-weight:700}
-    .mode{margin-left:auto;background:var(--grad);border-radius:999px;padding:7px 14px;font-weight:800}
+    .stat span{font-size:11px;color:#cdeeff;text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+    .mode{margin-left:auto;background:#fff;color:#0057c8;border-radius:999px;padding:7px 14px;font-weight:700}
     .wrap{max-width:1400px;margin:0 auto;padding:16px;display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:16px}
     @media(max-width:1100px){.wrap{grid-template-columns:1fr}}
-    .card{background:#fff;border:1px solid #e3e3ea;border-radius:14px;padding:14px;margin-bottom:16px}
-    .card h2{font-size:14px;margin:0 0 10px;text-transform:uppercase;letter-spacing:.05em;color:#55556a}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:16px;box-shadow:var(--shadow)}
+    .card h2{font-family:var(--f-mono);font-size:12px;font-weight:500;margin:0 0 12px;text-transform:uppercase;letter-spacing:.08em;color:var(--blue)}
     .modes{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
-    .b{border:1px solid #d6d6e0;background:#fff;border-radius:10px;padding:10px 12px;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px;text-align:center}
-    .b:hover{border-color:#14141c}
+    .b{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:10px;padding:10px 12px;font-weight:600;cursor:pointer;font-family:inherit;font-size:14px;text-align:center}
+    .b:hover{border-color:var(--sea);color:var(--blue)}
     a.b{text-decoration:none;color:inherit;display:inline-flex;align-items:center;gap:4px}
-    .b.on{background:#14141c;color:#fff;border-color:#14141c}
-    .b.go{background:var(--k3);color:#fff;border-color:transparent}
-    .b.rev{background:var(--k1);color:#fff;border-color:transparent}
+    .b.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+    .b.go{background:var(--green);color:#fff;border-color:transparent}
+    .b.go:hover{filter:brightness(1.08);color:#fff}
+    .b.rev{background:var(--amber);color:#fff;border-color:transparent}
+    .b.rev:hover{color:#fff;filter:brightness(1.05)}
     .b.sm{padding:6px 10px;font-size:13px}
     .big{font-size:16px;padding:14px}
-    .q{display:grid;grid-template-columns:40px minmax(0,1fr) 90px 240px;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #eee}
+    .q{display:grid;grid-template-columns:40px minmax(0,1fr) 90px 240px;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
     .q:last-child{border-bottom:0}
-    .q.cur{background:#fff8e6;margin:0 -14px;padding:10px 14px;border-radius:8px}
-    .q .k{font-weight:800;color:#8a8aa0}
+    .q.cur{background:var(--amber-soft);margin:0 -14px;padding:10px 14px;border-radius:8px}
+    .q .k{font-weight:800;color:var(--mute)}
     .q .tx b{display:block}
-    .q .tx small{color:#77778a}
-    .q .tx .ans{color:#16a34a;font-weight:700}
+    .q .tx small{color:var(--mute)}
+    .q .tx .ans{color:var(--green);font-weight:700}
     .q .n{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
     .q .acts{display:flex;gap:6px;justify-content:flex-end}
-    .blk{font-weight:800;margin:14px 0 4px;color:#8a2be2}
-    input.in{width:100%;border:1px solid #d6d6e0;border-radius:10px;padding:9px 10px;font-size:14px;font-family:inherit}
+    .blk{font-weight:800;margin:14px 0 4px;color:var(--blue)}
+    input.in{width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 10px;font-size:14px;font-family:inherit}
     .row{display:flex;gap:8px;align-items:center;margin-top:8px}
     .copy{display:flex;gap:6px;align-items:center;margin-top:6px}
-    .copy code{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:#f1f1f5;border-radius:8px;padding:7px 9px;font-size:12px}
-    .ask{border-bottom:1px solid #eee;padding:9px 0}
-    .ask .who{color:#77778a;font-size:12px}
-    .ask.picked{background:#eef3ff;margin:0 -14px;padding:9px 14px}
+    .copy code{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:var(--chip);border-radius:8px;padding:7px 9px;font-size:12px}
+    .ask{border-bottom:1px solid var(--line);padding:9px 0}
+    .ask .who{color:var(--mute);font-size:12px}
+    .ask.picked{background:var(--tint);margin:0 -14px;padding:9px 14px}
     .ask.done{opacity:.5}
     .timer{font-variant-numeric:tabular-nums;font-weight:800}
-    .hint{color:#77778a;font-size:12px;margin-top:6px;line-height:1.4}
-    .ok{color:#16a34a;font-weight:700}
+    .hint{color:var(--mute);font-size:12px;margin-top:6px;line-height:1.4}
+    .ok{color:var(--green);font-weight:700}
     .modes{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))!important}
     .slrow{display:grid;grid-template-columns:70px minmax(0,1fr) 70px;gap:10px;align-items:stretch}
     .slrow .b{font-size:28px}
@@ -57,11 +59,12 @@
     .slcur.off{opacity:.45}
     .strip{display:flex;gap:6px;overflow-x:auto;padding:10px 0 4px}
     .strip img{height:58px;aspect-ratio:16/9;object-fit:contain;background:#0b0b12;border-radius:6px;border:2px solid transparent;cursor:pointer;flex:none}
-    .strip img.on{border-color:#8a2be2}
+    .strip img.on{border-color:var(--blue)}
   </style>
 </head>
 <body>
 <header>
+  <img src="{{ static_v('img/ustem-foundation-white.webp') }}" alt="USTEM">
   <h1>{{ t('live.control') }} · {{ ev.title|loc }}</h1>
   <div class="stat"><b id="s-online">0</b><span>{{ t('live.c_online') }}</span></div>
   <div class="stat"><b id="s-joined">0</b><span>{{ t('live.c_joined') }}</span></div>
@@ -134,7 +137,7 @@
       <div class="copy"><code>{{ overlay_url }}</code><button class="b sm" data-copy="{{ overlay_url }}">⧉</button></div>
       <div class="row"><a class="b sm" href="{{ url_for('live.export', slug=ev.slug) }}">⬇ {{ t('live.c_export') }}</a><a class="b sm" target="_blank" href="{{ screen_url }}">{{ t('live.c_open_screen') }}</a><a class="b sm" target="_blank" href="{{ url_for('live.stats_page', slug=ev.slug) }}">📊 {{ t('live.st_title') }}</a><a class="b sm" href="{{ url_for('live.build', slug=ev.slug) }}">✎ {{ t('live.b_builder') }}</a></div>
       {% if user.is_admin %}
-      <div class="row" style="margin-top:14px;padding-top:12px;border-top:1px solid #eee">
+      <div class="row" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
         <button class="b sm" id="reset" style="border-color:#e8323c;color:#e8323c">⟲ {{ t('live.c_reset') }}</button>
         <span class="hint" id="reset-msg">{{ t('live.c_reset_hint') }}</span>
       </div>
@@ -230,7 +233,7 @@
     Array.prototype.forEach.call(document.querySelectorAll('.q'), function (row) {
       var id = row.dataset.id, n = data.per_q[id];
       row.classList.toggle('cur', String(st.qid) === id && (st.mode === 'question' || st.mode === 'reveal'));
-      $('n-' + id).innerHTML = n ? n[0] + ' <small style="color:#16a34a">✓' + n[1] + '</small>' : '0';
+      $('n-' + id).innerHTML = n ? n[0] + ' <small style="color:var(--green)">✓' + n[1] + '</small>' : '0';
     });
     clearInterval(timerI);
     if (st.mode === 'question' && st.qid) {
@@ -290,12 +293,12 @@
 </div>
 <style>
   .qm-grid{display:grid;grid-template-columns:110px 1fr;gap:8px;align-items:center;margin-top:10px}
-  .qm-grid label{font-weight:700;font-size:13px;color:#55556a}
+  .qm-grid label{font-weight:700;font-size:13px;color:var(--mute)}
   .qm-opt{display:grid;grid-template-columns:52px 14px 1fr 1fr;gap:8px;align-items:center;margin-top:6px}
   .qm-sw{width:14px;height:36px;border-radius:4px}
   .qm-sw.k0{background:var(--k0)}.qm-sw.k1{background:var(--k1)}.qm-sw.k2{background:var(--k2)}.qm-sw.k3{background:var(--k3)}
   .qm-right{font-weight:800;font-size:13px;display:flex;gap:4px;align-items:center}
-  textarea.in{resize:vertical;width:100%;border:1px solid #d6d6e0;border-radius:10px;padding:9px 10px;font-size:14px;font-family:inherit}
+  textarea.in{resize:vertical;width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 10px;font-size:14px;font-family:inherit}
 </style>
 <script>
 (function () {

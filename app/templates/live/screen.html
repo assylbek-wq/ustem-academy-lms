@@ -3,100 +3,104 @@
 <head>
   <meta charset="utf-8">
   <title>{{ t('live.screen_title') }} · {{ ev.title|loc }}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   {% include "live/_style.html" %}
   <style>
     html,body{width:100%;height:100%;overflow:hidden;background:#000}
-    #stage{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;background:#0b0b12;color:#fff;overflow:hidden}
-    .bg{position:absolute;inset:0;background:radial-gradient(900px 600px at 8% 0%,rgba(47,91,255,.28),transparent 60%),radial-gradient(800px 600px at 100% 100%,rgba(255,106,26,.22),transparent 60%),radial-gradient(700px 500px at 70% 10%,rgba(138,43,226,.18),transparent 60%)}
+    #stage{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;background:var(--cover);color:#fff;overflow:hidden}
+    .bg{position:absolute;inset:0;overflow:hidden}
+    .bg canvas{position:absolute;inset:0;width:100%;height:100%}
+    .bg .blob{position:absolute;border-radius:50%;filter:blur(90px);opacity:.45}
+    .bg .b1{width:760px;height:760px;background:#7fd6ff;right:-200px;top:-260px}
+    .bg .b2{width:640px;height:640px;background:#003fa6;left:-240px;bottom:-300px}
     .scene{position:absolute;inset:0;padding:72px 96px 120px;opacity:0;transition:opacity .45s ease;pointer-events:none}
     .scene.on{opacity:1}
     .foot{position:absolute;left:96px;right:96px;bottom:44px;display:flex;align-items:center;gap:28px;font-size:26px;font-weight:700}
     .foot .brand{display:flex;align-items:center;gap:14px}
     .foot .brand img{width:40px;height:40px}
-    .foot .grad-line{flex:1;height:3px}
-    .counter{display:flex;gap:36px;font-size:26px;font-weight:700;color:#d6d6e2}
+    .foot .grad-line{flex:1;height:3px;background:rgba(255,255,255,.35)}
+    .counter{display:flex;gap:36px;font-size:26px;font-weight:600;color:#eaf3ff}
     .counter b{font-size:34px;color:#fff;font-variant-numeric:tabular-nums}
     .counter .dot{display:inline-block;width:12px;height:12px;border-radius:50%;background:#22c55e;margin-right:10px;box-shadow:0 0 0 6px rgba(34,197,94,.2);animation:blink 1.4s infinite}
     @keyframes blink{50%{opacity:.35}}
-    .kicker{font-size:28px;font-weight:700;color:#b9b9cc;letter-spacing:.01em}
-    h1{font-size:150px;line-height:.95;margin:22px 0 26px;font-weight:900;letter-spacing:-.04em}
-    h2{font-size:84px;line-height:1.02;margin:0 0 24px;font-weight:900;letter-spacing:-.03em}
-    .lead{font-size:34px;line-height:1.35;color:#d4d4e0;max-width:1000px}
-    .qrcard{background:#fff;color:#0b0b12;border-radius:28px;padding:26px;display:flex;gap:26px;align-items:center}
+    .kicker{font-family:var(--f-mono);font-size:24px;font-weight:500;color:#cdeeff;letter-spacing:.08em;text-transform:uppercase}
+    h1{font-size:140px;line-height:1;margin:22px 0 26px;font-weight:800;letter-spacing:-.03em}
+    h2{font-size:84px;line-height:1.04;margin:0 0 24px;font-weight:800;letter-spacing:-.02em}
+    .lead{font-size:34px;line-height:1.35;color:#eaf3ff;max-width:1000px}
+    .qrcard{background:#fff;color:#1b1f24;box-shadow:0 30px 60px -30px rgba(0,30,90,.6);border-radius:28px;padding:26px;display:flex;gap:26px;align-items:center}
     .qrcard svg{width:100%;height:100%;display:block}
     .qrcard .qr{flex:none}
     .qrcard .n{display:inline-flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:14px;background:var(--grad);color:#fff;font-weight:900;font-size:24px;margin-bottom:12px}
     .qrcard .t1{font-size:32px;font-weight:900;line-height:1.1;overflow-wrap:anywhere}
-    .qrcard .t2{font-size:22px;color:#55556a;margin-top:8px;line-height:1.3}
-    .qrcard .url{font-size:24px;font-weight:800;margin-top:12px;color:#2f5bff}
+    .qrcard .t2{font-size:22px;color:#5c6670;margin-top:8px;line-height:1.3}
+    .qrcard .url{font-family:var(--f-mono);font-size:22px;font-weight:700;margin-top:12px;color:#0069da}
     .cd{font-size:120px;font-weight:900;font-variant-numeric:tabular-nums;letter-spacing:-.03em;line-height:1}
     /* Вопрос */
-    .qmeta{display:flex;align-items:center;gap:18px;font-size:30px;font-weight:800;color:#b9b9cc}
-    .qmeta .pill{background:#1c1c28;border:1px solid #2a2a38;border-radius:999px;padding:10px 22px}
+    .qmeta{display:flex;align-items:center;gap:18px;font-family:var(--f-mono);font-size:26px;font-weight:500;letter-spacing:.06em;text-transform:uppercase;color:#cdeeff}
+    .qmeta .pill{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:10px 22px;color:#fff}
     .qtext{font-size:68px;line-height:1.1;font-weight:900;letter-spacing:-.02em;margin:34px 0 40px;max-width:1500px}
     .tiles{display:grid;grid-template-columns:1fr 1fr;gap:22px}
-    .tile{position:relative;display:flex;align-items:center;gap:26px;border-radius:22px;padding:30px 34px;font-size:42px;font-weight:800;min-height:150px;overflow:hidden;transition:opacity .4s, transform .4s}
-    .tile .shape{width:52px;height:52px;position:relative;z-index:1}
+    .tile{position:relative;display:flex;align-items:center;gap:26px;border-radius:22px;padding:28px 32px;font-size:42px;font-weight:700;min-height:150px;overflow:hidden;background:#fff;color:#1b1f24;box-shadow:0 30px 60px -30px rgba(0,30,90,.6);transition:opacity .4s, transform .4s, background .4s}
+    .tile .shape{width:76px;height:76px;padding:16px;border-radius:18px;position:relative;z-index:1}
     .tile span.tx{position:relative;z-index:1}
-    .tile.k0{background:var(--k0)}.tile.k1{background:var(--k1)}.tile.k2{background:var(--k2)}.tile.k3{background:var(--k3)}
-    .tile.dim{opacity:.22;transform:scale(.98)}
-    .tile.right{box-shadow:0 0 0 6px #fff}
-    .tile .cnt{position:relative;z-index:1;margin-left:auto;font-size:44px;font-weight:900}
-    .tile .fill{position:absolute;left:0;top:0;bottom:0;background:rgba(255,255,255,.18);transition:width .6s ease}
+    .tile.k0 .shape{background:var(--k0)}.tile.k1 .shape{background:var(--k1)}.tile.k2 .shape{background:var(--k2)}.tile.k3 .shape{background:var(--k3)}
+    .tile.dim{opacity:.55;transform:scale(.98)}
+    .tile.right{background:#1a9f5b;color:#fff;box-shadow:0 0 0 6px #fff,0 30px 60px -30px rgba(0,30,90,.6)}
+    .tile .cnt{position:relative;z-index:1;margin-left:auto;font-family:var(--f-mono);font-size:40px;font-weight:700}
+    .tile .fill{position:absolute;left:0;top:0;bottom:0;background:rgba(0,117,242,.12);transition:width .6s ease}
+    .tile.right .fill{background:rgba(255,255,255,.18)}
     .ring{position:absolute;right:96px;top:64px;width:170px;height:170px}
     .ring svg{width:100%;height:100%;transform:rotate(-90deg)}
     .ring .num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:64px;font-weight:900;font-variant-numeric:tabular-nums}
-    .answered{position:absolute;right:96px;top:250px;text-align:center;font-size:24px;color:#b9b9cc;font-weight:700;width:170px}
+    .answered{position:absolute;right:96px;top:250px;text-align:center;font-size:24px;color:#cdeeff;font-weight:600;width:170px}
     .answered b{display:block;font-size:56px;color:#fff;font-weight:900}
-    .note{margin-top:30px;font-size:34px;line-height:1.35;color:#e4e4ee;background:#16161f;border:1px solid #2a2a38;border-radius:22px;padding:26px 32px;max-width:1700px}
+    .note{margin-top:30px;font-size:34px;line-height:1.35;color:#1b1f24;background:#fff;border:0;box-shadow:0 30px 60px -30px rgba(0,30,90,.6);border-radius:22px;padding:26px 32px;max-width:1700px}
     .mini-qr{position:absolute;right:96px;bottom:120px;background:#fff;border-radius:18px;padding:12px;width:180px}
     .mini-qr svg{width:100%;height:auto;display:block}
-    .mini-qr div{color:#0b0b12;text-align:center;font-weight:800;font-size:13px;margin-top:6px;overflow-wrap:anywhere;line-height:1.2}
+    .mini-qr div{color:#1b1f24;text-align:center;font-weight:800;font-size:13px;margin-top:6px;overflow-wrap:anywhere;line-height:1.2}
     /* Рейтинг */
     .cols{display:grid;grid-template-columns:1.25fr 1fr;gap:56px;margin-top:30px}
-    .lb .r{display:flex;align-items:center;gap:22px;padding:14px 0;border-bottom:1px solid #22222f;font-size:32px}
+    .lb .r{display:flex;align-items:center;gap:22px;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.22);font-size:32px}
     .lb .r .p{width:56px;font-weight:900;color:#8a8aa0}
     .lb .r:nth-child(1) .p{color:#ffd23f}.lb .r:nth-child(2) .p{color:#d9d9e6}.lb .r:nth-child(3) .p{color:#e5a06a}
     .lb .r .nm{flex:1;min-width:0;font-weight:800}
-    .lb .r .nm small{display:block;font-size:20px;color:#9a9ab0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .lb .r .nm small{display:block;font-size:20px;color:#cdeeff;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .lb .r .sc{font-weight:900;font-variant-numeric:tabular-nums}
     .bars .b{margin:16px 0}
     .bars .b .lab{display:flex;justify-content:space-between;font-size:28px;font-weight:700;margin-bottom:8px}
-    .bars .b .track{height:22px;background:#1c1c28;border-radius:11px;overflow:hidden}
-    .bars .b .track i{display:block;height:100%;background:var(--grad);border-radius:11px;transition:width .8s ease}
-    .sect{font-size:26px;font-weight:800;color:#9a9ab0;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+    .bars .b .track{height:22px;background:rgba(255,255,255,.2);border-radius:11px;overflow:hidden}
+    .bars .b .track i{display:block;height:100%;background:#fff;border-radius:11px;transition:width .8s ease}
+    .sect{font-family:var(--f-mono);font-size:22px;font-weight:500;color:#cdeeff;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px}
     .quote{font-size:64px;line-height:1.15;font-weight:800;letter-spacing:-.01em;margin:40px 0 30px;max-width:1650px}
-    .who{font-size:32px;color:#b9b9cc;font-weight:700}
+    .who{font-size:32px;color:#cdeeff;font-weight:600}
     /* Слайды: окно камеры прозрачное, в OBS камера стоит под этим источником */
     html.cut,html.cut body,html.cut #stage{background:transparent!important}
     html.cut .bg{display:none}
     #stage.slides .foot{display:none}
     #s-slides{padding:0}
     .sl-full{position:absolute;left:0;top:0;width:1920px;height:1080px}
-    #sl-bg{background:#0b0b12}
+    #sl-bg{background:var(--cover)}
     #sl-bg i{position:absolute;inset:0;background:radial-gradient(900px 600px at 0% 0%,rgba(47,91,255,.22),transparent 60%),radial-gradient(800px 600px at 100% 100%,rgba(255,106,26,.16),transparent 60%)}
     .sl-img{position:absolute;object-fit:contain;opacity:0;transition:opacity .35s ease}
     .sl-img.on{opacity:1}
     #sl-ring{background:var(--grad)}
     #sl-camph{display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:linear-gradient(160deg,#3b3b52,#1f1f2c);color:#c9c9d6;font-size:28px;font-weight:800;border-radius:24px}
     #sl-camph span{font-size:84px}
-    .sl-qr{position:absolute;background:#fff;color:#0b0b12;border-radius:26px;padding:18px;display:none;flex-direction:column;align-items:center;text-align:center;box-shadow:0 20px 60px -20px rgba(0,0,0,.6)}
+    .sl-qr{position:absolute;background:#fff;color:#1b1f24;border-radius:26px;padding:18px;display:none;flex-direction:column;align-items:center;text-align:center;box-shadow:0 20px 60px -20px rgba(0,0,0,.6)}
     .sl-qr svg{width:100%;height:auto;display:block}
     .sl-qr b{display:block;font-size:26px;line-height:1.15;margin-top:10px;font-weight:900}
-    .sl-qr small{display:block;font-size:18px;color:#2f5bff;font-weight:800;margin-top:6px;overflow-wrap:anywhere;line-height:1.2}
+    .sl-qr small{display:block;font-family:var(--f-mono);font-size:16px;color:#0069da;font-weight:700;margin-top:6px;overflow-wrap:anywhere;line-height:1.2}
   </style>
 </head>
 <body>
 <div id="stage">
-  <div class="bg"></div>
+  <div class="bg"><span class="blob b1"></span><span class="blob b2"></span><canvas class="dots" data-step="34" data-r="2"></canvas></div>
 
   <!-- Заставка -->
   <section class="scene" id="s-waiting">
     <div style="display:grid;grid-template-columns:1.1fr 1fr;gap:70px;height:100%">
       <div style="display:flex;flex-direction:column;justify-content:center">
         <div class="kicker">{{ ((ev.texts or {}).get('partners') or 'USTEM Foundation') }} · {{ kicker }}</div>
-        <h1 class="grad-text">{{ (ev.title|loc).split('·')[0] }}</h1>
+        <h1>{{ (ev.title|loc).split('·')[0] }}</h1>
         <div class="lead">{{ ev.subtitle|loc }}</div>
         <div style="margin-top:56px">
           <div class="kicker" id="cd-label">{{ t('live.starts_in') }}</div>
@@ -128,7 +132,7 @@
   <section class="scene" id="s-talk">
     <div style="display:flex;flex-direction:column;justify-content:center;height:100%">
       <div class="kicker">{{ kicker }}</div>
-      <h2 class="grad-text" style="font-size:120px">{{ (ev.title|loc).split('·')[0] }}</h2>
+      <h2 style="font-size:120px">{{ (ev.title|loc).split('·')[0] }}</h2>
       <div class="lead">{{ t('live.scr_talk') }}</div>
     </div>
     <div class="mini-qr" style="width:240px;bottom:140px">{{ qrs.academy }}<div>{{ pretty(links.academy) }}</div></div>
@@ -163,7 +167,7 @@
     <div class="qtext" id="q-text"></div>
     <div class="tiles" id="q-tiles"></div>
     <div class="note" id="q-note" style="display:none"></div>
-    <div class="ring" id="q-ring"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" stroke="#22222f" stroke-width="10" fill="none"/><circle id="ring-c" cx="50" cy="50" r="44" stroke="url(#g)" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="276.5" stroke-dashoffset="0"/><defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#2f5bff"/><stop offset=".5" stop-color="#8a2be2"/><stop offset="1" stop-color="#ff6a1a"/></linearGradient></defs></svg><div class="num" id="q-sec">30</div></div>
+    <div class="ring" id="q-ring"><svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" stroke="rgba(255,255,255,.22)" stroke-width="10" fill="none"/><circle id="ring-c" cx="50" cy="50" r="44" stroke="url(#g)" stroke-width="10" fill="none" stroke-linecap="round" stroke-dasharray="276.5" stroke-dashoffset="0"/><defs><linearGradient id="g" x1="0" x2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#f2a900"/></linearGradient></defs></svg><div class="num" id="q-sec">30</div></div>
     <div class="answered" id="q-ans">{{ t('live.scr_answered') }}<b id="q-ans-n">0</b></div>
     <div class="mini-qr" id="q-qr">{{ qrs.academy }}<div>{{ pretty(links.academy) }}</div></div>
   </section>
@@ -171,7 +175,7 @@
   <!-- Рейтинг -->
   <section class="scene" id="s-leaderboard">
     <div class="kicker">{{ t('live.scr_lb_k') }}</div>
-    <h2 class="grad-text">{{ t('live.scr_lb_h') }}</h2>
+    <h2>{{ t('live.scr_lb_h') }}</h2>
     <div class="cols">
       <div class="lb" id="lb"></div>
       <div><div class="sect">{{ t('live.scr_lb_regions') }}</div><div class="bars" id="lb-reg"></div></div>

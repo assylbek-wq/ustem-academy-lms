@@ -1,17 +1,41 @@
+{# Общие токены страниц эфира: стиль отчетов «Келешек» - синяя обложка, светлые панели, Golos Text, синие и янтарные полосы. #}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
   :root{
-    --ink:#0b0b12; --bg:#0b0b12; --card:#16161f; --line:#2a2a38; --mute:#9a9ab0; --text:#f4f4f8;
-    --blue:#2f5bff; --violet:#8a2be2; --red:#e8323c; --orange:#ff6a1a; --green:#22c55e;
-    --grad:linear-gradient(90deg,#2f5bff 0%,#8a2be2 38%,#e8323c 72%,#ff6a1a 100%);
+    --sea:#0075f2; --lake:#189cd9; --sky:#52bdea; --blue:#0069da; --deep:#003f9e; --gold:#f2a900;
+    --amber:#e39b12; --amber-soft:#fff3d6; --amber-ink:#8f5f14; --red:#e5484d; --red-soft:#fdecec; --green:#1a9f5b; --green-soft:#e3f6ec;
+    --bg:#f5f7fa; --card:#ffffff; --card2:#f7f9fc; --line:#e3e8ef; --mute:#5c6670; --soft:#3d4650; --text:#1b1f24; --ink:#1b1f24;
+    --tint:#edf5ff; --land:#c9d9ee; --chip:#eef3f9; --field:#ffffff; --dim:#9aa6b3;
+    --violet:#0069da; --orange:#e39b12; --accent:#0069da;
+    --grad:linear-gradient(90deg,#0075f2,#52bdea);
+    --cover:linear-gradient(120deg,#0057c8 0%,#0075f2 38%,#189cd9 72%,#52bdea 100%);
     --k0:#e21b3c; --k1:#1368ce; --k2:#d89e00; --k3:#26890c;
+    --f-body:"Golos Text","Segoe UI",Arial,sans-serif; --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+    --shadow:0 1px 2px rgba(16,40,80,.05),0 8px 24px -12px rgba(16,40,80,.12);
+    color-scheme:light;
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
-  body{font-family:'Inter',ui-sans-serif,-apple-system,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased}
-  .grad-text{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+  body{font-family:var(--f-body);-webkit-font-smoothing:antialiased}
+  [hidden]{display:none!important}
+  .mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+  .eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--blue)}
+  .grad-text{background:linear-gradient(90deg,var(--sea),var(--lake));-webkit-background-clip:text;background-clip:text;color:transparent}
   .grad-line{height:3px;background:var(--grad);border-radius:2px}
   .shape{display:inline-block;width:1em;height:1em;flex:none}
   .shape svg{width:100%;height:100%;display:block}
+  /* Синяя обложка с пятнами и волной точек (как в отчетах «Келешек») */
+  .cover{position:relative;overflow:hidden;color:#fff;background:var(--cover)}
+  .cover canvas.dots{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  .cover .blob{position:absolute;border-radius:50%;filter:blur(60px);opacity:.45;pointer-events:none}
+  .cover .b1{width:420px;height:420px;background:#7fd6ff;right:-120px;top:-140px;animation:ldrift 16s ease-in-out infinite alternate}
+  .cover .b2{width:360px;height:360px;background:#003fa6;left:-140px;bottom:-180px;animation:ldrift 20s ease-in-out infinite alternate-reverse}
+  @keyframes ldrift{to{transform:translate(-60px,50px) scale(1.12)}}
+  .cover .ctag{font-family:var(--f-mono);font-size:12px;letter-spacing:.06em;padding:6px 10px;border:1px solid rgba(255,255,255,.45);border-radius:999px;background:rgba(255,255,255,.08);white-space:nowrap;color:#fff}
+  .glass{background:rgba(0,40,110,.18);border:1px solid rgba(255,255,255,.28);border-radius:16px;backdrop-filter:blur(6px)}
+  @media (prefers-reduced-motion: reduce){.cover .blob{animation:none}}
 </style>
 <script>
 window.LIVE_SHAPES = [
@@ -21,4 +45,24 @@ window.LIVE_SHAPES = [
   '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="1.5" fill="#fff"/></svg>'];
 window.liveEsc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); };
 window.liveLoc = function (o, lang) { if (!o) return ''; if (typeof o === 'string') return o; return o[lang] || o.kk || o.ru || o.en || ''; };
+// Волна точек на обложке: canvas.dots внутри .cover
+window.liveDots = function (cv, opt) {
+  opt = opt || {};
+  var ctx = cv && cv.getContext && cv.getContext('2d'); if (!ctx) return;
+  var w = 0, h = 0, t0 = performance.now(), RM = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var step = +opt.step || 22, fx = +opt.cx || .72, fy = +opt.cy || .35, rad = +opt.r || 1.3;
+  function size() { var r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1; w = r.width; h = r.height; cv.width = w * d; cv.height = h * d; ctx.setTransform(d, 0, 0, d, 0, 0); }
+  function draw(t) {
+    ctx.clearRect(0, 0, w, h);
+    var cx = w * fx, cy = h * fy, R = Math.max(w, h) * .75, k = (t - t0) / 1000;
+    for (var y = step / 2; y < h; y += step) for (var x = step / 2; x < w; x += step) {
+      var dd = Math.hypot(x - cx, y - cy) / R, wave = .5 + .5 * Math.sin(dd * 14 - k * 1.4), a = Math.max(0, .06 + .22 * dd * wave);
+      ctx.fillStyle = 'rgba(255,255,255,' + a.toFixed(3) + ')'; ctx.beginPath(); ctx.arc(x, y, rad, 0, 6.283); ctx.fill();
+    }
+    if (RM) return;
+    if (document.hidden) setTimeout(function () { requestAnimationFrame(draw); }, 1000); else requestAnimationFrame(draw);
+  }
+  size(); window.addEventListener('resize', size); if (window.ResizeObserver) new ResizeObserver(size).observe(cv); requestAnimationFrame(draw);
+};
+document.addEventListener('DOMContentLoaded', function () { Array.prototype.forEach.call(document.querySelectorAll('canvas.dots'), function (c) { window.liveDots(c, c.dataset); }); });
 </script>

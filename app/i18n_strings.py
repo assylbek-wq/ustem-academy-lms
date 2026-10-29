@@ -1215,7 +1215,7 @@ _S.update({
     'live.st_watch_h': ('Сколько смотрели', 'Қанша уақыт көрді', 'Watch time'),
     'live.st_watch_sub': ('Минут на странице эфира у каждого учителя.', 'Әр мұғалімнің эфир бетіндегі минуттары.', 'Minutes each teacher spent on the live page.'),
     'live.st_quiz_h': ('Викторина', 'Викторина', 'Quiz'),
-    'live.st_quiz_sub': ('Доля верных ответов и выбор по каждому варианту. Белая рамка - правильный ответ.', 'Дұрыс жауаптар үлесі және әр нұсқа бойынша таңдау. Ақ жиек - дұрыс жауап.', 'Share of right answers and picks per option. White frame marks the right answer.'),
+    'live.st_quiz_sub': ('Доля верных ответов и выбор по каждому варианту. Зеленая рамка - правильный ответ.', 'Дұрыс жауаптар үлесі және әр нұсқа бойынша таңдау. Жасыл жиек - дұрыс жауап.', 'Share of right answers and picks per option. Green frame marks the right answer.'),
     'live.st_top_h': ('Лучшие учителя', 'Үздік мұғалімдер', 'Top teachers'),
     'live.st_top_sub': ('По баллам викторины: верный и быстрый ответ дает больше.', "Викторина ұпайы бойынша: дұрыс әрі жылдам жауапқа ұпай көбірек беріледі.", 'By quiz score: right and fast answers earn more.'),
     'live.st_sch_h': ('Самые активные школы', 'Ең белсенді мектептер', 'Most active schools'),
@@ -1482,6 +1482,11 @@ _S.update({
     'live.fb_comments': ('Комментарии', "Түсініктемелер", 'Comments'),
     'live.fb_topics_h': ('Темы на будущее', 'Болашақ тақырыптар', 'Future topics'),
     'live.fb_none': ('Отзывов пока нет. Форма появится у учителей, когда на пульте нажмут «Финал».', 'Әзірге пікір жоқ. Пультте «Финал» басылғанда мұғалімдерде форма шығады.', 'No feedback yet. Teachers see the form when Finish is pressed on the control.'),
+    'live.b_k_lives': ('Вебинаров', 'Вебинар', 'Webinars'),
+    'live.b_k_soon': ('Скоро', 'Жақында', 'Upcoming'),
+    'live.b_k_viewers': ('Участников всего', 'Барлық қатысушы', 'Viewers in total'),
+    'live.b_k_questions': ('Вопросов викторины', 'Викторина сұрағы', 'Quiz questions'),
+    'live.b_all': ('Все вебинары', 'Барлық вебинарлар', 'All webinars'),
     'live.st_none': ('Пока нет данных.', 'Әзірге дерек жоқ.', 'No data yet.'),
 })
 
