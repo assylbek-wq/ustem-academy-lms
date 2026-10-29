@@ -25,6 +25,7 @@ from ..models import EfirAnswer, EfirAsk, EfirEvent, EfirFeedback, EfirQuestion,
 from ..services import efir as svc
 from ..services import efir_builder as lb
 from ..services import efir_deck as deck_svc
+from ..services import efir_media as media
 from ..services.mail import absolute
 
 bp = Blueprint("efir", __name__, url_prefix="/efir")
@@ -215,7 +216,7 @@ def screen(slug):
                            key=request.args.get("key", ""), subjects=svc.SUBJECTS, blocks_json=svc.blocks(slug),
                            starts=ev.starts_at.strftime("%Y-%m-%dT%H:%M:%S") if ev.starts_at else "",
                            kicker=lb.kicker(ev, get_locale()), finish_text=_finish(ev) or t("live.scr_finish_sub_def"),
-                           bot_handle=lb.bot_handle(links.get("bot")), demo=_demo(ev),
+                           bot_handle=lb.bot_handle(links.get("bot")), demo=_demo(ev), media_on=media.enabled(),
                            deck=deck_svc.for_screen(ev, links, request.args.get("key", "")))
 
 
@@ -282,6 +283,7 @@ def screen_json(slug):
     st = out["state"] or {}
     if request.args.get("dv") is not None and str(st.get("dv", 0)) != request.args.get("dv"):
         out["deck"] = deck_svc.for_screen(ev, _links(ev), request.args.get("key", ""))
+    out["stage"] = _stage_out(ev)
     picked = (EfirAsk.query.filter_by(event_id=ev.id, status="picked").order_by(EfirAsk.created_at.desc()).first())
     if picked:
         v = EfirViewer.query.filter_by(event_id=ev.id, user_id=picked.user_id).first()
@@ -305,7 +307,8 @@ def control(slug):
                                               "note": q.note or {}, "seconds": q.seconds} for q in qs},
                            screen_url=absolute(url_for("efir.screen", slug=slug, key=ev.screen_key, lang="kk")),
                            overlay_url=absolute(url_for("efir.overlay", slug=slug, key=ev.screen_key, lang="kk")),
-                           deck=deck_svc.for_screen(ev, links))
+                           deck=deck_svc.for_screen(ev, links), media_on=media.enabled(), speaker_url=guest_url(ev),
+                           stage=_stage_out(ev), has_stream_key=bool(ev.stream_key))
 
 
 @bp.route("/<slug>/control.json")
@@ -582,7 +585,10 @@ def _builder_json(ev: EfirEvent) -> dict:
                        "note": q.note or {}, "seconds": q.seconds, "used": q.id in used} for q in qs],
         "ready": lb.readiness(ev),
         "deck": _deck_json(ev),
+        "media_on": media.enabled(), "stream_url": ev.stream_url or "", "has_stream_key": bool(ev.stream_key),
+        "stream_key_tail": (ev.stream_key or "")[-4:],
         "urls": {
+            "speaker": guest_url(ev),
             "watch": absolute(url_for("efir.watch", slug=ev.slug, lang=ev.lang or "kk")),
             "screen": absolute(url_for("efir.screen", slug=ev.slug, key=ev.screen_key, lang=ev.lang or "kk")),
             "overlay": absolute(url_for("efir.overlay", slug=ev.slug, key=ev.screen_key, lang=ev.lang or "kk")),
@@ -903,3 +909,137 @@ def build_speaker(slug):
     except deck_svc.DeckError as e:
         return _bad(str(e))
     return jsonify({"ok": True})
+
+
+# ─── Студия: видеосервер, спикеры по ссылке, трансляция в YouTube ────────
+
+
+def _guest_ok(ev: EfirEvent) -> bool:
+    k = request.args.get("k") or (request.get_json(silent=True) or {}).get("k") or ""
+    return bool(k) and secrets.compare_digest(str(k), ev.guest_key)
+
+
+def guest_url(ev: EfirEvent) -> str:
+    return absolute(url_for("efir.guest", slug=ev.slug, k=ev.guest_key))
+
+
+def _stage_out(ev: EfirEvent) -> dict:
+    s = media.stage(ev)
+    return {"on": s["on"], "muted": s["muted"], "layout": s["layout"], "v": s["v"]}
+
+
+@bp.route("/<slug>/guest")
+def guest(slug):
+    """Страница спикера: проверка камеры и микрофона, имя, вход в студию. Вход не нужен, доступ по ключу ссылки."""
+    ev = _event(slug)
+    if not _guest_ok(ev):
+        abort(404)
+    return render_template("efir/guest.html", ev=ev, k=ev.guest_key, media_on=media.enabled(),
+                           lk_url=media.cfg()["url"])
+
+
+@bp.route("/<slug>/guest/token", methods=["POST"])
+def guest_token(slug):
+    ev = _event(slug)
+    if not _guest_ok(ev):
+        abort(404)
+    if not media.enabled():
+        return _bad("efir.m_off", 503)
+    f = request.get_json(silent=True) or {}
+    name = " ".join(str(f.get("name") or "").split())[:80]
+    role = " ".join(str(f.get("role") or "").split())[:80]
+    if len(name) < 2:
+        return _bad("efir.g_err_name")
+    ident = media.guest_identity(f.get("prev"))
+    tok = media.token(ev, ident, name=name, publish=True, meta={"role": role})
+    audit("live.guest", "efir_event", ev.id, identity=ident, name=name)
+    db.session.commit()
+    return jsonify({"ok": True, "url": media.cfg()["url"], "token": tok, "identity": ident})
+
+
+@bp.route("/<slug>/guest/status")
+def guest_status(slug):
+    ev = _event(slug)
+    if not _guest_ok(ev):
+        abort(404)
+    s = media.stage(ev)
+    ident = request.args.get("id") or ""
+    resp = jsonify({"on": ident in s["on"], "muted": ident in s["muted"], "on_list": s["on"], "mode": (ev.state or {}).get("mode") or "waiting",
+                    "streaming": (ev.egress or {}).get("status") in media.ACTIVE})
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
+@bp.route("/<slug>/media.json")
+def media_json(slug):
+    """Невидимый вход в комнату для экрана эфира (по ключу экрана) и для пульта (команда)."""
+    ev = _event(slug)
+    if not _screen_ok(ev):
+        abort(403)
+    if not media.enabled():
+        return jsonify({"ok": False})
+    kind = "control" if request.args.get("as") == "control" and g.user and g.user.has_role("methodist", "trainer") else "screen"
+    tok = media.token(ev, media.viewer_identity(kind), hidden=True)
+    resp = jsonify({"ok": True, "url": media.cfg()["url"], "token": tok, "stage": _stage_out(ev)})
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
+@bp.route("/<slug>/control/stage", methods=["POST"])
+@role_required("methodist", "trainer")
+def control_stage(slug):
+    ev = _event(slug)
+    f = request.get_json(silent=True) or {}
+    s = media.set_stage(ev, on=f.get("on"), muted=f.get("muted"), layout=f.get("layout"))
+    audit("live.stage", "efir_event", ev.id, on=s["on"], layout=s["layout"])
+    db.session.commit()
+    return jsonify({"ok": True, "stage": _stage_out(ev)})
+
+
+@bp.route("/<slug>/control/kick", methods=["POST"])
+@role_required("methodist", "trainer")
+def control_kick(slug):
+    ev = _event(slug)
+    ident = str((request.get_json(silent=True) or {}).get("identity") or "")
+    if not ident.startswith("g-"):
+        return _bad("efir.m_bad")
+    s = media.stage(ev)
+    media.set_stage(ev, on=[x for x in s["on"] if x != ident])
+    try:
+        media.remove(ev, ident)
+    except media.MediaError:
+        pass
+    audit("live.kick", "efir_event", ev.id, identity=ident)
+    db.session.commit()
+    return jsonify({"ok": True, "stage": _stage_out(ev)})
+
+
+def _stream_out(ev: EfirEvent) -> dict:
+    eg = media.stream_status(ev)
+    db.session.commit()
+    return {"status": eg.get("status") or "", "error": eg.get("error") or "", "at": eg.get("at") or 0,
+            "has_key": bool(ev.stream_key), "media": media.enabled()}
+
+
+@bp.route("/<slug>/control/stream", methods=["GET", "POST"])
+@role_required("methodist", "trainer")
+def control_stream(slug):
+    ev = _event(slug)
+    if request.method == "GET":
+        return jsonify({"ok": True, "stream": _stream_out(ev)})
+    action = (request.get_json(silent=True) or {}).get("action")
+    try:
+        if action == "start":
+            url = absolute(url_for("efir.screen", slug=ev.slug, key=ev.screen_key, lang=ev.lang or "kk", egress=1))
+            media.start_stream(ev, url)
+        elif action == "stop":
+            media.stop_stream(ev)
+        else:
+            return _bad("efir.m_bad")
+    except media.MediaError as e:
+        db.session.rollback()
+        msg = str(e)
+        return jsonify({"ok": False, "error": t(msg) if msg.startswith("efir.") else t("efir.s_err", msg=msg)}), 502
+    audit("live.stream", "efir_event", ev.id, op=action)
+    db.session.commit()
+    return jsonify({"ok": True, "stream": _stream_out(ev)})

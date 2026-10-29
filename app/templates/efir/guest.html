@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="{{ locale }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <meta name="robots" content="noindex">
+  <title>{{ t('efir.g_title') }} · {{ ev.title|loc }}</title>
+  {% include "efir/_studio.html" %}
+  <style>
+    main{max-width:1180px;margin:0 auto;padding:22px 20px 60px}
+    .grid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:20px;align-items:start}
+    @media (max-width:860px){.grid{grid-template-columns:1fr}}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:var(--shadow)}
+    .vid{position:relative;aspect-ratio:16/9;background:#1d2633;border-radius:14px;overflow:hidden}
+    .vid video{width:100%;height:100%;object-fit:cover;display:block}
+    .vid.mirror video.cam{transform:scaleX(-1)}
+    .vid .ph{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:#9fb0c6;font-weight:600;text-align:center;padding:16px}
+    .vid .ph b{font-size:44px}
+    .vid .tag{position:absolute;left:10px;bottom:10px;background:rgba(0,0,0,.55);color:#fff;border-radius:8px;padding:4px 9px;font-size:12.5px;font-weight:600}
+    .vid .air{position:absolute;right:10px;top:10px;background:var(--red);color:#fff;border-radius:999px;padding:4px 10px;font:600 11px var(--f-mono);letter-spacing:.06em;display:none}
+    .vid.onair .air{display:block}
+    .vid.onair{box-shadow:0 0 0 3px var(--red)}
+    .meter{height:6px;background:var(--chip);border-radius:3px;overflow:hidden;margin-top:8px}
+    .meter i{display:block;height:100%;width:0;background:var(--green);transition:width .08s}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .fld{margin-top:14px}
+    .status{display:flex;gap:12px;align-items:center;border-radius:14px;padding:14px 16px;font-weight:600;margin-bottom:16px}
+    .status.back{background:var(--amber-soft);color:var(--amber-ink)}
+    .status.on{background:var(--red-soft);color:var(--red)}
+    .status .dot{width:10px;height:10px;border-radius:50%;background:currentColor;flex:none}
+    .status.on .dot{animation:blink 1.2s infinite}
+    .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:14px}
+    .ctl{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+    .ctl .btn.off{background:var(--red-soft);color:var(--red);border-color:transparent}
+    .note{color:var(--mute);font-size:13px;line-height:1.5;margin-top:10px}
+    .err{color:var(--red);font-size:13px;margin-top:8px}
+    h2{font-size:18px;margin:0 0 4px;font-weight:800}
+  </style>
+</head>
+<body>
+<header class="top"><div class="in">
+  <img src="{{ url_for('static', filename='img/ustem-foundation-white.webp') }}" alt="USTEM">
+  <span class="ttl">{{ ev.title|loc }}</span><span class="sp"></span>
+  <span class="langs">{% for l in ('kk', 'ru') %}<a href="?k={{ k }}&lang={{ l }}" class="{{ 'on' if locale == l }}">{{ l|upper }}</a>{% endfor %}</span>
+</div></header>
+
+<main>
+  {% if not media_on %}
+  <div class="card"><h2>{{ t('efir.g_off_h') }}</h2><div class="note">{{ t('efir.g_off') }}</div></div>
+  {% else %}
+  <div id="st" class="status back" hidden><span class="dot"></span><span id="st-t"></span></div>
+  <div class="grid">
+    <div class="card">
+      <div class="vid mirror" id="me"><video class="cam" id="me-v" autoplay muted playsinline></video>
+        <div class="ph" id="me-ph"><b>🎥</b><span>{{ t('efir.g_cam_wait') }}</span></div>
+        <span class="air">{{ t('efir.g_air') }}</span><span class="tag" id="me-tag">{{ t('efir.g_you') }}</span></div>
+      <div class="meter" title="{{ t('efir.g_mic') }}"><i id="lvl"></i></div>
+      <div class="ctl" id="ctl" hidden>
+        <button class="btn" type="button" id="b-mic">🎙 {{ t('efir.g_mic') }}</button>
+        <button class="btn" type="button" id="b-cam">🎥 {{ t('efir.g_cam') }}</button>
+        <button class="btn" type="button" id="b-scr">🖥 {{ t('efir.g_share') }}</button>
+        <span class="sp"></span>
+        <button class="btn danger" type="button" id="b-leave">{{ t('efir.g_leave') }}</button>
+      </div>
+      <div class="tiles" id="others"></div>
+    </div>
+
+    <div class="card" id="setup">
+      <h2>{{ t('efir.g_h') }}</h2>
+      <div class="note" style="margin-top:0">{{ t('efir.g_sub') }}</div>
+      <div class="fld"><label class="in-l" for="d-cam">{{ t('efir.g_cam') }}</label><select class="f" id="d-cam"></select></div>
+      <div class="fld"><label class="in-l" for="d-mic">{{ t('efir.g_mic') }}</label><select class="f" id="d-mic"></select></div>
+      <div class="fld"><label class="in-l" for="nm">{{ t('efir.g_name') }}</label><input class="f" id="nm" maxlength="80" autocomplete="name" placeholder="{{ t('efir.g_name_ph') }}"></div>
+      <div class="fld"><label class="in-l" for="rl">{{ t('efir.g_role') }} <small>· {{ t('efir.g_role_opt') }}</small></label><input class="f" id="rl" maxlength="80" placeholder="{{ t('efir.g_role_ph') }}"></div>
+      <div class="err" id="err" hidden></div>
+      <div class="row" style="margin-top:16px"><button class="btn pri" type="button" id="go" style="width:100%;padding:12px">{{ t('efir.g_join') }} →</button></div>
+      <div class="note">{{ t('efir.g_tips') }}</div>
+    </div>
+    <div class="card" id="joined" hidden>
+      <h2 id="j-name"></h2><div class="note" style="margin-top:0" id="j-role"></div>
+      <div class="note">{{ t('efir.g_joined_note') }}</div>
+    </div>
+  </div>
+  {% endif %}
+</main>
+<div class="toast" id="toast"></div>
+
+{% if media_on %}
+<script src="{{ url_for('static', filename='efir/livekit-client.umd.js') }}"></script>
+<script>
+(function () {
+  var LK = window.LivekitClient, SLUG = {{ ev.slug|tojson }}, K = {{ k|tojson }};
+  var CSRF = document.querySelector('meta[name=csrf-token]').content;
+  var T = {{ {'back': t('efir.g_back'), 'on': t('efir.g_on'), 'muted': t('efir.g_muted_by'), 'nocam': t('efir.g_nocam'),
+              'err_name': t('efir.g_err_name'), 'err_dev': t('efir.g_err_dev'), 'net': t('live.net'), 'left': t('efir.g_left'),
+              'mic_off': t('efir.g_mic_off'), 'cam_off': t('efir.g_cam_off'), 'share_stop': t('efir.g_share_stop')}|tojson }};
+  var $ = function (id) { return document.getElementById(id); };
+  function toast(m, e) { var el = $('toast'); el.textContent = m; el.className = 'toast on' + (e ? ' err' : ''); setTimeout(function () { el.className = 'toast'; }, 2800); }
+  function ls(k, v) { try { if (v === undefined) return localStorage.getItem('efir.' + k) || ''; localStorage.setItem('efir.' + k, v); } catch (e) { return ''; } }
+  $('nm').value = ls('name'); $('rl').value = ls('role');
+
+  var tracks = [], room = null, ident = '', meterCtx = null, meterRaf = 0, micOn = true, camOn = true, forcedMute = false;
+  function trackOf(kind) { return tracks.filter(function (t) { return t.kind === kind; })[0]; }
+  function showMe() {
+    var v = trackOf('video');
+    if (v) { v.attach($('me-v')); $('me-ph').style.display = 'none'; } else { $('me-ph').style.display = 'flex'; $('me-ph').querySelector('span').textContent = T.nocam; }
+  }
+  function meter() {
+    cancelAnimationFrame(meterRaf);
+    var a = trackOf('audio'); if (!a) return;
+    try {
+      meterCtx = meterCtx || new (window.AudioContext || window.webkitAudioContext)();
+      var src = meterCtx.createMediaStreamSource(new MediaStream([a.mediaStreamTrack])), an = meterCtx.createAnalyser();
+      an.fftSize = 512; src.connect(an);
+      var buf = new Uint8Array(an.fftSize);
+      (function loop() {
+        an.getByteTimeDomainData(buf); var m = 0;
+        for (var i = 0; i < buf.length; i++) m = Math.max(m, Math.abs(buf[i] - 128));
+        $('lvl').style.width = (micOn ? Math.min(100, m / 64 * 100) : 0) + '%';
+        meterRaf = requestAnimationFrame(loop);
+      })();
+    } catch (e) {}
+  }
+  function fillDevices() {
+    return LK.Room.getLocalDevices('videoinput').then(function (cams) {
+      return LK.Room.getLocalDevices('audioinput').then(function (mics) {
+        function fill(sel, list, cur) { sel.innerHTML = list.map(function (d, i) { return '<option value="' + d.deviceId + '">' + window.liveEsc(d.label || ('#' + (i + 1))) + '</option>'; }).join(''); if (cur) sel.value = cur; }
+        fill($('d-cam'), cams, ls('cam')); fill($('d-mic'), mics, ls('mic'));
+      });
+    });
+  }
+  function makeTracks() {
+    tracks.forEach(function (t) { t.stop(); });
+    var cam = $('d-cam').value, mic = $('d-mic').value;
+    return LK.createLocalTracks({
+      audio: Object.assign({echoCancellation: true, noiseSuppression: true, autoGainControl: true}, mic ? {deviceId: mic} : {}),
+      video: Object.assign({resolution: LK.VideoPresets.h720.resolution}, cam ? {deviceId: cam} : {})
+    }).catch(function () { return LK.createLocalTracks({audio: true, video: false}); })
+      .then(function (ts) { tracks = ts; showMe(); meter(); })
+      .catch(function () { $('err').hidden = false; $('err').textContent = T.err_dev; });
+  }
+  makeTracks().then(fillDevices).then(function () { return makeTracks(); });
+  $('d-cam').onchange = function () { ls('cam', this.value); room ? room.switchActiveDevice('videoinput', this.value) : makeTracks(); };
+  $('d-mic').onchange = function () { ls('mic', this.value); room ? room.switchActiveDevice('audioinput', this.value) : makeTracks(); };
+
+  // ─── Остальные спикеры: видео и звук ───
+  function tileFor(p) {
+    var id = 'p-' + p.identity, el = $(id);
+    if (!el) {
+      el = document.createElement('div'); el.className = 'vid'; el.id = id;
+      el.innerHTML = '<div class="ph"><b>👤</b></div><span class="air">' + {{ t('efir.g_air')|tojson }} + '</span><span class="tag"></span>';
+      $('others').appendChild(el);
+    }
+    el.querySelector('.tag').textContent = p.name || p.identity;
+    return el;
+  }
+  function attach(track, pub, p) {
+    if (track.kind === 'audio') { var a = track.attach(); a.dataset.p = p.identity; document.body.appendChild(a); return; }
+    var el = tileFor(p); el.querySelectorAll('video').forEach(function (v) { v.remove(); });
+    var v = track.attach(); el.insertBefore(v, el.firstChild); el.querySelector('.ph').style.display = 'none';
+  }
+  function detach(track, pub, p) {
+    track.detach().forEach(function (e) { e.remove(); });
+    var el = p && $('p-' + p.identity); if (el && track.kind === 'video') el.querySelector('.ph').style.display = 'flex';
+  }
+
+  // ─── Вход ───
+  $('go').onclick = function () {
+    var name = $('nm').value.trim(), role = $('rl').value.trim();
+    $('err').hidden = true;
+    if (name.length < 2) { $('err').hidden = false; $('err').textContent = T.err_name; $('nm').focus(); return; }
+    ls('name', name); ls('role', role);
+    var go = $('go'); go.disabled = true;
+    fetch('/efir/' + SLUG + '/guest/token', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': CSRF},
+      body: JSON.stringify({k: K, name: name, role: role, prev: ls('id')})})
+      .then(function (r) { return r.json(); }).then(function (d) {
+        if (!d.ok) throw new Error(d.error || T.net);
+        ident = d.identity; ls('id', ident);
+        room = new LK.Room({adaptiveStream: true, dynacast: true});
+        room.on(LK.RoomEvent.TrackSubscribed, attach).on(LK.RoomEvent.TrackUnsubscribed, detach)
+          .on(LK.RoomEvent.ParticipantDisconnected, function (p) { var el = $('p-' + p.identity); if (el) el.remove(); })
+          .on(LK.RoomEvent.ParticipantConnected, function (p) { tileFor(p); })
+          .on(LK.RoomEvent.Disconnected, function () { toast(T.left); });
+        return room.connect(d.url, d.token).then(function () {
+          return Promise.all(tracks.map(function (t) { return room.localParticipant.publishTrack(t, t.kind === 'video' ? {simulcast: true} : {}); }));
+        });
+      }).then(function () {
+        room.remoteParticipants.forEach(function (p) { tileFor(p); });
+        $('setup').hidden = true; $('joined').hidden = false; $('ctl').hidden = false; $('st').hidden = false;
+        $('j-name').textContent = name; $('j-role').textContent = role;
+        $('me-tag').textContent = name;
+        poll();
+      }).catch(function (e) { go.disabled = false; $('err').hidden = false; $('err').textContent = e.message || T.net; });
+  };
+
+  function setMic(on) {
+    var a = trackOf('audio'); micOn = on;
+    if (a) (on ? a.unmute() : a.mute());
+    $('b-mic').classList.toggle('off', !on); $('b-mic').textContent = on ? '🎙 ' + {{ t('efir.g_mic')|tojson }} : '🔇 ' + T.mic_off;
+  }
+  $('b-mic').onclick = function () { if (forcedMute) { toast(T.muted, true); return; } setMic(!micOn); };
+  $('b-cam').onclick = function () {
+    var v = trackOf('video'); if (!v) return; camOn = !camOn; camOn ? v.unmute() : v.mute();
+    this.classList.toggle('off', !camOn); this.textContent = camOn ? '🎥 ' + {{ t('efir.g_cam')|tojson }} : '🚫 ' + T.cam_off;
+  };
+  $('b-scr').onclick = function () {
+    var on = !room.localParticipant.isScreenShareEnabled, b = this;
+    room.localParticipant.setScreenShareEnabled(on, {audio: true}).then(function () {
+      b.classList.toggle('off', on); b.textContent = on ? '■ ' + T.share_stop : '🖥 ' + {{ t('efir.g_share')|tojson }};
+    }).catch(function () {});
+  };
+  $('b-leave').onclick = function () { if (room) room.disconnect(); tracks.forEach(function (t) { t.stop(); }); location.reload(); };
+
+  // ─── В эфире или за кулисами ───
+  function poll() {
+    fetch('/efir/' + SLUG + '/guest/status?k=' + encodeURIComponent(K) + '&id=' + encodeURIComponent(ident), {cache: 'no-store'})
+      .then(function (r) { return r.json(); }).then(function (s) {
+        var st = $('st'); st.className = 'status ' + (s.on ? 'on' : 'back'); $('st-t').textContent = s.on ? T.on : T.back;
+        $('me').classList.toggle('onair', !!s.on);
+        Array.prototype.forEach.call(document.querySelectorAll('#others .vid'), function (el) { el.classList.toggle('onair', (s.on_list || []).indexOf(el.id.slice(2)) >= 0); });
+        if (s.muted && !forcedMute) { forcedMute = true; setMic(false); toast(T.muted, true); }
+        if (!s.muted && forcedMute) { forcedMute = false; }
+      }).catch(function () {}).finally(function () { setTimeout(poll, 2000); });
+  }
+})();
+</script>
+{% endif %}
+</body>
+</html>

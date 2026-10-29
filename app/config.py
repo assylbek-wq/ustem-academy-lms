@@ -39,6 +39,12 @@ class Config:
     AI_MODEL = os.environ.get("AI_MODEL", "claude-sonnet-5-5")
     AI_DAILY_LIMIT = int(os.environ.get("AI_DAILY_LIMIT", "40"))
 
+    # Видеосервер студии эфиров /efir (LiveKit, services/efir_media.py). Без него студия работает без камер спикеров.
+    LIVEKIT_URL = os.environ.get("LIVEKIT_URL", "")
+    LIVEKIT_API_URL = os.environ.get("LIVEKIT_API_URL", "")
+    LIVEKIT_API_KEY = os.environ.get("LIVEKIT_API_KEY", "")
+    LIVEKIT_API_SECRET = os.environ.get("LIVEKIT_API_SECRET", "")
+
     # Почта (необязательно). Без SMTP письма пишутся в лог, а ссылки показываются админу.
     SMTP_HOST = os.environ.get("SMTP_HOST", "")
     SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
@@ -73,3 +79,4 @@ class TestConfig(Config):
     SECRET_KEY = "test"
     SQLALCHEMY_DATABASE_URI = os.environ.get("TEST_DATABASE_URL", "sqlite://")
     ANTHROPIC_API_KEY = ""
+    LIVEKIT_URL = LIVEKIT_API_KEY = LIVEKIT_API_SECRET = ""

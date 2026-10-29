@@ -89,6 +89,21 @@
     .sl-qr svg{width:100%;height:auto;display:block}
     .sl-qr b{display:block;font-size:26px;line-height:1.15;margin-top:10px;font-weight:900}
     .sl-qr small{display:block;font-family:var(--f-mono);font-size:16px;color:#0069da;font-weight:700;margin-top:6px;overflow-wrap:anywhere;line-height:1.2}
+    /* Студия: камеры спикеров с видеосервера */
+    #cams{position:absolute;inset:0;pointer-events:none;z-index:4}
+    .camt{position:absolute;overflow:hidden;border-radius:24px;background:#1d2633;opacity:0;transition:left .45s ease,top .45s ease,width .45s ease,height .45s ease,opacity .35s ease;box-shadow:0 30px 60px -30px rgba(0,20,60,.7)}
+    .camt.on{opacity:1}
+    .camt video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+    .camt video.scr{object-fit:contain;background:#0b1220}
+    .camt video.pip{left:auto;top:auto;right:16px;bottom:16px;width:24%;height:auto;aspect-ratio:16/9;border-radius:14px;border:3px solid #fff}
+    .camt .plate{position:absolute;left:18px;bottom:18px;background:#fff;color:#0057c8;border-radius:12px;padding:8px 14px;font-size:24px;font-weight:800;line-height:1.15;max-width:calc(100% - 36px)}
+    .camt .plate small{display:block;font-size:17px;font-weight:600;color:#5c6670;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .camt.sm .plate{left:10px;bottom:10px;padding:5px 9px;font-size:17px;border-radius:9px}
+    .camt.sm .plate small{font-size:13px}
+    .camt.talking{box-shadow:0 0 0 5px #52bdea,0 30px 60px -30px rgba(0,20,60,.7)}
+    #stage.grid .scene{opacity:0!important}
+    #sl-camph.studio{background:rgba(255,255,255,.08);border:2px dashed rgba(255,255,255,.35)}
+    #sl-camph.studio img{width:96px;height:96px;opacity:.85}
   </style>
 </head>
 <body>
@@ -213,6 +228,8 @@
     </div>
   </section>
 
+  <div id="cams"></div>
+
   <div class="foot">
     <div class="brand"><img src="{{ url_for('static', filename='img/ustem-mark.png') }}" alt="">{{ (ev.title|loc).split('·')[0] }}</div>
     <div class="grad-line"></div>
@@ -220,6 +237,7 @@
   </div>
 </div>
 
+{% if media_on %}<script src="{{ url_for('static', filename='efir/livekit-client.umd.js') }}"></script>{% endif %}
 <script>
 (function () {
   var SLUG = {{ ev.slug|tojson }}, KEY = {{ key|tojson }}, LANG = {{ locale|tojson }};
@@ -252,14 +270,14 @@
   function renderSlide(i) {
     var s = (DECK.slides || [])[i];
     var cut = !!s && s.layout !== 'full';
-    document.documentElement.classList.toggle('cut', cut);
+    camRect = cut ? DECK.cam : null;  // студия: окно камеры не прозрачное, в нем камеры спикеров
     if (!s) return;
     var c = DECK.cam, full = 'M0 0H1920V1080H0Z ';
     $('sl-bg').style.clipPath = cut ? "path(evenodd, '" + full + rr(c.x, c.y, c.w, c.h, 24) + "')" : 'none';
     $('sl-ring').style.display = cut ? 'block' : 'none';
     if (cut) $('sl-ring').style.clipPath = "path(evenodd, '" + rr(c.x - 6, c.y - 6, c.w + 12, c.h + 12, 30) + ' ' + rr(c.x, c.y, c.w, c.h, 24) + "')";
     var ph = $('sl-camph');
-    ph.style.display = DEMO && cut ? 'flex' : 'none';
+    if (DEMO) ph.style.display = cut ? 'flex' : 'none';
     if (DEMO && cut) { ph.style.left = c.x + 'px'; ph.style.top = c.y + 'px'; ph.style.width = c.w + 'px'; ph.style.height = c.h + 'px'; }
     var key = s.id + '|' + s.layout;
     if (key !== slCur) {
@@ -323,7 +341,9 @@
     $('c-online').textContent = s.online || 0; $('c-joined').textContent = s.joined || 0;
     show(mode === 'reveal' ? 'question' : mode);
     stage.classList.toggle('slides', mode === 'slides');
-    if (mode === 'slides') renderSlide(st.slide || 0); else document.documentElement.classList.remove('cut');
+    camRect = null;
+    if (mode === 'slides') renderSlide(st.slide || 0);
+    MODE = mode; layoutCams();
     if (mode === 'profile') {
       $('pf-n').textContent = s.profiles || 0; $('pf-s').textContent = s.schools || 0;
       var sub = Object.keys(s.subjects || {}).map(function (k) { return {label: T.subj[k] || k, n: s.subjects[k]}; }).sort(function (a, b) { return b.n - a.n; }).slice(0, 6);
@@ -369,15 +389,113 @@
   function poll() {
     fetch('/efir/' + SLUG + '/screen.json?key=' + encodeURIComponent(KEY) + '&dv=' + DECK.v, {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (d) {
       if (d.deck) { DECK = d.deck; slCur = null; preload(); }
+      if (d.stage) STAGE = d.stage;
       data = d; if (d.state) offset = d.state.now - Date.now() / 1000; render();
     }).catch(function () {}).finally(function () { setTimeout(poll, 1500); });
   }
+  // ─── Камеры спикеров (видеосервер) ───
+  var STAGE = {on: [], muted: [], layout: 'auto'}, MODE = 'waiting', camRect = null, PEOPLE = {}, room = null;
+  var EGRESS = {{ (request.args.get('egress') == '1')|tojson }}, signaled = false;
+  function onStage() { return (STAGE.on || []).filter(function (id) { return PEOPLE[id] && (PEOPLE[id].cam || PEOPLE[id].scr); }); }
+  function fitBox(x, y, w, h, ar) { var cw = w, ch = cw / ar; if (ch > h) { ch = h; cw = ch * ar; } return [x + (w - cw) / 2, y + (h - ch) / 2, cw, ch]; }
+  function gridRects(n) {
+    var X = 96, Y = 72, W = 1728, H = 860, g = 24, cols = n <= 1 ? 1 : (n <= 4 ? 2 : 3), rows = Math.ceil(n / cols);
+    var cw = (W - (cols - 1) * g) / cols, ch = (H - (rows - 1) * g) / rows, cell = fitBox(0, 0, cw, ch, 16 / 9);
+    var out = [], gh = rows * cell[3] + (rows - 1) * g, y0 = Y + (H - gh) / 2;
+    for (var r = 0; r < rows; r++) {
+      var inRow = Math.min(cols, n - r * cols), rw = inRow * cell[2] + (inRow - 1) * g, x0 = X + (W - rw) / 2;
+      for (var c = 0; c < inRow; c++) out.push([x0 + c * (cell[2] + g), y0 + r * (cell[3] + g), cell[2], cell[3]]);
+    }
+    return out;
+  }
+  function tile(id) {
+    var p = PEOPLE[id];
+    if (!p.el) {
+      p.el = document.createElement('div'); p.el.className = 'camt';
+      p.el.innerHTML = '<div class="plate"><span></span><small></small></div>';
+      $('cams').appendChild(p.el);
+    }
+    p.el.querySelector('.plate span').textContent = p.name || '';
+    p.el.querySelector('.plate small').textContent = p.role || '';
+    p.el.querySelector('.plate small').style.display = p.role ? 'block' : 'none';
+    var want = p.scr ? [p.scr, p.cam] : [p.cam];
+    Array.prototype.forEach.call(p.el.querySelectorAll('video'), function (v) { if (want.indexOf(v._t) < 0) v.remove(); });
+    want.forEach(function (t, i) {
+      if (!t) return;
+      var v = Array.prototype.filter.call(p.el.querySelectorAll('video'), function (x) { return x._t === t; })[0];
+      if (!v) { v = t.attach(); v._t = t; v.muted = true; p.el.insertBefore(v, p.el.querySelector('.plate')); }
+      v.className = t === p.scr ? 'scr' : (p.scr ? 'pip' : '');
+    });
+    return p.el;
+  }
+  function layoutCams() {
+    var ids = onStage(), lay = STAGE.layout || 'auto', rects = [], small = false;
+    var grid = lay !== 'hide' && ids.length && (lay === 'speakers' || MODE === 'talk');
+    if (lay !== 'hide' && ids.length && !grid && camRect) {
+      var n = ids.length, gap = 10, h = (camRect.h - (n - 1) * gap) / n;
+      ids.forEach(function (id, i) { rects.push([camRect.x, camRect.y + i * (h + gap), camRect.w, h]); });
+      small = n > 1;
+    } else if (grid) rects = gridRects(ids.length);
+    stage.classList.toggle('grid', !!grid);
+    Object.keys(PEOPLE).forEach(function (id) {
+      var p = PEOPLE[id], i = rects.length ? ids.indexOf(id) : -1;
+      if (p.el || i >= 0) tile(id);
+      if (p.el) {
+        if (i >= 0) { var r = rects[i]; p.el.style.left = r[0] + 'px'; p.el.style.top = r[1] + 'px'; p.el.style.width = r[2] + 'px'; p.el.style.height = r[3] + 'px'; p.el.style.borderRadius = camRect && !grid ? '24px' : '28px'; }
+        p.el.classList.toggle('on', i >= 0); p.el.classList.toggle('sm', small);
+      }
+      (p.audio || []).forEach(function (a) { a.muted = !((STAGE.on || []).indexOf(id) >= 0 && (STAGE.muted || []).indexOf(id) < 0); });
+    });
+    if (data && data.state && data.state.mode === 'slides' && !DEMO) {  // пустое окно камеры: логотип
+      var ph = $('sl-camph'), show = !!camRect && !ids.length;
+      if (show && !ph.dataset.studio) { ph.dataset.studio = 1; ph.innerHTML = '<img src="{{ url_for('static', filename='img/ustem-mark.png') }}" alt="">'; }
+      ph.classList.toggle('studio', show); ph.style.display = show ? 'flex' : 'none';
+      if (show) { ph.style.left = camRect.x + 'px'; ph.style.top = camRect.y + 'px'; ph.style.width = camRect.w + 'px'; ph.style.height = camRect.h + 'px'; }
+    }
+  }
+  function person(p) {
+    var x = PEOPLE[p.identity] = PEOPLE[p.identity] || {audio: []};
+    x.name = p.name || ''; try { x.role = (JSON.parse(p.metadata || '{}').role) || ''; } catch (e) { x.role = ''; }
+    return x;
+  }
+  function connectMedia() {
+    if (!window.LivekitClient) return signal();
+    fetch('/efir/' + SLUG + '/media.json?key=' + encodeURIComponent(KEY), {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (d) {
+      if (!d.ok) return signal();
+      var LK = window.LivekitClient; STAGE = d.stage || STAGE;
+      room = new LK.Room({adaptiveStream: false, dynacast: false});
+      room.on(LK.RoomEvent.TrackSubscribed, function (t, pub, p) {
+        var x = person(p);
+        if (t.kind === 'audio') { var a = t.attach(); document.body.appendChild(a); x.audio.push(a); }
+        else if (pub.source === LK.Track.Source.ScreenShare) x.scr = t; else x.cam = t;
+        render();
+      }).on(LK.RoomEvent.TrackUnsubscribed, function (t, pub, p) {
+        var x = person(p); t.detach().forEach(function (e) { e.remove(); });
+        x.audio = x.audio.filter(function (a) { return a.isConnected; });
+        if (x.scr === t) x.scr = null; if (x.cam === t) x.cam = null;
+        render();
+      }).on(LK.RoomEvent.ParticipantDisconnected, function (p) {
+        var x = PEOPLE[p.identity]; if (x && x.el) x.el.remove(); delete PEOPLE[p.identity]; render();
+      }).on(LK.RoomEvent.ParticipantNameChanged, function (n, p) { person(p); render(); })
+        .on(LK.RoomEvent.ActiveSpeakersChanged, function (sp) {
+          var ids = sp.map(function (p) { return p.identity; });
+          Object.keys(PEOPLE).forEach(function (id) { if (PEOPLE[id].el) PEOPLE[id].el.classList.toggle('talking', ids.indexOf(id) >= 0 && (STAGE.on || []).length > 1); });
+        }).on(LK.RoomEvent.Disconnected, function () { setTimeout(connectMedia, 3000); });
+      return room.connect(d.url, d.token).then(function () {
+        room.remoteParticipants.forEach(function (p) { person(p); });
+        if (room.canPlaybackAudio === false) document.addEventListener('click', function () { room.startAudio(); }, {once: true});
+        setTimeout(signal, 2500);
+      });
+    }).catch(function () { setTimeout(signal, 2000); });
+  }
+  function signal() { if (EGRESS && !signaled) { signaled = true; console.log('START_RECORDING'); } }
+
   if (DEMO) {  // предпросмотр в конструкторе: сцена без эфира и без опроса сервера
     data = DEMO;
     if (DEMO.state.q) DEMO.state.q.at = Date.now() / 1000 - 4;
     offset = 0; render();
     if (DEMO.state.mode === 'question') setTimeout(function () { clearInterval(ringI); }, 1200);
-  } else poll();
+  } else { poll(); connectMedia(); }
 })();
 </script>
 </body>

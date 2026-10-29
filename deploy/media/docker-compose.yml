@@ -1,0 +1,35 @@
+# Видеосервер студии эфиров (/efir): LiveKit (комнаты спикеров) + Egress (Chrome шлет экран эфира в YouTube) + Redis + Caddy (HTTPS).
+# Отдельный сервер: 4 vCPU, 8 ГБ. Установка: deploy/media/setup.sh <домен> (см. README.md рядом).
+services:
+  redis:
+    image: redis:7-alpine
+    command: redis-server --bind 127.0.0.1 --save "" --appendonly no
+    network_mode: host
+    restart: unless-stopped
+
+  livekit:
+    image: livekit/livekit-server:${LIVEKIT_VERSION:-v1.10}
+    command: --config /etc/livekit.yaml
+    volumes: ["./livekit.yaml:/etc/livekit.yaml:ro"]
+    network_mode: host
+    depends_on: [redis]
+    restart: unless-stopped
+
+  egress:
+    image: livekit/egress:${EGRESS_VERSION:-latest}
+    environment:
+      EGRESS_CONFIG_FILE: /etc/egress.yaml
+    volumes: ["./egress.yaml:/etc/egress.yaml:ro"]
+    cap_add: [SYS_ADMIN]   # Chrome внутри Egress
+    network_mode: host
+    depends_on: [livekit]
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    volumes: ["./Caddyfile:/etc/caddy/Caddyfile:ro", "caddy_data:/data"]
+    network_mode: host
+    restart: unless-stopped
+
+volumes:
+  caddy_data:

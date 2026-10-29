@@ -126,3 +126,11 @@ USTEM Academy - LMS для подготовки учителей. Flask + SQLAlc
   у слайда раскладка `full` / `cam` (окно камеры в углу) / `side` (слайд слева, камера справа) и QR. Окно камеры на экране
   прозрачное (`html.cut`, clip-path), в OBS камера ставится под Browser source в `CAM` (1484, 148, 392 x 392 или внизу).
   Режим `slides` листается на пульте кнопками, клавишами и кликером; экран берет презентацию из `screen.json?dv=`.
+- Студия эфиров `/efir` (меню «Студия эфиров»): копия вебинаров `/live` со своими таблицами `efir_*` и кодом
+  (`blueprints/efir.py`, `services/efir*.py`, `templates/efir/`), `/live` ею не меняется. Перенос вебинара из `/live` - кнопка
+  на `/efir` (`efir_builder.import_live`). Отличие - видеосервер LiveKit (`services/efir_media.py`, настройки `LIVEKIT_URL`,
+  `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`): спикеры входят по ссылке `/efir/<slug>/guest?k=` (`guest.html`), экран и пульт
+  смотрят комнату `efir-<id>` невидимыми, кто в эфире - `EfirEvent.stage` (пульт), трансляция в YouTube без OBS - Web Egress
+  (`StartWebEgress` на экран `?egress=1`, ключ YouTube в конструкторе). Клиент `app/static/efir/livekit-client.umd.js`
+  (npm livekit-client 2.23.0, Apache 2.0). Без видеосервера студия работает как `/live`, только без камер. Установка
+  видеосервера - `deploy/media/` (LiveKit + Egress + Redis + Caddy).

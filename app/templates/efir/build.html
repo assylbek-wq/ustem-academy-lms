@@ -219,6 +219,7 @@
     <a href="#s-q"><span class="n">4</span>{{ t('live.b_s_q') }}<span class="dot" data-dot="q"></span></a>
     <a href="#s-screen"><span class="n">5</span>{{ t('live.b_s_screen') }}<span class="dot ok"></span></a>
     <a href="#s-yt"><span class="n">▶</span>YouTube<span class="dot ok"></span></a>
+    <a href="#s-studio"><span class="n">◉</span>{{ t('efir.b_s_studio') }}<span class="dot" data-dot="studio"></span></a>
     <a href="#s-go"><span class="n">6</span>{{ t('live.b_s_go') }}<span class="dot" data-dot="go"></span></a>
   </nav>
 
@@ -326,6 +327,22 @@
           <div class="hintx">{{ t('live.yt_text_hint') }}</div>
         </div>
       </div>
+    </section>
+
+    <!-- Студия: спикеры по ссылке и трансляция в YouTube без OBS -->
+    <section class="sec" id="s-studio">
+      <h2><span class="n">◉</span>{{ t('efir.b_s_studio') }}</h2>
+      <div class="sub">{{ t('efir.b_studio_sub') }}</div>
+      <div class="hintx" id="st-off" hidden style="color:var(--amber-ink);background:var(--amber-soft);border-radius:10px;padding:10px 12px;margin:0 0 12px">{{ t('efir.c_lk_off_hint') }}</div>
+      <label class="in-l">{{ t('efir.c_speaker_link') }}</label>
+      <div style="display:flex;gap:8px"><input class="f" id="st-link" readonly><button class="btn sm" type="button" id="st-copy">⧉</button><a class="btn sm" id="st-open" target="_blank" rel="noopener">↗</a></div>
+      <div class="hintx">{{ t('efir.b_link_hint') }}</div>
+      <div class="fld" style="margin-top:16px"><label class="in-l">{{ t('efir.b_key') }} <small>· {{ t('efir.b_key_where') }}</small></label>
+        <div style="display:flex;gap:8px"><input class="f" id="st-key" type="password" autocomplete="off" spellcheck="false" placeholder="xxxx-xxxx-xxxx-xxxx-xxxx"><button class="btn ghost sm" type="button" id="st-key-rm" hidden>✕</button></div>
+        <div class="hintx" id="st-key-st"></div></div>
+      <div class="fld"><label class="in-l">{{ t('efir.b_server') }} <small>· {{ t('efir.b_server_opt') }}</small></label>
+        <input class="f" id="st-url" placeholder="rtmp://a.rtmp.youtube.com/live2"></div>
+      <div class="hintx">{{ t('efir.b_key_hint') }}</div>
     </section>
 
     <!-- 5. Запуск -->
@@ -475,7 +492,8 @@
     // не трогаем поля, которые человек сейчас редактирует: обновляем проверки, ссылки и счетчики
     D.ready = nd.ready; D.urls = nd.urls; D.has_viewers = nd.has_viewers; D.archived = nd.archived;
     D.youtube = nd.youtube; D.slug = nd.slug; BASE = '/efir/' + D.slug;
-    renderReady(); renderLinks(); renderDanger(); updateMissing();
+    D.has_stream_key = nd.has_stream_key; D.stream_key_tail = nd.stream_key_tail;
+    renderReady(); renderLinks(); renderDanger(); updateMissing(); keySt();
   }
   function ml(key) { return D[key] = D[key] || {}; }
   function bindML() {
@@ -1081,6 +1099,23 @@
     api('/build/speaker', null, fd).then(function () { D.has_photo = false; $('yt-rm').hidden = true; ytRefresh(); });
   };
   ytRefresh();
+  // ─── Студия ───
+  $('st-off').hidden = !!D.media_on;
+  $('st-link').value = D.urls.speaker; $('st-open').href = D.urls.speaker;
+  $('st-copy').onclick = function () { navigator.clipboard && navigator.clipboard.writeText(D.urls.speaker); toast({{ t('live.c_copied')|tojson }}); };
+  $('st-url').value = D.stream_url || '';
+  $('st-url').onchange = function () { queue({stream_url: this.value.trim()}); };
+  function keySt() {
+    $('st-key-st').textContent = D.has_stream_key ? {{ t('efir.b_key_saved')|tojson }} + ' …' + D.stream_key_tail : {{ t('efir.b_key_none')|tojson }};
+    $('st-key-rm').hidden = !D.has_stream_key;
+    var dot = document.querySelector('[data-dot=studio]'); if (dot) dot.className = 'dot' + (D.has_stream_key ? ' ok' : '');
+  }
+  keySt();
+  $('st-key').onchange = function () {
+    var v = this.value.trim(); if (!v) return;
+    queue({stream_key: v}); D.has_stream_key = true; D.stream_key_tail = v.slice(-4); this.value = ''; keySt();
+  };
+  $('st-key-rm').onclick = function () { queue({stream_key: '-'}); D.has_stream_key = false; keySt(); };
 
   renderDeck();
   initMain(); setEL(EL); renderReady(); renderLinks(); renderDanger(); updateMissing(); setScene('waiting');

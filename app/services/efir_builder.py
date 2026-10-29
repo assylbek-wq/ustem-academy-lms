@@ -201,6 +201,19 @@ def save_settings(ev: EfirEvent, f: dict) -> list[str]:
             ev.youtube_id = None
     if f.get("lang") in LANGS:
         ev.lang = f["lang"]
+    if "stream_url" in f:
+        u = (f.get("stream_url") or "").strip()[:255]
+        if u and not u.startswith(("rtmp://", "rtmps://")):
+            raise BuildError("efir.s_err_url")
+        ev.stream_url = u or None
+    if "stream_key" in f:  # ключ YouTube: пустое значение не стирает сохраненный, стереть - "-"
+        k = (f.get("stream_key") or "").strip()[:255]
+        if k == "-":
+            ev.stream_key = None
+        elif k:
+            if not re.fullmatch(r"[A-Za-z0-9_\-]{4,255}", k):
+                raise BuildError("efir.s_err_key")
+            ev.stream_key = k
     texts = dict(ev.texts or {})
     if "partners" in f:
         texts["partners"] = (f.get("partners") or "").strip()[:160]

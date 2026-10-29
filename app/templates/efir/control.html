@@ -15,6 +15,24 @@
     .stat b{font-size:22px;font-variant-numeric:tabular-nums}
     .stat span{font-size:11px;color:#cdeeff;text-transform:uppercase;letter-spacing:.05em;font-weight:700}
     .mode{margin-left:auto;background:#fff;color:#0057c8;border-radius:999px;padding:7px 14px;font-weight:700}
+    .pill-st{display:inline-block;margin-left:6px;font-size:10.5px;padding:3px 8px;border-radius:999px;background:var(--chip);color:var(--mute);letter-spacing:.04em}
+    .pill-st.ok{background:var(--green-soft);color:var(--green)}
+    .pill-st.live{background:var(--red);color:#fff}
+    .pill-st.warn{background:var(--amber-soft);color:var(--amber-ink)}
+    .stream{border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:12px;background:var(--card2)}
+    .b[disabled]{opacity:.45;pointer-events:none}
+    .seg3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
+    .seg3 .b.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+    .sp{flex:1}
+    .spk{display:grid;grid-template-columns:96px minmax(0,1fr);gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+    .spk .th{position:relative;width:96px;aspect-ratio:16/9;background:#1d2633;border-radius:8px;overflow:hidden}
+    .spk .th video{width:100%;height:100%;object-fit:cover;display:block}
+    .spk .th .lv{position:absolute;left:0;bottom:0;height:3px;background:var(--green);width:0;transition:width .15s}
+    .spk.onair .th{box-shadow:0 0 0 2px var(--red)}
+    .spk .nm{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .spk .nm small{display:block;font-weight:500;color:var(--mute);font-size:12px}
+    .spk .acts{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+    .spk .b.air{background:var(--red);color:#fff;border-color:transparent}
     .wrap{max-width:1400px;margin:0 auto;padding:16px;display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:16px}
     @media(max-width:1100px){.wrap{grid-template-columns:1fr}}
     .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:16px;box-shadow:var(--shadow)}
@@ -121,6 +139,25 @@
   </div>
 
   <div>
+    <div class="card" id="studio">
+      <h2>{{ t('efir.c_studio') }} <span class="pill-st" id="lk-st">{{ t('efir.c_lk_on') if media_on else t('efir.c_lk_off') }}</span></h2>
+      {% if not media_on %}<div class="hint" style="margin:0 0 10px">{{ t('efir.c_lk_off_hint') }}</div>{% endif %}
+      <div class="hint">{{ t('efir.c_speaker_link') }}</div>
+      <div class="copy"><code>{{ speaker_url }}</code><button class="b sm" data-copy="{{ speaker_url }}">⧉</button></div>
+      <div class="stream" id="stream">
+        <div class="row" style="margin:0"><b id="sm-t">YouTube</b><span class="sp"></span><span class="pill-st" id="sm-st">-</span></div>
+        <div class="row"><button class="b go" id="sm-go" style="flex:1">▶ {{ t('efir.c_stream_start') }}</button><button class="b" id="sm-stop" hidden style="flex:1;border-color:var(--red);color:var(--red)">■ {{ t('efir.c_stream_stop') }}</button></div>
+        <div class="hint" id="sm-hint">{% if not has_stream_key %}{{ t('efir.c_stream_nokey') }} <a href="{{ url_for('efir.build', slug=ev.slug) }}#s-studio">{{ t('live.b_builder') }} →</a>{% else %}{{ t('efir.c_stream_hint') }}{% endif %}</div>
+      </div>
+      <div class="hint" style="margin-top:12px">{{ t('efir.c_layout') }}</div>
+      <div class="seg3" id="lay">
+        <button class="b sm" data-lay="auto">{{ t('efir.c_lay_auto') }}</button>
+        <button class="b sm" data-lay="speakers">{{ t('efir.c_lay_speakers') }}</button>
+        <button class="b sm" data-lay="hide">{{ t('efir.c_lay_hide') }}</button>
+      </div>
+      <div class="hint" style="margin-top:12px;display:flex;align-items:center;gap:8px">{{ t('efir.c_speakers') }} <span id="sp-n"></span><span class="sp"></span><label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="listen"> {{ t('efir.c_listen') }}</label></div>
+      <div id="spk"><div class="hint" id="spk-empty">{{ t('efir.c_no_speakers') }}</div></div>
+    </div>
     <div class="card">
       <h2>YouTube</h2>
       <input class="in" id="yt" value="{{ ('https://youtu.be/' ~ ev.youtube_id) if ev.youtube_id else '' }}" placeholder="https://youtube.com/live/...">
@@ -345,6 +382,118 @@
       if (r.ok) location.reload(); else $('qm-err').textContent = r.error || T.err;
     });
   };
+})();
+</script>
+<script src="{{ url_for('static', filename='efir/livekit-client.umd.js') }}"></script>
+<script>
+(function () {
+  var SLUG = {{ ev.slug|tojson }}, MEDIA = {{ media_on|tojson }}, STAGE = {{ stage|tojson }};
+  var T = {{ {'air_on': t('efir.c_to_air'), 'air_off': t('efir.c_off_air'), 'onair': t('efir.c_onair'), 'back': t('efir.c_back'),
+              'kick_q': t('efir.c_kick_q'), 'st': {'': t('efir.c_st_idle'), 'EGRESS_STARTING': t('efir.c_st_starting'), 'EGRESS_ACTIVE': t('efir.c_st_active'),
+              'EGRESS_ENDING': t('efir.c_st_ending'), 'EGRESS_COMPLETE': t('efir.c_st_done'), 'EGRESS_FAILED': t('efir.c_st_failed'), 'EGRESS_ABORTED': t('efir.c_st_failed'),
+              'EGRESS_LIMIT_REACHED': t('efir.c_st_failed')}, 'stop_q': t('efir.c_stop_q'), 'max': t('efir.c_max'), 'net': t('live.net')}|tojson }};
+  var csrf = document.querySelector('meta[name=csrf-token]').content, $ = function (id) { return document.getElementById(id); }, esc = window.liveEsc;
+  function post(url, body) { return fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf}, body: JSON.stringify(body)}).then(function (r) { return r.json(); }); }
+  function flash(m) { var h = $('sm-hint'); h.textContent = m; h.style.color = 'var(--red)'; }
+  // ─── Раскладка ───
+  function paintLay() { Array.prototype.forEach.call(document.querySelectorAll('[data-lay]'), function (b) { b.classList.toggle('on', b.dataset.lay === (STAGE.layout || 'auto')); }); }
+  function saveStage(body) { return post('/efir/' + SLUG + '/control/stage', body).then(function (d) { if (d.ok) { STAGE = d.stage; paintLay(); paint(); } }); }
+  Array.prototype.forEach.call(document.querySelectorAll('[data-lay]'), function (b) { b.onclick = function () { saveStage({layout: b.dataset.lay}); }; });
+  paintLay();
+  // ─── Трансляция в YouTube ───
+  var ACTIVE = ['EGRESS_STARTING', 'EGRESS_ACTIVE', 'EGRESS_ENDING'];
+  function paintStream(s) {
+    var st = s.status || '', live = ACTIVE.indexOf(st) >= 0, el = $('sm-st');
+    el.textContent = T.st[st] || st; el.className = 'pill-st ' + (st === 'EGRESS_ACTIVE' ? 'live' : (live ? 'warn' : (st === 'EGRESS_FAILED' || st === 'EGRESS_ABORTED' ? 'warn' : '')));
+    $('sm-go').hidden = live; $('sm-stop').hidden = !live;
+    $('sm-go').disabled = !s.media || !s.has_key;
+    if (s.error) flash(s.error);
+  }
+  function loadStream() { fetch('/efir/' + SLUG + '/control/stream', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (d) { if (d.ok) paintStream(d.stream); }).catch(function () {}).finally(function () { setTimeout(loadStream, 4000); }); }
+  loadStream();
+  $('sm-go').onclick = function () {
+    var b = this; b.disabled = true;
+    post('/efir/' + SLUG + '/control/stream', {action: 'start'}).then(function (d) { if (d.ok) paintStream(d.stream); else { flash(d.error || T.net); b.disabled = false; } }).catch(function () { flash(T.net); b.disabled = false; });
+  };
+  $('sm-stop').onclick = function () {
+    if (!confirm(T.stop_q)) return;
+    post('/efir/' + SLUG + '/control/stream', {action: 'stop'}).then(function (d) { if (d.ok) paintStream(d.stream); else flash(d.error || T.net); });
+  };
+  // ─── Спикеры: невидимый вход в комнату, превью и кнопки ───
+  var PEOPLE = {}, room = null;
+  function paint() {
+    var ids = Object.keys(PEOPLE).filter(function (id) { return id.indexOf('g-') === 0; });
+    $('spk-empty').style.display = ids.length ? 'none' : 'block';
+    $('sp-n').textContent = ids.length ? '(' + ids.length + ')' : '';
+    ids.forEach(function (id) {
+      var p = PEOPLE[id], on = (STAGE.on || []).indexOf(id) >= 0, muted = (STAGE.muted || []).indexOf(id) >= 0;
+      if (!p.row) {
+        p.row = document.createElement('div'); p.row.className = 'spk';
+        p.row.innerHTML = '<div class="th"><i class="lv"></i></div><div><div class="nm"><span></span><small></small></div><div class="acts">' +
+          '<button class="b sm" data-a="air"></button><button class="b sm" data-a="mute">🔇</button><button class="b sm" data-a="kick" title="✕">✕</button></div></div>';
+        $('spk').appendChild(p.row);
+        p.row.querySelector('[data-a=air]').onclick = function () {
+          var cur = (STAGE.on || []).slice(), i = cur.indexOf(id);
+          if (i >= 0) cur.splice(i, 1); else { if (cur.length >= 4) { alert(T.max); return; } cur.push(id); }
+          saveStage({on: cur});
+        };
+        p.row.querySelector('[data-a=mute]').onclick = function () {
+          var cur = (STAGE.muted || []).slice(), i = cur.indexOf(id);
+          if (i >= 0) cur.splice(i, 1); else cur.push(id);
+          saveStage({muted: cur});
+        };
+        p.row.querySelector('[data-a=kick]').onclick = function () { if (confirm(T.kick_q)) post('/efir/' + SLUG + '/control/kick', {identity: id}).then(function (d) { if (d.ok) { STAGE = d.stage; paint(); } }); };
+      }
+      p.row.querySelector('.nm span').textContent = p.name || id;
+      p.row.querySelector('.nm small').textContent = (p.role ? p.role + ' · ' : '') + (on ? T.onair : T.back);
+      p.row.classList.toggle('onair', on);
+      var ab = p.row.querySelector('[data-a=air]'); ab.textContent = on ? '■ ' + T.air_off : '▶ ' + T.air_on; ab.classList.toggle('air', !on);
+      var mb = p.row.querySelector('[data-a=mute]'); mb.textContent = muted ? '🔊' : '🔇'; mb.classList.toggle('on', muted);
+      var th = p.row.querySelector('.th');
+      if (p.cam && !th.querySelector('video')) { var v = p.cam.attach(); v.muted = true; th.insertBefore(v, th.firstChild); }
+      if (!p.cam) Array.prototype.forEach.call(th.querySelectorAll('video'), function (v) { v.remove(); });
+      (p.audio || []).forEach(function (a) { a.muted = !$('listen').checked; });
+    });
+    Object.keys(PEOPLE).forEach(function (id) { if (PEOPLE[id].gone && PEOPLE[id].row) { PEOPLE[id].row.remove(); delete PEOPLE[id]; } });
+  }
+  $('listen').onchange = function () { if (room) room.startAudio(); paint(); };
+  function person(p) {
+    var x = PEOPLE[p.identity] = PEOPLE[p.identity] || {audio: []};
+    x.name = p.name || ''; try { x.role = JSON.parse(p.metadata || '{}').role || ''; } catch (e) { x.role = ''; }
+    return x;
+  }
+  function connect() {
+    if (!MEDIA || !window.LivekitClient) return;
+    var LK = window.LivekitClient;
+    fetch('/efir/' + SLUG + '/media.json?as=control', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (d) {
+      if (!d.ok) return;
+      room = new LK.Room({adaptiveStream: true, dynacast: true});
+      room.on(LK.RoomEvent.ParticipantConnected, function (p) { person(p); paint(); })
+        .on(LK.RoomEvent.ParticipantDisconnected, function (p) { var x = PEOPLE[p.identity]; if (x) x.gone = true; paint(); })
+        .on(LK.RoomEvent.TrackSubscribed, function (t, pub, p) {
+          var x = person(p);
+          if (t.kind === 'audio') { var a = t.attach(); a.muted = true; document.body.appendChild(a); x.audio.push(a); }
+          else if (pub.source !== LK.Track.Source.ScreenShare) x.cam = t;
+          paint();
+        }).on(LK.RoomEvent.TrackUnsubscribed, function (t, pub, p) {
+          var x = person(p); t.detach().forEach(function (e) { e.remove(); }); if (x.cam === t) x.cam = null;
+          x.audio = x.audio.filter(function (a) { return a.isConnected; }); paint();
+        }).on(LK.RoomEvent.ActiveSpeakersChanged, function (sp) {
+          Object.keys(PEOPLE).forEach(function (id) { var r = PEOPLE[id].row; if (r) r.querySelector('.lv').style.width = '0'; });
+          sp.forEach(function (p) { var x = PEOPLE[p.identity]; if (x && x.row) x.row.querySelector('.lv').style.width = Math.min(100, Math.round((p.audioLevel || 0.3) * 160)) + '%'; });
+        }).on(LK.RoomEvent.Disconnected, function () { $('lk-st').className = 'pill-st warn'; setTimeout(connect, 3000); });
+      return room.connect(d.url, d.token).then(function () {
+        $('lk-st').className = 'pill-st ok';
+        room.remoteParticipants.forEach(function (p) { person(p); }); paint();
+      });
+    }).catch(function () { $('lk-st').className = 'pill-st warn'; setTimeout(connect, 5000); });
+  }
+  connect();
+  setInterval(function () {  // сцену могут менять с другого пульта
+    fetch('/efir/' + SLUG + '/screen.json', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (d) {
+      if (d.stage && d.stage.v !== STAGE.v) { STAGE = d.stage; paintLay(); paint(); }
+    }).catch(function () {});
+  }, 3000);
 })();
 </script>
 </body>
