@@ -13,7 +13,7 @@
       <div><label class="label">{{ t('auth.city') }}</label><input name="city" value="{{ user.city or '' }}" class="input"></div>
       <div class="sm:col-span-2"><label class="label">{{ t('auth.organization') }}</label><input name="organization" value="{{ user.organization or '' }}" class="input"></div>
       <div><label class="label">{{ t('account.language') }}</label>
-        <select name="locale" class="input">{% for l in locales %}<option value="{{ l }}" {% if user.locale == l %}selected{% endif %}>{{ locale_names[l] }}</option>{% endfor %}</select></div>
+        <select name="locale" class="input">{% for l in ui_locales %}<option value="{{ l }}" {% if user.locale == l %}selected{% endif %}>{{ locale_names[l] }}</option>{% endfor %}</select></div>
     </div>
     <div class="grid sm:grid-cols-2 gap-4 pt-2 border-t border-slate-200">
       <div><label class="label" for="acc-region">{{ t('account.region') }}</label>

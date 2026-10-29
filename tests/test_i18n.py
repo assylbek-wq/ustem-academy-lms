@@ -66,3 +66,12 @@ class I18nTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DefaultLocaleTest(__import__("tests.base", fromlist=["AppTestCase"]).AppTestCase):
+    def test_site_is_kazakh_first(self):
+        html = self.client.get("/login").get_data(as_text=True)
+        self.assertIn('<html lang="kk">', html)
+        self.assertLess(html.index('?lang=kk"'), html.index('?lang=ru"'))
+        self.assertLess(html.index('?lang=ru"'), html.index('?lang=en"'))
+        self.assertIn('<html lang="ru">', self.client.get("/login?lang=ru").get_data(as_text=True))

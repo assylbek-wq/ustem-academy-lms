@@ -172,7 +172,7 @@ class FullFlowTest(AppTestCase):
 
         # 12. Отзыв сертификата
         admin.post("/admin/certificates", data={"action": "revoke", "certificate_id": cert.id})
-        self.assertIn("отозван", anon.get(f"/verify/{cert.code}").get_data(as_text=True).lower())
+        self.assertIn("отозван", anon.get(f"/verify/{cert.code}?lang=ru").get_data(as_text=True).lower())
 
     def test_customer_sees_only_own_cohorts(self):
         other = Customer(name="Другой заказчик")

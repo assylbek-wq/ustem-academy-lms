@@ -39,6 +39,9 @@ class AppTestCase(unittest.TestCase):
         c.get("/logout")
         r = c.post("/login", data={"email": email, "password": password})
         self.assertEqual(r.status_code, 302, f"login failed for {email}")
+        # сайт по умолчанию на казахском; проверки в тестах написаны по русским текстам
+        with c.session_transaction() as s:
+            s["locale"] = "ru"
         return c
 
     def new_client(self, email=None):

@@ -12,7 +12,10 @@ from .i18n_strings import STRINGS
 
 LOCALES = ("ru", "kk", "en")
 LOCALE_NAMES = {"ru": "Русский", "kk": "Қазақша", "en": "English"}
-DEFAULT_LOCALE = "ru"
+DEFAULT_LOCALE = "ru"  # запасной язык текста, если перевода нет
+# Язык сайта по умолчанию и порядок в переключателе: казахский главный (KK RU EN)
+SITE_LOCALE = "kk"
+UI_LOCALES = ("kk", "ru", "en")
 
 
 def current_locale() -> str:

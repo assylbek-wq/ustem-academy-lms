@@ -68,7 +68,7 @@ def login_user(user: User) -> None:
     session.permanent = True
     session["uid"] = user.id
     session["pwfp"] = (user.password_hash or "")[-12:]
-    session["locale"] = user.locale or "ru"
+    session["locale"] = user.locale or "kk"
     user.last_login_at = utcnow()
     db.session.commit()
 

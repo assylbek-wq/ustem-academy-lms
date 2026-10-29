@@ -15,7 +15,7 @@ from .config import Config
 mimetypes.add_type("application/wasm", ".wasm")
 mimetypes.add_type("text/javascript", ".mjs")
 from .core import check_csrf, csrf_token, fmt_seconds, human_size, loc, render_markdown, video_embed
-from .i18n import LOCALES, LOCALE_NAMES, t
+from .i18n import LOCALES, LOCALE_NAMES, SITE_LOCALE, UI_LOCALES, t
 from .models import Notification, User, db, local_today
 
 
@@ -56,9 +56,9 @@ def create_app(config: type = Config, **overrides) -> Flask:
             if g.user and g.user.locale != lang:
                 g.user.locale = lang
                 db.session.commit()
-        g.locale = session.get("locale") or (g.user.locale if g.user else None) or "ru"
+        g.locale = session.get("locale") or (g.user.locale if g.user else None) or SITE_LOCALE
         if g.locale not in LOCALES:
-            g.locale = "ru"
+            g.locale = SITE_LOCALE
         # самостоятельная регистрация: пока почта не подтверждена, открыты вход, выход, страница подтверждения и эфиры
         if g.user and request.endpoint and not request.endpoint.startswith(("auth.", "static", "public.", "live.", "private.")):
             from .blueprints.auth import needs_verification
@@ -83,7 +83,7 @@ def create_app(config: type = Config, **overrides) -> Flask:
             unread = Notification.query.filter_by(user_id=g.user.id, read_at=None).count()
         return {
             "t": t, "loc": loc, "user": g.get("user"), "locale": g.get("locale", "ru"),
-            "locales": LOCALES, "locale_names": LOCALE_NAMES, "csrf_token": csrf_token,
+            "locales": LOCALES, "ui_locales": UI_LOCALES, "locale_names": LOCALE_NAMES, "csrf_token": csrf_token,
             "unread_count": unread, "static_v": _static_v(app), "video_embed": video_embed,
             "today": local_today(),
             "dir_icon": DIR_ICONS,

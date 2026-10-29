@@ -15,7 +15,7 @@
         <div><label class="label">{{ t('auth.city') }}</label><input name="city" value="{{ u.city or '' }}" class="input"></div>
         <div><label class="label">{{ t('auth.phone') }}</label><input name="phone" value="{{ u.phone or '' }}" class="input"></div>
       {% else %}
-        <div><label class="label">{{ t('account.language') }}</label><select name="locale" class="input">{% for l in locales %}<option value="{{ l }}">{{ locale_names[l] }}</option>{% endfor %}</select></div>
+        <div><label class="label">{{ t('account.language') }}</label><select name="locale" class="input">{% for l in ui_locales %}<option value="{{ l }}">{{ locale_names[l] }}</option>{% endfor %}</select></div>
       {% endif %}
     </div>
     <fieldset>

@@ -25,7 +25,7 @@
 {%- endmacro %}
 {% macro langs(cls='') -%}
   <div class="lang-switch {{ cls }}">
-    {% for l in locales %}<a href="?lang={{ l }}" class="{% if locale == l %}lang-active{% endif %}">{{ l|upper }}</a>{% endfor %}
+    {% for l in ui_locales %}<a href="?lang={{ l }}" class="{% if locale == l %}lang-active{% endif %}">{{ l|upper }}</a>{% endfor %}
   </div>
 {%- endmacro %}
 

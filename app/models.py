@@ -75,7 +75,7 @@ class User(db.Model):
     organization = db.Column(db.String(255))
     city = db.Column(db.String(128))
     country = db.Column(db.String(64), default="KZ")
-    locale = db.Column(db.String(8), default="ru")
+    locale = db.Column(db.String(8), default="kk")
     is_active = db.Column(db.Boolean, default=True, nullable=False)
     consent_at = db.Column(db.DateTime)  # согласие на обработку персональных данных
     # почта подтверждена: при самостоятельной регистрации - ссылкой из письма; аккаунты, которые создал администратор
