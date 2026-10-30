@@ -14,7 +14,7 @@ class EfirBuilderTest(AppTestCase):
         svc._cache.clear()
         from app.models import LiveEvent
         from app.services import efir_builder
-        self.ev = efir_builder.import_live(LiveEvent.query.filter_by(slug="keleshek").first(), None, slug="keleshek")
+        self.ev = efir_builder.import_live(LiveEvent.query.filter_by(slug="keleshek1").first(), None, slug="keleshek")
         self.m = self.new_client("methodist@academy.demo")
 
     def _new(self, **kw):
@@ -288,9 +288,9 @@ class EfirBuilderTest(AppTestCase):
 
     def test_import_from_live(self):
         from app.models import LiveEvent
-        src = LiveEvent.query.filter_by(slug="keleshek").first()
+        src = LiveEvent.query.filter_by(slug="keleshek1").first()
         n = EfirQuestion.query.count()
-        r = self.m.post("/efir/import", json={"slug": "keleshek"}).get_json()
+        r = self.m.post("/efir/import", json={"slug": "keleshek1"}).get_json()
         self.assertTrue(r["ok"])
         ev = EfirEvent.query.filter_by(slug=r["slug"]).first()
         self.assertNotEqual(ev.slug, "keleshek")
@@ -304,7 +304,7 @@ class EfirBuilderTest(AppTestCase):
         from app.services import live_deck
         b = io.BytesIO(); Image.new("RGB", (400, 400), (10, 120, 200)).save(b, "JPEG")
         live_deck.save_speaker(src, b.getvalue())
-        r2 = self.m.post("/efir/import", json={"slug": "keleshek"}).get_json()
+        r2 = self.m.post("/efir/import", json={"slug": "keleshek1"}).get_json()
         ev2 = EfirEvent.query.filter_by(slug=r2["slug"]).first()
         from app.services import efir_deck
         self.assertTrue(efir_deck.speaker_path(ev2).exists())

@@ -7,7 +7,7 @@
 from datetime import datetime
 
 EVENT = {
-    "slug": "keleshek",
+    "slug": "keleshek1",  # /live/keleshek - постоянная ссылка (LiveLink), см. список эфиров
     "title": {"kk": "Келешек Лигасы · кіріспе семинар", "ru": "Лига Келешек · вводный семинар", "en": "Keleshek League · intro seminar"},
     "subtitle": {"kk": "«Келешек» мектептеріндегі STEM бағытын дамыту жол картасы · 2026-2028",
                  "ru": "Дорожная карта развития STEM в школах «Келешек» · 2026-2028",

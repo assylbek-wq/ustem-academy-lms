@@ -1,0 +1,52 @@
+{# Постоянные ссылки /live/<slug>: какой эфир сейчас открывается по запомненной ссылке. Общий блок для /live и /efir. #}
+<section class="plinks">
+  <div class="sechead"><div><div class="eyebrow">{{ t('plink.eyebrow') }}</div><h2>{{ t('plink.h') }}</h2></div></div>
+  <div class="plhint">{{ t('plink.sub') }}</div>
+  <div class="pllist">
+    {% for l in plinks %}
+    <div class="plrow" data-slug="{{ l.slug }}">
+      <div class="plfrom"><b>academy.ustem.kz/live/{{ l.slug }}</b><span>→</span></div>
+      <select class="f" data-pl-target>
+        {% set found = namespace(v=False) %}
+        {% for v, label in plink_targets %}<option value="{{ v }}" {% if v.rstrip('/') == l.target.rstrip('/') %}selected{% set found.v = True %}{% endif %}>{{ label }} ({{ v }})</option>{% endfor %}
+        {% if not found.v %}<option value="{{ l.target }}" selected>{{ l.target }}</option>{% endif %}
+      </select>
+      <button class="btn pri sm" type="button" data-pl-save>{{ t('plink.save') }}</button>
+      <a class="btn ghost sm" href="/live/{{ l.slug }}" target="_blank" rel="noopener">↗</a>
+      <button class="btn ghost sm" type="button" data-pl-del title="{{ t('plink.del') }}">✕</button>
+    </div>
+    {% endfor %}
+    <div class="plrow plnew">
+      <div class="plfrom"><b>academy.ustem.kz/live/</b><input class="f" data-pl-new placeholder="keleshek" maxlength="64" style="max-width:180px"><span>→</span></div>
+      <select class="f" data-pl-target>{% for v, label in plink_targets %}<option value="{{ v }}">{{ label }} ({{ v }})</option>{% endfor %}</select>
+      <button class="btn soft sm" type="button" data-pl-save>＋ {{ t('plink.add') }}</button>
+    </div>
+  </div>
+</section>
+<style>
+  .plinks{margin:0 0 30px}
+  .plhint{color:var(--mute);font-size:13px;margin:-6px 0 12px;line-height:1.45}
+  .pllist{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:6px 14px;box-shadow:var(--shadow)}
+  .plrow{display:grid;grid-template-columns:minmax(0,auto) minmax(0,1fr) auto auto auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+  .plrow:last-child{border-bottom:0}
+  .plnew{grid-template-columns:minmax(0,auto) minmax(0,1fr) auto}
+  .plfrom{display:flex;align-items:center;gap:8px;white-space:nowrap}
+  .plfrom b{font-family:var(--f-mono);font-weight:500;font-size:13px}
+  .plfrom span{color:var(--mute)}
+  @media(max-width:860px){.plrow,.plnew{grid-template-columns:1fr}}
+</style>
+<script>
+(function () {
+  var CSRF = document.querySelector('meta[name=csrf-token]').content;
+  function send(body) {
+    return fetch('/live/links', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': CSRF}, body: JSON.stringify(body)})
+      .then(function (r) { return r.json(); }).then(function (d) { if (d.ok) location.reload(); else alert(d.error || 'Error'); });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.plrow'), function (row) {
+    var sel = row.querySelector('[data-pl-target]'), inp = row.querySelector('[data-pl-new]');
+    row.querySelector('[data-pl-save]').onclick = function () { send({slug: inp ? inp.value : row.dataset.slug, target: sel.value}); };
+    var del = row.querySelector('[data-pl-del]');
+    if (del) del.onclick = function () { if (confirm({{ t('plink.del_q')|tojson }})) send({slug: row.dataset.slug, delete: 1}); };
+  });
+})();
+</script>

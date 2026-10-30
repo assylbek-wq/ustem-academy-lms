@@ -21,7 +21,7 @@ from markupsafe import Markup
 
 from ..core import audit, role_required
 from ..i18n import t
-from ..models import LiveAnswer, LiveAsk, LiveEvent, LiveFeedback, LiveQuestion, LiveViewer, User, db, utcnow
+from ..models import LiveAnswer, LiveAsk, LiveEvent, LiveFeedback, LiveLink, LiveQuestion, LiveViewer, User, db, utcnow
 from ..services import live as svc
 from ..services import live_builder as lb
 from ..services import live_deck as deck_svc
@@ -61,8 +61,22 @@ def _pretty(url: str) -> str:
 
 
 # ─── Учитель ─────────────────────────────────────────────────────────────
-@bp.route("/<slug>")
+def _link_redirect(slug):
+    """Постоянная ссылка: /live/<slug> ведет на текущий эфир (язык ?lang= сохраняется)."""
+    link = LiveLink.query.filter_by(slug=slug).first()
+    if not link or not link.target:
+        return None
+    url = link.target
+    if request.args.get("lang") in ("kk", "ru", "en"):
+        url += ("&" if "?" in url else "?") + "lang=" + request.args["lang"]
+    return redirect(url)
+
+
+@bp.route("/<slug>", strict_slashes=False)
 def watch(slug):
+    r = _link_redirect(slug)
+    if r:
+        return r
     ev = _event(slug)
     if not g.user:
         nxt = url_for("live.watch", slug=slug)
@@ -615,7 +629,52 @@ def hub():
     from ..services.live_stats import _local
     now = _local(utcnow())
     rows = [{"ev": e, "status": lb.status(e, now), "viewers": counts.get(e.id, 0), "questions": qn.get(e.id, 0)} for e in evs]
-    return render_template("live/hub.html", rows=rows, ai=lb.ai_enabled())
+    return render_template("live/hub.html", rows=rows, ai=lb.ai_enabled(), **links_ctx())
+
+
+LINK_SLUG = re.compile(r"[a-z0-9][a-z0-9-]{1,63}")
+
+
+def links_ctx() -> dict:
+    """Для блока «Постоянные ссылки» в списках эфиров /live и /efir."""
+    from ..models import EfirEvent
+    targets = [(f"/efir/{e.slug}", f"Студия · {(e.title or {}).get('ru') or (e.title or {}).get('kk') or e.slug}")
+               for e in EfirEvent.query.filter_by(archived=False).order_by(EfirEvent.starts_at.desc().nullsfirst())]
+    targets += [(f"/live/{e.slug}", f"Вебинар · {(e.title or {}).get('ru') or (e.title or {}).get('kk') or e.slug}")
+                for e in LiveEvent.query.filter_by(archived=False).order_by(LiveEvent.starts_at.desc().nullsfirst())]
+    return {"plinks": LiveLink.query.order_by(LiveLink.slug).all(), "plink_targets": targets}
+
+
+@bp.route("/links", methods=["POST"])
+@role_required("methodist", "trainer")
+def links_save():
+    """Создать, переключить или удалить постоянную ссылку /live/<slug>."""
+    f = request.get_json(silent=True) or request.form
+    slug = (f.get("slug") or "").strip().lower().strip("/")
+    if not LINK_SLUG.fullmatch(slug) or slug in ("new", "links"):
+        return jsonify({"ok": False, "error": t("plink.err_slug")}), 400
+    link = LiveLink.query.filter_by(slug=slug).first()
+    if f.get("delete"):
+        if link:
+            db.session.delete(link)
+            audit("live.link", "live_link", link.id, slug=slug, target=None)
+            db.session.commit()
+        return jsonify({"ok": True})
+    target = (f.get("target") or "").strip()
+    if target.startswith(absolute("/")):
+        target = "/" + target[len(absolute("/")):]
+    if not (re.fullmatch(r"/(live|efir)/[a-z0-9-]{1,64}/?", target) or re.fullmatch(r"https://[^\s]{4,480}", target)):
+        return jsonify({"ok": False, "error": t("plink.err_target")}), 400
+    if target.rstrip("/") == f"/live/{slug}":
+        return jsonify({"ok": False, "error": t("plink.err_loop")}), 400
+    if not link:
+        link = LiveLink(slug=slug, target=target)
+        db.session.add(link)
+    link.target, link.updated_by = target, g.user.id
+    db.session.flush()
+    audit("live.link", "live_link", link.id, slug=slug, target=target)
+    db.session.commit()
+    return jsonify({"ok": True})
 
 
 @bp.route("/new", methods=["POST"])

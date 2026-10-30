@@ -12,7 +12,7 @@ class EfirTest(AppTestCase):
         svc._cache.clear()
         from app.models import LiveEvent
         from app.services import efir_builder
-        self.ev = efir_builder.import_live(LiveEvent.query.filter_by(slug="keleshek").first(), None, slug="keleshek")
+        self.ev = efir_builder.import_live(LiveEvent.query.filter_by(slug="keleshek1").first(), None, slug="keleshek")
 
     def test_event_loaded_from_content(self):
         self.assertIsNotNone(self.ev)

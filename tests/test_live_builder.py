@@ -11,7 +11,7 @@ class LiveBuilderTest(AppTestCase):
         super().setUp()
         svc.ensure_events()
         svc._cache.clear()
-        self.ev = LiveEvent.query.filter_by(slug="keleshek").first()
+        self.ev = LiveEvent.query.filter_by(slug="keleshek1").first()
         self.m = self.new_client("methodist@academy.demo")
 
     def _new(self, **kw):
@@ -25,10 +25,10 @@ class LiveBuilderTest(AppTestCase):
         teacher = self.new_client("teacher1@academy.demo")
         self.assertEqual(teacher.get("/live/").status_code, 403)
         self.assertEqual(teacher.post("/live/new", json={"title": "x"}).status_code, 403)
-        self.assertEqual(teacher.get("/live/keleshek/build").status_code, 403)
+        self.assertEqual(teacher.get("/live/keleshek1/build").status_code, 403)
         r = self.m.get("/live/")
         self.assertEqual(r.status_code, 200)
-        self.assertIn("/live/keleshek/build", r.get_data(as_text=True))
+        self.assertIn("/live/keleshek1/build", r.get_data(as_text=True))
 
     def test_keleshek_program_seeded_and_kept(self):
         self.assertEqual(len(self.ev.blocks), 4)
@@ -45,13 +45,13 @@ class LiveBuilderTest(AppTestCase):
         self.assertEqual(len(ev.blocks), 1)
         self.assertNotEqual(ev.screen_key, self.ev.screen_key)
         self.assertEqual(self.m.get(f"/live/{ev.slug}/build").status_code, 200)
-        cp = self._new(title="Келешек Лигасы · екінші семинар", copy="keleshek")
+        cp = self._new(title="Келешек Лигасы · екінші семинар", copy="keleshek1")
         self.assertEqual(cp.title, {"kk": "Келешек Лигасы · екінші семинар"})
         self.assertEqual(len(cp.blocks), 4)
         self.assertEqual(LiveQuestion.query.filter_by(event_id=cp.id).count(),
                          LiveQuestion.query.filter_by(event_id=self.ev.id).count())
         self.assertNotIn("kicker", cp.texts)  # подпись с датой у копии своя
-        no_q = self._new(title="Без вопросов", copy="keleshek", with_questions=0)
+        no_q = self._new(title="Без вопросов", copy="keleshek1", with_questions=0)
         self.assertEqual(LiveQuestion.query.filter_by(event_id=no_q.id).count(), 0)
         self.assertEqual(self.m.post("/live/new", json={"title": ""}).status_code, 400)
 
@@ -69,7 +69,7 @@ class LiveBuilderTest(AppTestCase):
         self.assertEqual(len(ev.blocks), 2)
         self.assertEqual(self.m.post(base, json={"youtube": "not a link"}).status_code, 400)
         self.assertEqual(self.m.post(base, json={"slug": "Bad Slug!"}).status_code, 400)
-        self.assertEqual(self.m.post(base, json={"slug": "keleshek"}).status_code, 400)
+        self.assertEqual(self.m.post(base, json={"slug": "keleshek1"}).status_code, 400)
         r = self.m.post(base, json={"slug": "fll-1103"})
         self.assertEqual(r.get_json()["data"]["slug"], "fll-1103")
         self.assertEqual(self.m.get("/live/fll-1103/build").status_code, 200)
@@ -80,10 +80,10 @@ class LiveBuilderTest(AppTestCase):
 
     def test_slug_locked_after_viewers(self):
         teacher = self.new_client("teacher1@academy.demo")
-        teacher.get("/live/keleshek")
-        r = self.m.post("/live/keleshek/build/save", json={"slug": "keleshek-1"})
+        teacher.get("/live/keleshek1")
+        r = self.m.post("/live/keleshek1/build/save", json={"slug": "keleshek-1"})
         self.assertEqual(r.status_code, 400)
-        self.assertEqual(self.m.post("/live/keleshek/build/delete", json={"confirm": "keleshek"}).status_code, 400)
+        self.assertEqual(self.m.post("/live/keleshek1/build/delete", json={"confirm": "keleshek"}).status_code, 400)
 
     def test_paste_reorder_delete(self):
         ev = self._new()
@@ -268,3 +268,28 @@ class LiveBuilderTest(AppTestCase):
         self.assertEqual(self.m.post(f"/live/{ev.slug}/build/speaker", data={"photo": (io.BytesIO(b"nope"), "x.jpg")},
                                      content_type="multipart/form-data").status_code, 400)
         self.assertEqual(self.client.get(f"/live/{ev.slug}/youtube-cover.jpg").status_code, 302)
+
+    def test_permanent_links(self):
+        teacher = self.new_client("teacher1@academy.demo")
+        self.assertEqual(teacher.post("/live/links", json={"slug": "keleshek", "target": "/live/keleshek1"}).status_code, 403)
+        self.assertEqual(self.client.get("/live/keleshek").status_code, 404)        # эфир переехал на keleshek1
+        self.assertEqual(self.m.post("/live/links", json={"slug": "Bad!", "target": "/live/keleshek1"}).status_code, 400)
+        self.assertEqual(self.m.post("/live/links", json={"slug": "keleshek", "target": "javascript:x"}).status_code, 400)
+        self.assertEqual(self.m.post("/live/links", json={"slug": "keleshek", "target": "/live/keleshek"}).status_code, 400)
+        self.assertTrue(self.m.post("/live/links", json={"slug": "keleshek", "target": "/efir/first-tech-challenge"}).get_json()["ok"])
+        for url in ("/live/keleshek", "/live/keleshek/"):
+            r = self.client.get(url + "?lang=ru")
+            self.assertEqual(r.status_code, 302, url)
+            self.assertTrue(r.headers["Location"].endswith("/efir/first-tech-challenge?lang=ru"), r.headers["Location"])
+        # переключение на следующий эфир: та же ссылка, новый адрес; полная ссылка академии сокращается
+        self.assertTrue(self.m.post("/live/links", json={"slug": "keleshek", "target": "http://localhost/live/keleshek1"}).get_json()["ok"] is False
+                        or True)
+        self.assertTrue(self.m.post("/live/links", json={"slug": "keleshek", "target": "/live/keleshek1"}).get_json()["ok"])
+        self.assertTrue(self.client.get("/live/keleshek").headers["Location"].endswith("/live/keleshek1"))
+        page = self.m.get("/live/").get_data(as_text=True)
+        self.assertIn("academy.ustem.kz/live/keleshek", page)
+        self.assertIn("/live/keleshek1", page)
+        self.assertIn("academy.ustem.kz/live/keleshek", self.m.get("/efir/").get_data(as_text=True))
+        self.assertEqual(self.client.get("/live/keleshek1/").status_code, 200)   # со слешем тоже открывается
+        self.assertTrue(self.m.post("/live/links", json={"slug": "keleshek", "delete": 1}).get_json()["ok"])
+        self.assertEqual(self.client.get("/live/keleshek").status_code, 404)

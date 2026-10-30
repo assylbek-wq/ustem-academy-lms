@@ -638,6 +638,17 @@ class LiveEvent(db.Model):
     created_at = db.Column(db.DateTime, default=utcnow)
 
 
+class LiveLink(db.Model):
+    """Постоянная ссылка academy.ustem.kz/live/<slug>: ведет на текущий эфир (переключается в списке эфиров).
+    Сильнее эфира с тем же адресом: так старую ссылку, которую все запомнили, можно направить на следующий эфир."""
+    __tablename__ = "live_links"
+    id = db.Column(db.Integer, primary_key=True)
+    slug = db.Column(db.String(64), unique=True, nullable=False)
+    target = db.Column(db.String(500), nullable=False)      # /efir/<slug>, /live/<slug> или https://...
+    updated_by = db.Column(db.Integer)
+    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
+
+
 class LiveQuestion(db.Model):
     __tablename__ = "live_questions"
     __table_args__ = (db.UniqueConstraint("event_id", "key", name="uq_live_question_key"),)

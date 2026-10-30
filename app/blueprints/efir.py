@@ -63,7 +63,7 @@ def _pretty(url: str) -> str:
 
 
 # ─── Учитель ─────────────────────────────────────────────────────────────
-@bp.route("/<slug>")
+@bp.route("/<slug>", strict_slashes=False)
 def watch(slug):
     ev = _event(slug)
     if not g.user:
@@ -624,7 +624,8 @@ def hub():
     rows = [{"ev": e, "status": lb.status(e, now), "viewers": counts.get(e.id, 0), "questions": qn.get(e.id, 0)} for e in evs]
     from ..models import LiveEvent
     lives = LiveEvent.query.filter_by(archived=False).order_by(LiveEvent.starts_at.desc().nullsfirst()).all()
-    return render_template("efir/hub.html", rows=rows, ai=lb.ai_enabled(), lives=lives)
+    from .live import links_ctx
+    return render_template("efir/hub.html", rows=rows, ai=lb.ai_enabled(), lives=lives, **links_ctx())
 
 
 @bp.route("/import", methods=["POST"])
