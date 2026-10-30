@@ -117,7 +117,7 @@
     <!-- Вопрос / ответ / рейтинг: рисует JS -->
     <div class="card hide" id="panel"></div>
     <div class="card" id="hello">
-      <h3>{{ t('live.hello', name=user.full_name.split()[1] if user.full_name.split()|length > 1 else user.full_name) }}</h3>
+      <h3>{{ t('live.hello', name=user.first_name) }}</h3>
       <div class="muted">{{ t('live.hello_sub') }}</div>
     </div>
 

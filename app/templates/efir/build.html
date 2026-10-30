@@ -617,8 +617,8 @@
       });
     };
     lockSlug();
-    $('f-partners').value = D.partners || '';
-    $('f-partners').oninput = function () { D.partners = $('f-partners').value; queue({partners: D.partners}); };
+    $('f-partners').value = D.partners_text || '';
+    $('f-partners').oninput = function () { D.partners_text = $('f-partners').value; queue({partners: D.partners_text}); };
     all('[data-link]').forEach(function (cb) {
       var k = cb.dataset.link, inp = document.querySelector('[data-linkurl="' + k + '"]');
       var last = (D.links || {})[k] || inp.placeholder;

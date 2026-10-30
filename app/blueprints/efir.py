@@ -582,7 +582,7 @@ def _builder_json(ev: EfirEvent) -> dict:
         "slug": ev.slug, "title": ev.title or {}, "subtitle": ev.subtitle or {}, "lang": ev.lang or "kk",
         "starts_at": ev.starts_at.strftime("%Y-%m-%dT%H:%M") if ev.starts_at else "",
         "youtube": f"https://youtu.be/{ev.youtube_id}" if ev.youtube_id else "",
-        "partners": (ev.texts or {}).get("partners", ""),
+        "partners_text": (ev.texts or {}).get("partners", ""),
         "speaker_name": (ev.texts or {}).get("speaker_name", ""), "speaker_role": (ev.texts or {}).get("speaker_role", ""),
         "has_photo": deck_svc.speaker_path(ev).exists(), "kicker": (ev.texts or {}).get("kicker") or {},
         "finish": (ev.texts or {}).get("finish") or {}, "links": ev.links or {}, "blocks": ev.blocks or [],
