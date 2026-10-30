@@ -1,7 +1,8 @@
 <!doctype html>
-<html lang="{{ locale }}">
+<html lang="{{ locale }}" translate="no" class="notranslate">
 <head>
   <meta charset="utf-8">
+  <meta name="google" content="notranslate">  {# видеосервер (Chrome) не должен предлагать перевод: панель попадает в эфир #}
   <title>{{ t('live.screen_title') }} · {{ ev.title|loc }}</title>
   {% include "efir/_style.html" %}
   <style>
