@@ -6,6 +6,10 @@ USTEM Academy - LMS для подготовки учителей. Flask + SQLAlc
 Быстрые факты:
 
 - Запуск: `SEED_DEMO=1 python wsgi.py` -> http://localhost:5080 (порт 5060 браузеры блокируют, не используйте).
+- Выкладка на academy.ustem.kz без доступа к серверу: `git push origin main:production`. Сервер раз в минуту
+  (таймер `ustem-autodeploy.timer`, скрипт `deploy/autodeploy.sh`, копия в `/opt/ustem-academy/`) делает копию базы,
+  ставит код из `production`, пересобирает контейнеры и проверяет `/healthz` (поле `version` = коммит). Журнал на сервере
+  `/opt/ustem-academy/autodeploy.log`. Проверить, что выложено: `https://academy.ustem.kz/healthz`.
 - Тесты: `python -m unittest discover tests -v`; на Postgres - с `TEST_DATABASE_URL`.
 - После правки Tailwind-классов в `app/templates/` или `app/static/js/` - `bash deploy/build-css.sh` (собранный CSS в гите).
 - Все строки интерфейса - через `t("ключ")`, словарь в `app/i18n_strings.py` (ru, kk, en). Тест `tests/test_i18n.py`
