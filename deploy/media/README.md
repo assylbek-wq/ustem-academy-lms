@@ -4,6 +4,8 @@
 в YouTube без OBS.
 
 ## Сервер
+Работает: `ustem-media`, 77.243.81.119, `media.ustem.kz` (ps.kz, облако eta-plutonium, Алматы), установлен 30.10.2026.
+
 - ps.kz, облако (VPC): 4 vCPU, 8 ГБ RAM, 40 ГБ NVMe, Ubuntu 24.04, публичный IP.
 - DNS: `media.ustem.kz` (A-запись) -> IP сервера.
 - Фаервол: TCP 80, 443, 7881; UDP 3478, 50000-60000.

@@ -52,7 +52,11 @@ ${DOMAIN} {
   reverse_proxy 127.0.0.1:7880
 }
 CADDY
-chmod 600 livekit.yaml egress.yaml
+chmod 600 livekit.yaml
+chmod 644 egress.yaml   # Egress в контейнере работает не от root
+sudo ufw allow 22/tcp && sudo ufw allow 80/tcp && sudo ufw allow 443/tcp && sudo ufw allow 443/udp
+sudo ufw allow 7881/tcp && sudo ufw allow 3478/udp && sudo ufw allow 50000:60000/udp && sudo ufw allow 30000:40000/udp
+sudo ufw --force enable   # 7880 (API без TLS) снаружи закрыт, к нему ходит только Caddy
 sudo docker compose pull
 sudo docker compose up -d
 echo
