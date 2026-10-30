@@ -1339,6 +1339,8 @@ _S.update({
     'efir.g_slide_hint': ('Листать слайды можно, когда ведущий выведет вас в эфир.', 'Жүргізуші эфирге шығарғанда слайдтарды ауыстыра аласыз.', 'You can change slides once the host puts you on air.'),
     'efir.g_slide_on': ('Листайте кнопками, стрелками на клавиатуре или кликером.', 'Батырмалармен, пернетақта көрсеткілерімен немесе кликермен ауыстырыңыз.', 'Use the buttons, arrow keys or a clicker.'),
     'efir.g_slide_back': ('Слайды листает спикер в эфире. Вы пока за кулисами.', 'Слайдтарды эфирдегі спикер ауыстырады. Сіз әзірге сахна артындасыз.', 'Only a speaker on air can change slides. You are backstage.'),
+    'efir.d_l_duo': ('Слайд + 2 камеры', 'Слайд + 2 камера', 'Slide + 2 cameras'),
+    'efir.d_l_duo_s': ('Для двух спикеров: у каждого свое окно справа, одно под другим.', 'Екі спикерге: әрқайсысының оң жақта өз терезесі бар, бірінің астында бірі.', 'For two speakers: each gets a window on the right, one above the other.'),
     'nav.efir': ('Студия эфиров', 'Эфир студиясы', 'Live studio'),
     'live.st_short': ('Аналитика', 'Аналитика', 'Analytics'),
     'live.link_bot': ('новости и напоминания', 'жаңалықтар мен еске салулар', 'news and reminders'),

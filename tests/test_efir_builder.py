@@ -241,6 +241,20 @@ class EfirBuilderTest(AppTestCase):
         self.assertEqual(j["deck"]["cam"]["y"], 540)
         j2 = self.client.get(f"/efir/{ev.slug}/screen.json?key={ev.screen_key}&dv={j['deck']['v']}").get_json()
         self.assertNotIn("deck", j2)
+        # «Слайд + 2 камеры»: два прозрачных окна справа, слайд слева, экран получает оба окна
+        self.m.post(f"/efir/{ev.slug}/build/deck", json={"slides": [{"id": ids[2], "layout": "duo", "qr": {"on": True, "to": "watch", "pos": "br"}},
+                                                                    {"id": ids[0], "layout": "full"}]})
+        z = zipfile.ZipFile(io.BytesIO(self.m.get(f"/efir/{ev.slug}/build/deck/export.zip").data))
+        im = Image.open(io.BytesIO(z.read("slide-01.png")))
+        self.assertEqual(im.getpixel((1484 + 196, 148 + 196))[3], 0)    # верхнее окно
+        self.assertEqual(im.getpixel((1484 + 196, 564 + 196))[3], 0)    # нижнее окно
+        self.assertEqual(im.getpixel((1484 + 196, 556))[3], 255)        # между окнами рамка
+        self.assertEqual(im.getpixel((300, 500))[3], 255)
+        svc._cache.clear()
+        j = self.client.get(f"/efir/{ev.slug}/screen.json?key={ev.screen_key}&dv=0").get_json()
+        self.assertEqual(j["deck"]["slides"][0]["layout"], "duo")
+        self.assertEqual([c["y"] for c in j["deck"]["cam2"]], [148, 564])
+        self.assertEqual(self.m.get(f"/efir/{ev.slug}/build/deck/export.pdf").status_code, 200)
         # копия эфира получает свои файлы, удаление эфира убирает папку
         cp = self._new(title="Копия", copy=ev.slug)
         self.assertEqual(len(efir_deck.get(cp)["slides"]), 2)

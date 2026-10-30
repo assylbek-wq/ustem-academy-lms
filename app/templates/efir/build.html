@@ -168,7 +168,8 @@
     .dset{background:var(--card2);border:1px solid var(--line);border-radius:18px;padding:16px}
     .dset .hd{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap}
     .dset .hd b{font-size:15px;font-weight:900}
-    .los{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+    .los{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+    @media(max-width:1100px){.los{grid-template-columns:repeat(2,1fr)}}
     @media(max-width:640px){.los{grid-template-columns:1fr}}
     .lo{border:1px solid var(--line);border-radius:14px;padding:10px;cursor:pointer;background:var(--card);transition:border-color .15s}
     .lo.on{border-color:var(--focus);background:var(--tint);box-shadow:0 0 0 3px rgba(0,117,242,.15)}
@@ -785,6 +786,7 @@
   var TD = {{ {
     'slide': t('live.d_slide'), 'of': t('live.d_of'), 'l_full': t('live.d_l_full'), 'l_full_s': t('live.d_l_full_s'),
     'l_cam': t('live.d_l_cam'), 'l_cam_s': t('live.d_l_cam_s'), 'l_side': t('live.d_l_side'), 'l_side_s': t('live.d_l_side_s'),
+    'l_duo': t('efir.d_l_duo'), 'l_duo_s': t('efir.d_l_duo_s'),
     'qr': t('live.d_qr'), 'qr_to': {'watch': t('live.d_qr_watch'), 'connect': t('live.d_qr_connect'), 'bot': t('live.d_qr_bot'), 'url': t('live.d_qr_url')},
     'qr_label': t('live.d_qr_label'), 'qr_url_ph': t('live.d_qr_url_ph'), 'pos_bl': t('live.d_pos_bl'), 'pos_br': t('live.d_pos_br'),
     'all': t('live.d_all'), 'all_done': t('live.d_all_done'), 'left': t('live.d_left'), 'right': t('live.d_right'), 'del': t('live.d_del'),
@@ -793,15 +795,18 @@
   }|tojson }};
   var DK = D.deck || {cam: 'tr', slides: []}, dSel = 0, dT = null, dReplace = false;
   var CAMR = {tr: {x: 1484, y: 148, w: 392, h: 392}, br: {x: 1484, y: 540, w: 392, h: 392}};
+  var CAM2 = [{x: 1484, y: 148, w: 392, h: 392}, {x: 1484, y: 564, w: 392, h: 392}];
+  function camsOf(lay) { return lay === 'full' ? [] : (lay === 'duo' ? CAM2 : [CAMR[DK.cam]]); }
   function pct(v, of) { return (v / of * 100).toFixed(2) + '%'; }
-  function camBox(cls) {
-    var c = CAMR[DK.cam];
-    return '<span class="' + cls + '" style="left:' + pct(c.x, 1920) + ';top:' + pct(c.y, 1080) + ';width:' + pct(c.w, 1920) + ';height:' + pct(c.h, 1080) + '"></span>';
+  function camBox(cls, lay) {
+    return camsOf(lay || 'side').map(function (c) {
+      return '<span class="' + cls + '" style="left:' + pct(c.x, 1920) + ';top:' + pct(c.y, 1080) + ';width:' + pct(c.w, 1920) + ';height:' + pct(c.h, 1080) + '"></span>';
+    }).join('');
   }
   function qrMark(sl) {
     var c = CAMR[DK.cam];
     if (sl.layout === 'side') return '<span class="qm" style="left:' + pct(c.x + 70, 1920) + ';top:' + pct(DK.cam === 'br' ? 170 : c.y + c.h + 40, 1080) + '"></span>';
-    return '<span class="qm" style="' + (sl.qr.pos === 'bl' ? 'left:3%' : 'right:3%') + ';bottom:5%"></span>';
+    return '<span class="qm" style="' + (sl.qr.pos === 'bl' ? 'left:3%' : (sl.layout === 'duo' ? 'right:24.8%' : 'right:3%')) + ';bottom:5%"></span>';
   }
   function renderDeck() {
     var n = DK.slides.length;
@@ -814,13 +819,13 @@
     if (dSel >= n) dSel = Math.max(0, n - 1);
     $('d-grid').innerHTML = DK.slides.map(function (sl, i) {
       return '<div class="th ' + sl.layout + (i === dSel ? ' on' : '') + '" data-th="' + i + '"><img src="' + esc(sl.thumb) + '" alt="" loading="lazy">' +
-        (sl.layout !== 'full' ? camBox('cm') : '') + (sl.qr && sl.qr.on ? qrMark(sl) : '') + '<span class="no">' + (i + 1) + '</span></div>';
+        (sl.layout !== 'full' ? camBox('cm', sl.layout) : '') + (sl.qr && sl.qr.on ? qrMark(sl) : '') + '<span class="no">' + (i + 1) + '</span></div>';
     }).join('');
     all('[data-th]').forEach(function (el) { el.onclick = function () { dSel = +el.dataset.th; renderDeck(); showSlide(); }; });
     renderDset();
   }
   function layPic(kind) {
-    var c = CAMR[DK.cam], cam = '<u style="left:' + pct(c.x, 1920) + ';top:' + pct(c.y, 1080) + ';width:' + pct(c.w, 1920) + ';height:' + pct(c.h, 1080) + '"></u>';
+    var cam = camsOf(kind).map(function (c) { return '<u style="left:' + pct(c.x, 1920) + ';top:' + pct(c.y, 1080) + ';width:' + pct(c.w, 1920) + ';height:' + pct(c.h, 1080) + '"></u>'; }).join('');
     if (kind === 'full') return '<i style="inset:0"></i>';
     if (kind === 'cam') return '<i style="inset:0"></i>' + cam;
     return '<i style="left:1.25%;top:13.7%;width:74.8%;height:74.8%"></i>' + cam;
@@ -828,7 +833,7 @@
   function renderDset() {
     var sl = DK.slides[dSel]; if (!sl) { $('d-set').innerHTML = ''; return; }
     var q = sl.qr;
-    var lays = ['side', 'cam', 'full'].map(function (k) {
+    var lays = ['side', 'duo', 'cam', 'full'].map(function (k) {
       return '<div class="lo' + (sl.layout === k ? ' on' : '') + '" data-lay="' + k + '"><div class="pic">' + layPic(k) + '</div><b>' + esc(TD['l_' + k]) + '</b><span>' + esc(TD['l_' + k + '_s']) + '</span></div>';
     }).join('');
     var opts = ['watch', 'connect', 'bot', 'url'].map(function (k) { return '<option value="' + k + '"' + (q.to === k ? ' selected' : '') + '>' + esc(TD.qr_to[k]) + '</option>'; }).join('');

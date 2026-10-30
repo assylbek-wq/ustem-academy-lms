@@ -83,8 +83,8 @@
     .sl-img{position:absolute;object-fit:contain;opacity:0;transition:opacity .35s ease}
     .sl-img.on{opacity:1}
     #sl-ring{background:var(--grad)}
-    #sl-camph{display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:linear-gradient(160deg,#3b3b52,#1f1f2c);color:#c9c9d6;font-size:28px;font-weight:800;border-radius:24px}
-    #sl-camph span{font-size:84px}
+    #sl-camph,.camph{display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:linear-gradient(160deg,#3b3b52,#1f1f2c);color:#c9c9d6;font-size:28px;font-weight:800;border-radius:24px}
+    #sl-camph span,.camph span{font-size:84px}
     .sl-qr{position:absolute;background:#fff;color:#1b1f24;border-radius:26px;padding:18px;display:none;flex-direction:column;align-items:center;text-align:center;box-shadow:0 20px 60px -20px rgba(0,0,0,.6)}
     .sl-qr svg{width:100%;height:auto;display:block}
     .sl-qr b{display:block;font-size:26px;line-height:1.15;margin-top:10px;font-weight:900}
@@ -102,8 +102,8 @@
     .camt.sm .plate small{font-size:13px}
     .camt.talking{box-shadow:0 0 0 5px #52bdea,0 30px 60px -30px rgba(0,20,60,.7)}
     #stage.grid .scene{opacity:0!important}
-    #sl-camph.studio{background:rgba(255,255,255,.08);border:2px dashed rgba(255,255,255,.35)}
-    #sl-camph.studio img{width:96px;height:96px;opacity:.85}
+    .camph.studio{background:rgba(255,255,255,.08);border:2px dashed rgba(255,255,255,.35)}
+    .camph.studio img{width:96px;height:96px;opacity:.85}
   </style>
 </head>
 <body>
@@ -260,9 +260,10 @@
   var preloaded = {};
   function preload() { (DECK.slides || []).forEach(function (s) { if (!preloaded[s.img]) { preloaded[s.img] = new Image(); preloaded[s.img].src = s.img; } }); }
   preload();
-  var slCur = null, slFront = 'sl-a';
+  var slCur = null, slFront = 'sl-a', camRects = [];
+  function rectsFor(s) { return !s || s.layout === 'full' ? [] : (s.layout === 'duo' ? (DECK.cam2 || []) : [DECK.cam]); }
   function placeImg(el, s) {
-    var box = s.layout === 'side' ? [24, DECK.cam_pos === 'br' ? 124 : 148, 1436, 808] : [0, 0, 1920, 1080];
+    var box = s.layout === 'side' ? [24, DECK.cam_pos === 'br' ? 124 : 148, 1436, 808] : (s.layout === 'duo' ? [24, 148, 1436, 808] : [0, 0, 1920, 1080]);
     el.style.left = box[0] + 'px'; el.style.top = box[1] + 'px'; el.style.width = box[2] + 'px'; el.style.height = box[3] + 'px';
     var hole = s.layout === 'cam' ? "path(evenodd, 'M" + (-box[0]) + ' ' + (-box[1]) + 'h1920v1080h-1920Z ' + rr(DECK.cam.x - box[0], DECK.cam.y - box[1], DECK.cam.w, DECK.cam.h, 24) + "')" : 'none';
     el.style.clipPath = hole;
@@ -270,15 +271,13 @@
   function renderSlide(i) {
     var s = (DECK.slides || [])[i];
     var cut = !!s && s.layout !== 'full';
-    camRect = cut ? DECK.cam : null;  // студия: окно камеры не прозрачное, в нем камеры спикеров
+    camRects = rectsFor(s);  // студия: окна камер не прозрачные, в них камеры спикеров
     if (!s) return;
     var c = DECK.cam, full = 'M0 0H1920V1080H0Z ';
-    $('sl-bg').style.clipPath = cut ? "path(evenodd, '" + full + rr(c.x, c.y, c.w, c.h, 24) + "')" : 'none';
+    $('sl-bg').style.clipPath = cut ? "path(evenodd, '" + full + camRects.map(function (r) { return rr(r.x, r.y, r.w, r.h, 24); }).join(' ') + "')" : 'none';
     $('sl-ring').style.display = cut ? 'block' : 'none';
-    if (cut) $('sl-ring').style.clipPath = "path(evenodd, '" + rr(c.x - 6, c.y - 6, c.w + 12, c.h + 12, 30) + ' ' + rr(c.x, c.y, c.w, c.h, 24) + "')";
-    var ph = $('sl-camph');
-    if (DEMO) ph.style.display = cut ? 'flex' : 'none';
-    if (DEMO && cut) { ph.style.left = c.x + 'px'; ph.style.top = c.y + 'px'; ph.style.width = c.w + 'px'; ph.style.height = c.h + 'px'; }
+    if (cut) $('sl-ring').style.clipPath = "path(evenodd, '" + camRects.map(function (r) { return rr(r.x - 6, r.y - 6, r.w + 12, r.h + 12, 30) + ' ' + rr(r.x, r.y, r.w, r.h, 24); }).join(' ') + "')";
+    if (DEMO) placeholders(camRects, true);
     var key = s.id + '|' + s.layout;
     if (key !== slCur) {
       var back = slFront === 'sl-a' ? 'sl-b' : 'sl-a', img = $(back);
@@ -299,7 +298,7 @@
         box.querySelector('svg').style.width = (DECK.cam_pos === 'br' ? 230 : 250) + 'px';
       } else {
         box.style.width = '300px'; box.style.top = 'auto'; box.style.bottom = '40px';
-        box.style.left = q.pos === 'bl' ? '40px' : (1920 - 340) + 'px';
+        box.style.left = q.pos === 'bl' ? '40px' : (s.layout === 'duo' ? 1460 - 316 : 1920 - 340) + 'px';
         box.querySelector('svg').style.width = '100%';
       }
     } else box.style.display = 'none';
@@ -341,7 +340,7 @@
     $('c-online').textContent = s.online || 0; $('c-joined').textContent = s.joined || 0;
     show(mode === 'reveal' ? 'question' : mode);
     stage.classList.toggle('slides', mode === 'slides');
-    camRect = null;
+    camRects = [];
     if (mode === 'slides') renderSlide(st.slide || 0);
     MODE = mode; layoutCams();
     if (mode === 'profile') {
@@ -394,7 +393,7 @@
     }).catch(function () {}).finally(function () { setTimeout(poll, 1500); });
   }
   // ─── Камеры спикеров (видеосервер) ───
-  var STAGE = {on: [], muted: [], layout: 'auto'}, MODE = 'waiting', camRect = null, PEOPLE = {}, room = null;
+  var STAGE = {on: [], muted: [], layout: 'auto'}, MODE = 'waiting', PEOPLE = {}, room = null;
   var EGRESS = {{ (request.args.get('egress') == '1')|tojson }}, signaled = false;
   var PREVIEW = {{ (request.args.get('preview') == '1')|tojson }};  // у спикера на странице: без звука, чтобы не было эха
   function onStage() { return (STAGE.on || []).filter(function (id) { return PEOPLE[id] && (PEOPLE[id].cam || PEOPLE[id].scr); }); }
@@ -432,27 +431,45 @@
   function layoutCams() {
     var ids = onStage(), lay = STAGE.layout || 'auto', rects = [], small = false;
     var grid = lay !== 'hide' && ids.length && (lay === 'speakers' || MODE === 'talk');
-    if (lay !== 'hide' && ids.length && !grid && camRect) {
-      var n = ids.length, gap = 10, h = (camRect.h - (n - 1) * gap) / n;
-      ids.forEach(function (id, i) { rects.push([camRect.x, camRect.y + i * (h + gap), camRect.w, h]); });
-      small = n > 1;
+    if (lay !== 'hide' && ids.length && !grid && camRects.length) {
+      if (ids.length <= camRects.length) {   // каждому спикеру свое окно («Слайд + 2 камеры»)
+        ids.forEach(function (id, i) { var r = camRects[i]; rects.push([r.x, r.y, r.w, r.h]); });
+      } else {                               // спикеров больше окон: делим колонку окон поровну
+        var top = camRects[0].y, bot = camRects[camRects.length - 1].y + camRects[camRects.length - 1].h, cr = camRects[0];
+        var n = ids.length, gap = 10, h = (bot - top - (n - 1) * gap) / n;
+        ids.forEach(function (id, i) { rects.push([cr.x, top + i * (h + gap), cr.w, h]); });
+        small = h < 300;
+      }
     } else if (grid) rects = gridRects(ids.length);
     stage.classList.toggle('grid', !!grid);
     Object.keys(PEOPLE).forEach(function (id) {
       var p = PEOPLE[id], i = rects.length ? ids.indexOf(id) : -1;
       if (p.el || i >= 0) tile(id);
       if (p.el) {
-        if (i >= 0) { var r = rects[i]; p.el.style.left = r[0] + 'px'; p.el.style.top = r[1] + 'px'; p.el.style.width = r[2] + 'px'; p.el.style.height = r[3] + 'px'; p.el.style.borderRadius = camRect && !grid ? '24px' : '28px'; }
+        if (i >= 0) { var r = rects[i]; p.el.style.left = r[0] + 'px'; p.el.style.top = r[1] + 'px'; p.el.style.width = r[2] + 'px'; p.el.style.height = r[3] + 'px'; p.el.style.borderRadius = camRects.length && !grid ? '24px' : '28px'; }
         p.el.classList.toggle('on', i >= 0); p.el.classList.toggle('sm', small);
       }
       (p.audio || []).forEach(function (a) { a.muted = !((STAGE.on || []).indexOf(id) >= 0 && (STAGE.muted || []).indexOf(id) < 0); });
     });
-    if (data && data.state && data.state.mode === 'slides' && !DEMO) {  // пустое окно камеры: логотип
-      var ph = $('sl-camph'), show = !!camRect && !ids.length;
-      if (show && !ph.dataset.studio) { ph.dataset.studio = 1; ph.innerHTML = '<img src="{{ url_for('static', filename='img/ustem-mark.png') }}" alt="">'; }
-      ph.classList.toggle('studio', show); ph.style.display = show ? 'flex' : 'none';
-      if (show) { ph.style.left = camRect.x + 'px'; ph.style.top = camRect.y + 'px'; ph.style.width = camRect.w + 'px'; ph.style.height = camRect.h + 'px'; }
+    if (data && data.state && data.state.mode === 'slides' && !DEMO) {  // пустые окна камер: логотип
+      var empty = grid || lay === 'hide' ? camRects : camRects.slice(Math.min(ids.length, ids.length > camRects.length ? camRects.length : ids.length));
+      placeholders(empty, false);
+    } else if (!DEMO) placeholders([], false);
+  }
+  function placeholders(rects, demo) {  // заглушки окон камер: в конструкторе «Камера спикера», в эфире логотип
+    var have = document.querySelectorAll('.camph');
+    for (var i = have.length; i < Math.max(rects.length, 2); i++) {
+      var el = $('sl-camph').cloneNode(true); el.id = ''; el.classList.add('camph'); el.style.display = 'none';
+      $('s-slides').insertBefore(el, $('sl-bg'));
     }
+    Array.prototype.forEach.call(document.querySelectorAll('.camph'), function (el, i) {
+      var r = rects[i];
+      el.style.display = r ? 'flex' : 'none';
+      if (!r) return;
+      if (!demo && !el.dataset.studio) { el.dataset.studio = 1; el.innerHTML = '<img src="{{ url_for('static', filename='img/ustem-mark.png') }}" alt="">'; }
+      el.classList.toggle('studio', !demo);
+      el.style.left = r.x + 'px'; el.style.top = r.y + 'px'; el.style.width = r.w + 'px'; el.style.height = r.h + 'px';
+    });
   }
   function person(p) {
     var x = PEOPLE[p.identity] = PEOPLE[p.identity] || {audio: []};

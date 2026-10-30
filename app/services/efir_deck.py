@@ -19,9 +19,17 @@ from flask import current_app
 
 from ..models import EfirEvent, db
 
-LAYOUTS = ("full", "cam", "side")
+LAYOUTS = ("full", "cam", "side", "duo")
 QR_TO = ("watch", "connect", "bot", "url")
 CAM = {"tr": {"x": 1484, "y": 148, "w": 392, "h": 392}, "br": {"x": 1484, "y": 540, "w": 392, "h": 392}}
+# «Слайд + 2 камеры» (duo): два окна в правой колонке ровно по высоте слайда (148..956)
+CAM2 = [{"x": 1484, "y": 148, "w": 392, "h": 392}, {"x": 1484, "y": 564, "w": 392, "h": 392}]
+
+
+def cam_rects(deck: dict, lay: str) -> list[dict]:
+    if lay == "full":
+        return []
+    return [dict(c) for c in CAM2] if lay == "duo" else [dict(CAM[deck["cam"]])]
 MAX_SLIDES = 120
 WIDTH = 1920
 THUMB = 480
@@ -179,7 +187,7 @@ def for_screen(ev: EfirEvent, links: dict, key: str = "") -> dict:
         q["show"] = re.sub(r"^https?://", "", url).split("?")[0].rstrip("/") if url else ""
         out.append({"id": s["id"], "layout": s.get("layout", "side"), "w": s.get("w"), "h": s.get("h"), "qr": q,
                     "img": url_for("efir.slide_img", slug=ev.slug, name=f"{s['id']}.jpg", key=key or None)})
-    return {"v": deck["v"], "cam": CAM[deck["cam"]], "cam_pos": deck["cam"], "slides": out}
+    return {"v": deck["v"], "cam": CAM[deck["cam"]], "cam2": CAM2, "cam_pos": deck["cam"], "slides": out}
 
 
 # ─── Скачивание: слайды с окном камеры и QR ──────────────────────────────
@@ -261,16 +269,16 @@ def render(ev: EfirEvent, s: dict, links: dict, transparent: bool, cover=None, l
     lay = s.get("layout", "side")
     src = Image.open(folder(ev) / f"{s['id']}.jpg").convert("RGBA")
     canvas = (cover or _cover()).copy() if lay != "full" else Image.new("RGBA", (W, H), (11, 19, 34, 255))
-    if lay == "side":
-        top = 124 if deck["cam"] == "br" else 148
+    if lay in ("side", "duo"):
+        top = 124 if (deck["cam"] == "br" and lay == "side") else 148
         im = _fit(src, 1436, 808)
         canvas.alpha_composite(im, (24 + (1436 - im.width) // 2, top + (808 - im.height) // 2))
     else:
         im = _fit(src, W, H)
         canvas.alpha_composite(im, ((W - im.width) // 2, (H - im.height) // 2))
     d = ImageDraw.Draw(canvas)
-    if lay != "full":
-        x, y, w, h = cam["x"], cam["y"], cam["w"], cam["h"]
+    for c in cam_rects(deck, lay):
+        x, y, w, h = c["x"], c["y"], c["w"], c["h"]
         ring = Image.new("RGBA", (W, H), (0, 0, 0, 0))
         rd = ImageDraw.Draw(ring)
         rd.rounded_rectangle((x - 6, y - 6, x + w + 6, y + h + 6), radius=30, fill=(0, 117, 242, 255))
@@ -302,7 +310,8 @@ def render(ev: EfirEvent, s: dict, links: dict, transparent: bool, cover=None, l
             by = 148 if deck["cam"] == "br" else cam["y"] + cam["h"] + 30
         else:
             bw, qs = 300, 264
-            bx = 40 if q.get("pos") == "bl" else W - 340
+            right = 1460 - bw - 16 if lay == "duo" else W - 340   # duo: правый угол слайда, колонка занята камерами
+            bx = 40 if q.get("pos") == "bl" else right
             by = None
         fb, fm = _font(True, 26), _font(False, 17)
         lines = _wrap(d, label, fb, bw - 36) if label else []
