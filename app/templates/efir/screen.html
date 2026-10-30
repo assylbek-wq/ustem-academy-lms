@@ -396,6 +396,7 @@
   // ─── Камеры спикеров (видеосервер) ───
   var STAGE = {on: [], muted: [], layout: 'auto'}, MODE = 'waiting', camRect = null, PEOPLE = {}, room = null;
   var EGRESS = {{ (request.args.get('egress') == '1')|tojson }}, signaled = false;
+  var PREVIEW = {{ (request.args.get('preview') == '1')|tojson }};  // у спикера на странице: без звука, чтобы не было эха
   function onStage() { return (STAGE.on || []).filter(function (id) { return PEOPLE[id] && (PEOPLE[id].cam || PEOPLE[id].scr); }); }
   function fitBox(x, y, w, h, ar) { var cw = w, ch = cw / ar; if (ch > h) { ch = h; cw = ch * ar; } return [x + (w - cw) / 2, y + (h - ch) / 2, cw, ch]; }
   function gridRects(n) {
@@ -466,7 +467,7 @@
       room = new LK.Room({adaptiveStream: false, dynacast: false});
       room.on(LK.RoomEvent.TrackSubscribed, function (t, pub, p) {
         var x = person(p);
-        if (t.kind === 'audio') { var a = t.attach(); document.body.appendChild(a); x.audio.push(a); }
+        if (t.kind === 'audio') { if (PREVIEW) return; var a = t.attach(); document.body.appendChild(a); x.audio.push(a); }
         else if (pub.source === LK.Track.Source.ScreenShare) x.scr = t; else x.cam = t;
         render();
       }).on(LK.RoomEvent.TrackUnsubscribed, function (t, pub, p) {

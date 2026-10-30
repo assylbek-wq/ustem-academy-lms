@@ -186,3 +186,35 @@ class EfirMediaTest(AppTestCase):
         self.assertEqual(d["stage"]["muted"], ["g-a", "g-b"])
         self.assertTrue(anon.get(base + f"/guest/status?k={self.ev.guest_key}&id=g-a").get_json()["muted"])
         self.assertEqual(self.m.post(base + "/control/stage", json={"muted": []}).get_json()["stage"]["muted"], [])
+
+    def test_guest_preview_and_slides(self):
+        self._on()
+        from fpdf import FPDF
+        import io
+        pdf = FPDF(orientation="L", unit="pt", format=(540, 960))
+        for i in range(3):
+            pdf.add_page(); pdf.set_font("Helvetica", size=40); pdf.text(60, 120, f"Slide {i + 1}")
+        r = self.m.post(f"/efir/{self.ev.slug}/build/deck/upload", data={"pdf": (io.BytesIO(bytes(pdf.output())), "d.pdf")},
+                        content_type="multipart/form-data")
+        self.assertEqual(r.status_code, 200, r.get_data(as_text=True)[:200])
+        anon = self.app.test_client()
+        base = f"/efir/{self.ev.slug}"
+        page = anon.get(f"{base}/guest?k={self.ev.guest_key}").get_data(as_text=True)
+        self.assertIn(f"/screen?key={self.ev.guest_key}", page.replace("&amp;", "&"))
+        self.assertEqual(page.count('data-i="'), 3)
+        # ключ спикера открывает экран (предпросмотр), слайды и состояние, но не пульт
+        self.assertEqual(anon.get(f"{base}/screen?key={self.ev.guest_key}&preview=1").status_code, 200)
+        self.assertEqual(anon.get(f"{base}/screen.json?key={self.ev.guest_key}").status_code, 200)
+        self.assertEqual(anon.get(f"{base}/control.json?key={self.ev.guest_key}").status_code, 302)
+        import re
+        h = {"X-CSRF-Token": re.search(r'name="csrf-token" content="([^"]+)"', page).group(1)}
+        body = {"k": self.ev.guest_key, "id": "g-a", "slide": 2}
+        self.assertEqual(anon.post(f"{base}/guest/slide", json=body, headers=h).status_code, 403)   # за кулисами
+        self.m.post(f"{base}/control/stage", json={"on": ["g-a"]})
+        d = anon.post(f"{base}/guest/slide", json=body, headers=h).get_json()
+        self.assertEqual((d["slide"], d["of"]), (2, 3))
+        st = self.m.get(f"{base}/control.json").get_json()["state"]
+        self.assertEqual((st["mode"], st["slide"]), ("slides", 2))
+        self.assertEqual(anon.post(f"{base}/guest/slide", json=dict(body, slide=99), headers=h).get_json()["slide"], 2)
+        self.assertEqual(anon.get(f"{base}/guest/status?k={self.ev.guest_key}&id=g-a").get_json()["slide"], 2)
+        self.assertEqual(anon.post(f"{base}/guest/slide", json=dict(body, k="bad"), headers=h).status_code, 404)

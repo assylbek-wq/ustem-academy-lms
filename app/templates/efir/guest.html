@@ -38,6 +38,15 @@
     .note{color:var(--mute);font-size:13px;line-height:1.5;margin-top:10px}
     .err{color:var(--red);font-size:13px;margin-top:8px}
     h2{font-size:18px;margin:0 0 4px;font-weight:800}
+    .pv{position:relative;aspect-ratio:16/9;border-radius:14px;overflow:hidden;background:#0b1220}
+    .pv iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+    .slctl{margin-top:12px}
+    .slctl .row b{font-family:var(--f-mono);min-width:70px;text-align:center}
+    .slctl.off .btn{opacity:.45;pointer-events:none}
+    .strip{display:flex;gap:8px;overflow-x:auto;margin-top:10px;padding-bottom:4px}
+    .strip img{height:64px;aspect-ratio:16/9;object-fit:cover;border-radius:8px;border:2px solid transparent;cursor:pointer;flex:none;background:var(--chip)}
+    .strip img.on{border-color:var(--blue)}
+    .slctl.off .strip img{cursor:default}
   </style>
 </head>
 <body>
@@ -52,6 +61,21 @@
   <div class="card"><h2>{{ t('efir.g_off_h') }}</h2><div class="note">{{ t('efir.g_off') }}</div></div>
   {% else %}
   <div id="st" class="status back" hidden><span class="dot"></span><span id="st-t"></span></div>
+  <div class="card" style="margin-bottom:20px">
+    <div class="row" style="margin-bottom:10px"><h2 style="margin:0">{{ t('efir.g_live_h') }}</h2><span class="sp"></span><span class="note" style="margin:0">{{ t('efir.g_live_sub') }}</span></div>
+    <div class="pv"><iframe src="{{ preview_url }}" title="preview" allow="autoplay"></iframe></div>
+    {% if thumbs %}
+    <div class="slctl" id="slctl">
+      <div class="row">
+        <button class="btn" type="button" id="sl-prev">←</button>
+        <b id="sl-n">1 / {{ thumbs|length }}</b>
+        <button class="btn pri" type="button" id="sl-next">→</button>
+        <span class="note" id="sl-hint" style="margin:0">{{ t('efir.g_slide_hint') }}</span>
+      </div>
+      <div class="strip">{% for u in thumbs %}<img src="{{ u }}" data-i="{{ loop.index0 }}" alt="{{ loop.index }}" loading="lazy">{% endfor %}</div>
+    </div>
+    {% endif %}
+  </div>
   <div class="grid">
     <div class="card">
       <div class="vid mirror" id="me"><video class="cam" id="me-v" autoplay muted playsinline></video>
@@ -98,6 +122,7 @@
   var T = {{ {'back': t('efir.g_back'), 'on': t('efir.g_on'), 'muted': t('efir.g_muted_by'), 'nocam': t('efir.g_nocam'),
               'err_name': t('efir.g_err_name'), 'err_dev': t('efir.g_err_dev'), 'net': t('live.net'), 'left': t('efir.g_left'),
               'mic_off': t('efir.g_mic_off'), 'mic_back': t('efir.g_mic_back'), 'mic_live': t('efir.g_mic_live'),
+              'slide_back': t('efir.g_slide_back'), 'slide_hint': t('efir.g_slide_hint'), 'slide_on': t('efir.g_slide_on'),
               'hand': t('efir.g_hand'), 'hand_down': t('efir.g_hand_down'), 'hand_sent': t('efir.g_hand_sent'), 'cam_off': t('efir.g_cam_off'), 'share_stop': t('efir.g_share_stop')}|tojson }};
   var $ = function (id) { return document.getElementById(id); };
   function toast(m, e) { var el = $('toast'); el.textContent = m; el.className = 'toast on' + (e ? ' err' : ''); setTimeout(function () { el.className = 'toast'; }, 2800); }
@@ -230,6 +255,34 @@
   };
   $('b-leave').onclick = function () { if (room) room.disconnect(); tracks.forEach(function (t) { t.stop(); }); location.reload(); };
 
+  // ─── Слайды: спикер в эфире листает сам ───
+  var NSL = document.querySelectorAll('.strip img').length, curSlide = 0, onAir = false;
+  function paintSlide(i) {
+    if (!NSL) return;
+    if (i !== null && i !== undefined) curSlide = i;
+    $('sl-n').textContent = (curSlide + 1) + ' / ' + NSL;
+    Array.prototype.forEach.call(document.querySelectorAll('.strip img'), function (im) { im.classList.toggle('on', +im.dataset.i === curSlide); });
+    $('slctl').classList.toggle('off', !onAir);
+    $('sl-hint').textContent = onAir ? T.slide_on : T.slide_hint;
+  }
+  function goSlide(i) {
+    if (!onAir) { toast(T.slide_back, true); return; }
+    i = Math.max(0, Math.min(NSL - 1, i)); paintSlide(i);
+    fetch('/efir/' + SLUG + '/guest/slide', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': CSRF},
+      body: JSON.stringify({k: K, id: ident, slide: i})}).then(function (r) { return r.json(); }).then(function (d) { if (!d.ok) toast(d.error, true); });
+  }
+  if (NSL) {
+    paintSlide(0);
+    $('sl-prev').onclick = function () { goSlide(curSlide - 1); };
+    $('sl-next').onclick = function () { goSlide(curSlide + 1); };
+    Array.prototype.forEach.call(document.querySelectorAll('.strip img'), function (im) { im.onclick = function () { goSlide(+im.dataset.i); }; });
+    document.addEventListener('keydown', function (e) {
+      var tg = e.target.tagName; if (!onAir || tg === 'INPUT' || tg === 'SELECT' || tg === 'TEXTAREA' || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (['ArrowRight', 'PageDown'].indexOf(e.key) >= 0) { e.preventDefault(); goSlide(curSlide + 1); }
+      else if (['ArrowLeft', 'PageUp'].indexOf(e.key) >= 0) { e.preventDefault(); goSlide(curSlide - 1); }
+    });
+  }
+
   // ─── В эфире или за кулисами ───
   function poll() {
     fetch('/efir/' + SLUG + '/guest/status?k=' + encodeURIComponent(K) + '&id=' + encodeURIComponent(ident), {cache: 'no-store'})
@@ -245,6 +298,7 @@
         if (!lock && was) { setMic(true); toast(T.mic_live); }
         setMic(micOn);
         if (handUp !== !!s.hand) { handUp = !!s.hand; paintHand(); }
+        onAir = !!s.on; paintSlide(s.slide);
       }).catch(function () {}).finally(function () { setTimeout(poll, 2000); });
   }
 })();

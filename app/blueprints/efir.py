@@ -41,8 +41,9 @@ def _event(slug: str) -> EfirEvent:
 
 
 def _screen_ok(ev: EfirEvent) -> bool:
+    """Смотреть экран эфира: по ключу экрана, по ключу ссылки спикера (предпросмотр у спикера) или команде."""
     key = request.args.get("key") or ""
-    if key and secrets.compare_digest(key, ev.screen_key):
+    if key and (secrets.compare_digest(key, ev.screen_key) or secrets.compare_digest(key, ev.guest_key)):
         return True
     return bool(g.user and g.user.has_role("methodist", "trainer"))
 
@@ -934,8 +935,12 @@ def guest(slug):
     ev = _event(slug)
     if not _guest_ok(ev):
         abort(404)
+    deck = deck_svc.get(ev)
+    thumbs = [url_for("efir.slide_img", slug=ev.slug, name=f"{s['id']}-t.jpg", key=ev.guest_key) for s in deck["slides"]]
     return render_template("efir/guest.html", ev=ev, k=ev.guest_key, media_on=media.enabled(),
-                           lk_url=media.cfg()["url"])
+                           lk_url=media.cfg()["url"], thumbs=thumbs,
+                           preview_url=url_for("efir.screen", slug=ev.slug, key=ev.guest_key, preview=1,
+                                               lang=ev.lang or "kk"))
 
 
 @bp.route("/<slug>/guest/token", methods=["POST"])
@@ -964,10 +969,35 @@ def guest_status(slug):
         abort(404)
     s = media.stage(ev)
     ident = request.args.get("id") or ""
-    resp = jsonify({"on": ident in s["on"], "muted": ident in s["muted"], "hand": ident in s["hands"], "on_list": s["on"], "mode": (ev.state or {}).get("mode") or "waiting",
+    st = ev.state or {}
+    resp = jsonify({"on": ident in s["on"], "muted": ident in s["muted"], "hand": ident in s["hands"], "on_list": s["on"],
+                    "slide": st.get("slide", 0) if st.get("mode") == "slides" else None, "mode": (ev.state or {}).get("mode") or "waiting",
                     "streaming": (ev.egress or {}).get("status") in media.ACTIVE})
     resp.headers["Cache-Control"] = "no-store"
     return resp
+
+
+@bp.route("/<slug>/guest/slide", methods=["POST"])
+def guest_slide(slug):
+    """Спикер в эфире листает слайды сам. За кулисами нельзя: ведущий выводит спикера в эфир, и пульт видит то же самое."""
+    ev = _event(slug)
+    if not _guest_ok(ev):
+        abort(404)
+    f = request.get_json(silent=True) or {}
+    ident = str(f.get("id") or "")[:24]
+    if ident not in media.stage(ev)["on"]:
+        return _bad("efir.g_slide_back", 403)
+    n = len(deck_svc.get(ev)["slides"])
+    if not n:
+        return _bad("efir.m_bad")
+    try:
+        i = max(0, min(int(f.get("slide") or 0), n - 1))
+    except (TypeError, ValueError):
+        return _bad("efir.m_bad")
+    if (ev.state or {}).get("mode") != "slides":
+        audit("live.state", "efir_event", ev.id, mode="slides", by=ident)
+    svc.set_state(ev, "slides", slide=i)
+    return jsonify({"ok": True, "slide": i, "of": n})
 
 
 @bp.route("/<slug>/guest/hand", methods=["POST"])
