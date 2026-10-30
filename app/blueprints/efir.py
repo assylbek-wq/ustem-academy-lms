@@ -26,6 +26,7 @@ from ..services import efir as svc
 from ..services import efir_builder as lb
 from ..services import efir_deck as deck_svc
 from ..services import efir_media as media
+from ..services import efir_video as vid_svc
 from ..services.mail import absolute
 
 bp = Blueprint("efir", __name__, url_prefix="/efir")
@@ -285,6 +286,9 @@ def screen_json(slug):
     if request.args.get("dv") is not None and str(st.get("dv", 0)) != request.args.get("dv"):
         out["deck"] = deck_svc.for_screen(ev, _links(ev), request.args.get("key", ""))
     out["stage"] = _stage_out(ev)
+    if (st.get("mode") == "video") and st.get("video"):
+        v = vid_svc.get(ev, st["video"].get("vid") or "")
+        out["vnow"] = _video_src(ev, v, request.args.get("key", "")) if v else None
     picked = (EfirAsk.query.filter_by(event_id=ev.id, status="picked").order_by(EfirAsk.created_at.desc()).first())
     if picked:
         v = EfirViewer.query.filter_by(event_id=ev.id, user_id=picked.user_id).first()
@@ -309,7 +313,7 @@ def control(slug):
                            screen_url=absolute(url_for("efir.screen", slug=slug, key=ev.screen_key, lang="kk")),
                            overlay_url=absolute(url_for("efir.overlay", slug=slug, key=ev.screen_key, lang="kk")),
                            deck=deck_svc.for_screen(ev, links), media_on=media.enabled(), speaker_url=guest_url(ev),
-                           stage=_stage_out(ev), has_stream_key=bool(ev.stream_key))
+                           stage=_stage_out(ev), has_stream_key=bool(ev.stream_key), videos=_videos_json(ev))
 
 
 @bp.route("/<slug>/control.json")
@@ -587,6 +591,7 @@ def _builder_json(ev: EfirEvent) -> dict:
         "ready": lb.readiness(ev),
         "deck": _deck_json(ev),
         "media_on": media.enabled(), "stream_url": ev.stream_url or "", "has_stream_key": bool(ev.stream_key),
+        "videos": _videos_json(ev),
         "stream_key_tail": (ev.stream_key or "")[-4:],
         "urls": {
             "speaker": guest_url(ev),
@@ -1091,3 +1096,99 @@ def control_stream(slug):
     audit("live.stream", "efir_event", ev.id, op=action)
     db.session.commit()
     return jsonify({"ok": True, "stream": _stream_out(ev)})
+
+
+
+# ─── Сцена «Видео»: YouTube или файл играет на экране эфира ─────────────
+def _video_src(ev: EfirEvent, v: dict, key: str = "") -> dict:
+    out = {"id": v["id"], "kind": v["kind"], "title": v.get("title") or "", "dur": v.get("dur")}
+    if v["kind"] == "youtube":
+        out["yt"] = v["yt"]
+    else:
+        out["src"] = url_for("efir.video_file", slug=ev.slug, vid=v["id"], ext=v["ext"], key=key or None)
+    return out
+
+
+def _videos_json(ev: EfirEvent) -> list[dict]:
+    return [dict(_video_src(ev, v), size=v.get("size")) for v in vid_svc.items(ev)]
+
+
+@bp.route("/<slug>/video/<vid>.<ext>")
+def video_file(slug, vid, ext):
+    """Файл видео для экрана эфира (по ключу) и команды. Поддерживает перемотку (Range)."""
+    ev = _event(slug)
+    v = vid_svc.get(ev, vid)
+    if not _screen_ok(ev) or not v or v["kind"] != "file" or v["ext"] != ext:
+        abort(404)
+    p = vid_svc.path(ev, v)
+    if not p.exists():
+        abort(404)
+    mime = {"mp4": "video/mp4", "m4v": "video/mp4", "webm": "video/webm", "mov": "video/quicktime"}[ext]
+    return send_file(p, mimetype=mime, conditional=True, max_age=3600)
+
+
+@bp.route("/<slug>/build/video", methods=["POST"])
+@role_required("methodist", "trainer")
+def build_video(slug):
+    """Добавить видео (ссылка YouTube или загруженный файл), переименовать или удалить."""
+    from ..models import EvidenceFile
+    ev = _event(slug)
+    f = request.get_json(silent=True) or {}
+    try:
+        if f.get("delete"):
+            vid_svc.remove(ev, str(f["delete"]))
+        elif f.get("id"):
+            vid_svc.update(ev, str(f["id"]), title=f.get("title"), dur=f.get("dur"))
+        elif f.get("file_id"):
+            vid_svc.add_file(ev, db.session.get(EvidenceFile, int(f["file_id"])), g.user.id, f.get("title"), f.get("dur"))
+        else:
+            vid_svc.add_youtube(ev, f.get("url") or "", f.get("title"), f.get("dur"))
+    except (vid_svc.VideoError, ValueError, TypeError) as e:
+        db.session.rollback()
+        msg = str(e)
+        return _bad(msg if msg.startswith("efir.") else "efir.v_err_file")
+    audit("live.video", "efir_event", ev.id, n=len(vid_svc.items(ev)))
+    db.session.commit()
+    return jsonify({"ok": True, "videos": _videos_json(ev)})
+
+
+@bp.route("/<slug>/control/video", methods=["POST"])
+@role_required("methodist", "trainer")
+def control_video(slug):
+    """Пульт: play (vid, from), pause, resume, seek (pos), stop (вернуться на сцену back)."""
+    import time as _t
+    ev = _event(slug)
+    f = request.get_json(silent=True) or {}
+    act = f.get("action")
+    st = dict(ev.state or {})
+    now = _t.time()
+    if act == "play":
+        v = vid_svc.get(ev, str(f.get("vid") or ""))
+        if not v:
+            return _bad("efir.v_err_file", 404)
+        back = st.get("mode") if st.get("mode") not in (None, "video") else st.get("back", "talk")
+        if st.get("mode") != "video":
+            audit("live.state", "efir_event", ev.id, mode="video")
+        svc.set_state(ev, "video", vid=v["id"], pos=max(0.0, float(f.get("from") or 0)), play_at=now, paused=False,
+                      back=back, slide=st.get("slide", 0))
+    elif st.get("mode") != "video":
+        return _bad("efir.m_bad")
+    elif act == "pause":
+        svc.set_state(ev, "video", **{k: v for k, v in dict(st, pos=vid_svc.position(st), play_at=now, paused=True).items()
+                                      if k not in ("mode", "v")})
+    elif act == "resume":
+        svc.set_state(ev, "video", **{k: v for k, v in dict(st, play_at=now, paused=False).items() if k not in ("mode", "v")})
+    elif act == "seek":  # pos - секунда ролика
+        try:
+            pos = max(0.0, float(f.get("pos")))
+        except (TypeError, ValueError):
+            return _bad("efir.m_bad")
+        svc.set_state(ev, "video", **{k: v for k, v in dict(st, pos=pos, play_at=now).items() if k not in ("mode", "v")})
+    elif act == "stop":
+        back = st.get("back") if st.get("back") in svc.MODES and st.get("back") != "video" else "talk"
+        extra = {"slide": st.get("slide", 0)} if back == "slides" else {}
+        svc.set_state(ev, back, **extra)
+    else:
+        return _bad("efir.m_bad")
+    st = dict(ev.state or {})
+    return jsonify({"ok": True, "state": st, "now": _t.time()})

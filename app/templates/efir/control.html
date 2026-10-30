@@ -21,6 +21,15 @@
     .pill-st.warn{background:var(--amber-soft);color:var(--amber-ink)}
     .stream{border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:12px;background:var(--card2)}
     .b[disabled]{opacity:.45;pointer-events:none}
+    .vlist .vrow{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+    .vlist .vrow:last-child{border-bottom:0}
+    .vk{font-size:11px;font-weight:700;border-radius:999px;padding:3px 9px;background:var(--chip);color:var(--mute);white-space:nowrap}
+    .vk.youtube{background:var(--red-soft);color:var(--red)}
+    .vt{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .vd{color:var(--mute);font-size:12px}
+    .vnow{border:2px solid var(--red);border-radius:12px;padding:12px;margin-bottom:12px;background:var(--red-soft)}
+    .vbar{height:8px;background:rgba(0,0,0,.08);border-radius:4px;overflow:hidden;margin:10px 0 4px;cursor:pointer}
+    .vbar i{display:block;height:100%;width:0;background:var(--red)}
     .seg3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:6px}
     .seg3 .b.on{background:var(--blue);color:#fff;border-color:var(--blue)}
     .sp{flex:1}
@@ -125,6 +134,22 @@
     </div>
     {% endif %}
 
+    <div class="card" id="vcard">
+      <h2>{{ t('efir.v_h') }}</h2>
+      <div class="vnow" id="vnow" hidden>
+        <div class="row" style="margin:0"><b id="vn-t"></b><span class="sp"></span><span class="mono" id="vn-time"></span></div>
+        <div class="vbar" id="vn-bar"><i id="vn-fill"></i></div>
+        <div class="row"><button class="b" id="vn-back10">↺ 10</button><button class="b go" id="vn-pp">❚❚</button><button class="b" id="vn-fwd10">10 ↻</button><span class="sp"></span><button class="b" id="vn-stop">⏹ {{ t('efir.v_stop') }}</button></div>
+      </div>
+      {% if videos %}
+      <div class="vlist">{% for v in videos %}
+        <div class="vrow"><span class="vk {{ v.kind }}">{{ '▶ YouTube' if v.kind == 'youtube' else '🎞 ' ~ t('efir.v_file') }}</span><span class="vt">{{ v.title }}</span>
+          <span class="mono vd">{% if v.dur %}{{ '%d:%02d'|format(v.dur // 60, v.dur % 60) }}{% endif %}</span>
+          <button class="b sm go" data-vplay="{{ v.id }}" data-dur="{{ v.dur or '' }}" data-title="{{ v.title }}">▶ {{ t('efir.v_play') }}</button></div>
+      {% endfor %}</div>
+      {% else %}<div class="hint">{{ t('efir.v_empty') }} <a href="{{ url_for('efir.build', slug=ev.slug) }}#s-video">{{ t('live.b_builder') }} →</a></div>{% endif %}
+    </div>
+
     <div class="card">
       <h2>{{ t('live.c_questions') }} <span class="timer" id="qtimer"></span></h2>
       {% set ns = namespace(blk=None) %}
@@ -196,7 +221,7 @@
   var SLUG = {{ ev.slug|tojson }};
   var ORDER = {{ qs|map(attribute='id')|list|tojson }};
   var QSEC = {{ qsec|tojson }};
-  var MODES = {{ {'waiting': t('live.m_waiting'), 'talk': t('live.m_talk'), 'profile': t('live.m_profile'), 'question': t('live.m_question'),
+  var MODES = {{ {'waiting': t('live.m_waiting'), 'talk': t('live.m_talk'), 'video': t('efir.v_mode'), 'profile': t('live.m_profile'), 'question': t('live.m_question'),
                  'reveal': t('live.m_reveal'), 'slides': t('live.m_slides'), 'leaderboard': t('live.m_leaderboard'), 'ask': t('live.m_ask'), 'finish': t('live.m_finish')}|tojson }};
   var T = {{ {'pick': t('live.c_pick'), 'done': t('live.c_done'), 'hide': t('live.c_hide'), 'mute': t('live.c_mute'), 'mute_c': t('live.c_mute_c'), 'muted': t('live.c_muted'), 'saved': t('live.saved'), 'copied': t('live.c_copied'), 'confirm': t('live.c_confirm_restart')}|tojson }};
   var csrf = document.querySelector('meta[name=csrf-token]').content, $ = function (id) { return document.getElementById(id); }, esc = window.liveEsc;
@@ -387,6 +412,41 @@
       if (r.ok) location.reload(); else $('qm-err').textContent = r.error || T.err;
     });
   };
+})();
+</script>
+<script>
+(function () {
+  var SLUG = {{ ev.slug|tojson }}, $ = function (id) { return document.getElementById(id); };
+  var csrf = document.querySelector('meta[name=csrf-token]').content, st = null, off = 0, cur = null;
+  var DUR = {}; Array.prototype.forEach.call(document.querySelectorAll('[data-vplay]'), function (b) { DUR[b.dataset.vplay] = {dur: +b.dataset.dur || 0, title: b.dataset.title}; });
+  function post(body) { return fetch('/efir/' + SLUG + '/control/video', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf}, body: JSON.stringify(body)}).then(function (r) { return r.json(); }).then(function (d) { if (d.ok) { st = d.state; off = d.now - Date.now() / 1000; paint(); } return d; }); }
+  function pos() { if (!st) return 0; return (st.pos || 0) + (st.paused ? 0 : Math.max(0, Date.now() / 1000 + off - (st.play_at || 0))); }
+  function fmt(x) { x = Math.max(0, Math.floor(x)); return Math.floor(x / 60) + ':' + String(x % 60).padStart(2, '0'); }
+  function paint() {
+    var on = st && st.mode === 'video' && st.vid;
+    $('vnow').hidden = !on;
+    Array.prototype.forEach.call(document.querySelectorAll('[data-vplay]'), function (b) { b.classList.toggle('on', !!on && b.dataset.vplay === st.vid); });
+    if (!on) return;
+    var meta = DUR[st.vid] || {}, p = pos();
+    $('vn-t').textContent = meta.title || '';
+    $('vn-time').textContent = fmt(p) + (meta.dur ? ' / ' + fmt(meta.dur) : '');
+    $('vn-fill').style.width = meta.dur ? Math.min(100, p / meta.dur * 100) + '%' : '0';
+    $('vn-pp').textContent = st.paused ? '▶ ' + {{ t('efir.v_resume')|tojson }} : '❚❚ ' + {{ t('efir.v_pause')|tojson }};
+  }
+  function load() {
+    fetch('/efir/' + SLUG + '/screen.json', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (d) {
+      var s = d.state || {}; off = (s.now || Date.now() / 1000) - Date.now() / 1000;
+      st = s.mode === 'video' ? Object.assign({mode: 'video'}, s.video || {}) : {mode: s.mode};
+      paint();
+    }).catch(function () {}).finally(function () { setTimeout(load, 2000); });
+  }
+  load(); setInterval(paint, 500);
+  Array.prototype.forEach.call(document.querySelectorAll('[data-vplay]'), function (b) { b.onclick = function () { post({action: 'play', vid: b.dataset.vplay, from: 0}); }; });
+  $('vn-pp').onclick = function () { post({action: st && st.paused ? 'resume' : 'pause'}); };
+  $('vn-stop').onclick = function () { post({action: 'stop'}); };
+  $('vn-back10').onclick = function () { post({action: 'seek', pos: Math.max(0, pos() - 10)}); };
+  $('vn-fwd10').onclick = function () { post({action: 'seek', pos: pos() + 10}); };
+  $('vn-bar').onclick = function (e) { var m = DUR[st && st.vid] || {}; if (!m.dur) return; var r = this.getBoundingClientRect(); post({action: 'seek', pos: (e.clientX - r.left) / r.width * m.dur}); };
 })();
 </script>
 <script src="{{ url_for('static', filename='efir/livekit-client.umd.js') }}"></script>

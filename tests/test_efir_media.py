@@ -218,3 +218,55 @@ class EfirMediaTest(AppTestCase):
         self.assertEqual(anon.post(f"{base}/guest/slide", json=dict(body, slide=99), headers=h).get_json()["slide"], 2)
         self.assertEqual(anon.get(f"{base}/guest/status?k={self.ev.guest_key}&id=g-a").get_json()["slide"], 2)
         self.assertEqual(anon.post(f"{base}/guest/slide", json=dict(body, k="bad"), headers=h).status_code, 404)
+
+    def test_video_scene(self):
+        base = f"/efir/{self.ev.slug}"
+        teacher = self.new_client("teacher1@academy.demo")
+        self.assertEqual(teacher.post(base + "/build/video", json={"url": "https://youtu.be/jfKfPfyJRdk"}).status_code, 403)
+        self.assertEqual(self.m.post(base + "/build/video", json={"url": "not a link"}).status_code, 400)
+        d = self.m.post(base + "/build/video", json={"url": "https://www.youtube.com/watch?v=jfKfPfyJRdk", "title": "Lofi"}).get_json()
+        yt = d["videos"][0]
+        self.assertEqual((yt["kind"], yt["yt"], yt["title"]), ("youtube", "jfKfPfyJRdk", "Lofi"))
+        # файл: загрузка частями через /api/uploads, затем в эфир
+        data = b"\x00\x00\x00\x18ftypmp42" + b"0" * 5000
+        s = self.m.post("/api/uploads", json={"name": "clip.mp4", "size": len(data), "type": "video/mp4"}).get_json()
+        r = self.m.put(f"/api/uploads/{s['id']}?offset=0", data=data).get_json()
+        d = self.m.post(base + "/build/video", json={"file_id": r["file_id"], "title": "Ролик", "dur": 95}).get_json()
+        self.assertTrue(d["ok"], d)
+        fv = d["videos"][1]
+        self.assertEqual((fv["kind"], fv["dur"], fv["title"]), ("file", 95, "Ролик"))
+        self.assertEqual(self.m.post(base + "/build/video", json={"file_id": r["file_id"]}).status_code, 400)  # уже перенесен
+        anon = self.app.test_client()
+        self.assertEqual(anon.get(fv["src"]).status_code, 404)
+        self.assertEqual(anon.get(fv["src"] + f"?key={self.ev.screen_key}").status_code, 200)
+        rr = anon.get(fv["src"] + f"?key={self.ev.screen_key}", headers={"Range": "bytes=0-99"})
+        self.assertEqual((rr.status_code, len(rr.data)), (206, 100))
+        # пульт: показать, пауза, перемотка, вернуться на прежнюю сцену
+        self.m.post(base + "/control/state", json={"mode": "talk"})
+        self.assertEqual(self.m.post(base + "/control/video", json={"action": "pause"}).status_code, 400)
+        st = self.m.post(base + "/control/video", json={"action": "play", "vid": fv["id"]}).get_json()["state"]
+        self.assertEqual((st["mode"], st["vid"], st["paused"], st["back"]), ("video", fv["id"], False, "talk"))
+        from app.services import efir as esvc
+        esvc._cache.clear()
+        sj = anon.get(base + f"/screen.json?key={self.ev.screen_key}").get_json()
+        self.assertEqual(sj["state"]["mode"], "video")
+        self.assertEqual(sj["vnow"]["id"], fv["id"])
+        self.assertIn(f"key={self.ev.screen_key}", sj["vnow"]["src"])
+        st = self.m.post(base + "/control/video", json={"action": "pause"}).get_json()["state"]
+        self.assertTrue(st["paused"])
+        st = self.m.post(base + "/control/video", json={"action": "seek", "pos": 42}).get_json()["state"]
+        self.assertEqual((st["pos"], st["paused"]), (42, True))
+        st = self.m.post(base + "/control/video", json={"action": "resume"}).get_json()["state"]
+        self.assertFalse(st["paused"])
+        st = self.m.post(base + "/control/video", json={"action": "play", "vid": yt["id"], "from": 0}).get_json()["state"]
+        self.assertEqual((st["vid"], st["back"]), (yt["id"], "talk"))   # смена ролика не теряет, куда вернуться
+        st = self.m.post(base + "/control/video", json={"action": "stop"}).get_json()["state"]
+        self.assertEqual(st["mode"], "talk")
+        self.assertIn(fv["title"], self.m.get(base + "/control").get_data(as_text=True))
+        # удаление убирает файл
+        from app.services import efir_video
+        p = efir_video.path(db.session.get(EfirEvent, self.ev.id), {"id": fv["id"], "ext": "mp4"})
+        self.assertTrue(p.exists())
+        d = self.m.post(base + "/build/video", json={"delete": fv["id"]}).get_json()
+        self.assertEqual([v["id"] for v in d["videos"]], [yt["id"]])
+        self.assertFalse(p.exists())

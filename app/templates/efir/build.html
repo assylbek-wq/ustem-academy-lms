@@ -171,6 +171,17 @@
     .los{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
     @media(max-width:1100px){.los{grid-template-columns:repeat(2,1fr)}}
     @media(max-width:640px){.los{grid-template-columns:1fr}}
+    .vadd{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) auto;gap:8px;align-items:center;margin-bottom:8px}
+    @media(max-width:760px){.vadd{grid-template-columns:1fr}}
+    .vprog{position:relative;height:30px;border-radius:8px;background:var(--chip);overflow:hidden}
+    .vprog i{position:absolute;left:0;top:0;bottom:0;background:var(--tint);border-right:2px solid var(--sea);width:0}
+    .vprog span{position:relative;display:block;line-height:30px;padding:0 10px;font-size:12.5px;font-weight:600}
+    .vlist{margin-top:10px}
+    .vrow{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+    .vrow:last-child{border-bottom:0}
+    .vk{font-size:11px;font-weight:700;border-radius:999px;padding:3px 9px;background:var(--chip);color:var(--mute);white-space:nowrap}
+    .vk.youtube{background:var(--red-soft);color:var(--red)}
+    .vrow input.f{padding:7px 10px}
     .lo{border:1px solid var(--line);border-radius:14px;padding:10px;cursor:pointer;background:var(--card);transition:border-color .15s}
     .lo.on{border-color:var(--focus);background:var(--tint);box-shadow:0 0 0 3px rgba(0,117,242,.15)}
     .lo .pic{position:relative;aspect-ratio:16/9;border-radius:6px;background:var(--chip);overflow:hidden;margin-bottom:8px}
@@ -217,6 +228,7 @@
     <a href="#s-main"><span class="n">1</span>{{ t('live.b_s_main') }}<span class="dot" data-dot="main"></span></a>
     <a href="#s-prog"><span class="n">2</span>{{ t('live.b_s_prog') }}<span class="dot ok"></span></a>
     <a href="#s-deck"><span class="n">3</span>{{ t('live.d_title') }}<span class="dot" data-dot="deck"></span></a>
+    <a href="#s-video"><span class="n">🎞</span>{{ t('efir.v_h') }}<span class="dot ok"></span></a>
     <a href="#s-q"><span class="n">4</span>{{ t('live.b_s_q') }}<span class="dot" data-dot="q"></span></a>
     <a href="#s-screen"><span class="n">5</span>{{ t('live.b_s_screen') }}<span class="dot ok"></span></a>
     <a href="#s-yt"><span class="n">▶</span>YouTube<span class="dot ok"></span></a>
@@ -275,6 +287,24 @@
         <div class="dgrid" id="d-grid"></div>
         <div class="dset" id="d-set"></div>
       </div>
+    </section>
+
+    <!-- Видео: YouTube или файл для сцены «Видео» на пульте -->
+    <section class="sec" id="s-video">
+      <h2><span class="n">🎞</span>{{ t('efir.v_h') }}</h2>
+      <div class="sub">{{ t('efir.v_sub') }}</div>
+      <div class="vadd">
+        <input class="f" id="v-url" placeholder="https://youtu.be/..." autocomplete="off">
+        <input class="f" id="v-title" placeholder="{{ t('efir.v_title_ph') }}" maxlength="120">
+        <button class="btn soft" type="button" id="v-add">＋ YouTube</button>
+      </div>
+      <div class="vadd" style="grid-template-columns:auto minmax(0,1fr)">
+        <input type="file" id="v-file" accept="video/mp4,video/webm,video/quicktime,.mp4,.webm,.mov,.m4v" hidden>
+        <button class="btn soft" type="button" id="v-up">⬆ {{ t('efir.v_upload') }}</button>
+        <div class="vprog" id="v-prog" hidden><i id="v-progi"></i><span id="v-progt"></span></div>
+      </div>
+      <div class="hintx">{{ t('efir.v_hint') }}</div>
+      <div class="vlist" id="v-list"></div>
     </section>
 
     <!-- 4. Вопросы -->
@@ -1104,6 +1134,60 @@
     api('/build/speaker', null, fd).then(function () { D.has_photo = false; $('yt-rm').hidden = true; ytRefresh(); });
   };
   ytRefresh();
+  // ─── Видео ───
+  function vfmt(x) { if (!x) return ''; return Math.floor(x / 60) + ':' + String(x % 60).padStart(2, '0'); }
+  function vRender() {
+    $('v-list').innerHTML = (D.videos || []).map(function (v) {
+      return '<div class="vrow" data-vid="' + v.id + '"><span class="vk ' + v.kind + '">' + (v.kind === 'youtube' ? '▶ YouTube' : '🎞 ' + esc({{ t('efir.v_file')|tojson }})) + '</span>' +
+        '<input class="f" data-vt value="' + esc(v.title) + '" maxlength="120"><span class="hintx" style="margin:0">' + vfmt(v.dur) + '</span>' +
+        '<button class="btn ghost sm" type="button" data-vdel title="✕">✕</button></div>';
+    }).join('');
+    all('[data-vid]').forEach(function (row) {
+      row.querySelector('[data-vt]').onchange = function () { api('/build/video', {id: row.dataset.vid, title: this.value}).then(vDone); };
+      row.querySelector('[data-vdel]').onclick = function () { if (confirm({{ t('efir.v_del_q')|tojson }})) api('/build/video', {delete: row.dataset.vid}).then(vDone); };
+    });
+  }
+  function vDone(d) { if (!d.ok) { toast(d.error || T.err, true); return; } D.videos = d.videos; vRender(); }
+  vRender();
+  $('v-add').onclick = function () {
+    var url = $('v-url').value.trim(); if (!url) { $('v-url').focus(); return; }
+    api('/build/video', {url: url, title: $('v-title').value}).then(function (d) { vDone(d); if (d.ok) { $('v-url').value = ''; $('v-title').value = ''; } });
+  };
+  $('v-up').onclick = function () { $('v-file').click(); };
+  function probeDur(file) {
+    return new Promise(function (res) {
+      try { var el = document.createElement('video'), u = URL.createObjectURL(file); el.preload = 'metadata';
+        el.onloadedmetadata = function () { var d = el.duration; URL.revokeObjectURL(u); res(isFinite(d) ? Math.round(d) : null); };
+        el.onerror = function () { URL.revokeObjectURL(u); res(null); }; el.src = u; } catch (e) { res(null); }
+    });
+  }
+  $('v-file').onchange = function () {
+    var file = this.files[0]; this.value = ''; if (!file) return;
+    var bar = $('v-prog'), up = $('v-up'); bar.hidden = false; up.disabled = true;
+    function prog(x) { $('v-progi').style.width = Math.round(x * 100) + '%'; $('v-progt').textContent = file.name + ' · ' + Math.round(x * 100) + '%'; }
+    function fail(msg) { toast(msg || T.err, true); bar.hidden = true; up.disabled = false; }
+    prog(0);
+    probeDur(file).then(function (dur) {
+      return fetch('/api/uploads', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': CSRF}, body: JSON.stringify({name: file.name, size: file.size, type: file.type})})
+        .then(function (r) { return r.json(); }).then(function (s) {
+          if (!s.ok) throw new Error(s.error);
+          var id = s.id, chunk = s.chunk || 5242880, got = 0;
+          function next() {
+            if (got >= file.size) return Promise.resolve(null);
+            return fetch('/api/uploads/' + id + '?offset=' + got, {method: 'PUT', headers: {'X-CSRF-Token': CSRF}, body: file.slice(got, got + chunk)})
+              .then(function (r) { return r.json(); }).then(function (x) {
+                if (!x.ok) throw new Error(x.error);
+                got = x.received; prog(got / file.size);
+                return x.file_id ? x.file_id : next();
+              });
+          }
+          return next();
+        }).then(function (fid) {
+          return api('/build/video', {file_id: fid, title: file.name.replace(/\.[^.]+$/, ''), dur: dur});
+        }).then(function (d) { vDone(d); bar.hidden = true; up.disabled = false; });
+    }).catch(function (e) { fail(e && e.message); });
+  };
+
   // ─── Студия ───
   $('st-off').hidden = !!D.media_on;
   $('st-link').value = D.urls.speaker; $('st-open').href = D.urls.speaker;

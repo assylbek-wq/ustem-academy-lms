@@ -90,6 +90,10 @@
     .sl-qr svg{width:100%;height:auto;display:block}
     .sl-qr b{display:block;font-size:26px;line-height:1.15;margin-top:10px;font-weight:900}
     .sl-qr small{display:block;font-family:var(--f-mono);font-size:16px;color:#0069da;font-weight:700;margin-top:6px;overflow-wrap:anywhere;line-height:1.2}
+    /* Сцена «Видео»: YouTube или файл на весь экран */
+    #s-video{padding:0;background:#000}
+    #vbox,#vbox video,#vbox iframe,#vbox #ytp{position:absolute;left:0;top:0;width:1920px;height:1080px;border:0;background:#000}
+    #stage.video .foot{display:none}
     /* Студия: камеры спикеров с видеосервера */
     #cams{position:absolute;inset:0;pointer-events:none;z-index:4}
     .camt{position:absolute;overflow:hidden;border-radius:24px;background:#1d2633;opacity:0;transition:left .45s ease,top .45s ease,width .45s ease,height .45s ease,opacity .35s ease;box-shadow:0 30px 60px -30px rgba(0,20,60,.7)}
@@ -229,6 +233,8 @@
     </div>
   </section>
 
+  <section class="scene" id="s-video"><div id="vbox"></div></section>
+
   <div id="cams"></div>
 
   <div class="foot">
@@ -343,6 +349,8 @@
     stage.classList.toggle('slides', mode === 'slides');
     camRects = [];
     if (mode === 'slides') renderSlide(st.slide || 0);
+    stage.classList.toggle('video', mode === 'video');
+    videoSync(data);
     MODE = mode; layoutCams();
     if (mode === 'profile') {
       $('pf-n').textContent = s.profiles || 0; $('pf-s').textContent = s.schools || 0;
@@ -393,6 +401,58 @@
       data = d; if (d.state) offset = d.state.now - Date.now() / 1000; render();
     }).catch(function () {}).finally(function () { setTimeout(poll, 1500); });
   }
+  // ─── Сцена «Видео»: пульт задает ролик, секунду и паузу, экран догоняет ───
+  var VID = {cur: null, el: null, yt: null, ready: false};
+  function loadYT(cb) {
+    if (window.YT && window.YT.Player) return cb();
+    var prev = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = function () { if (prev) prev(); cb(); };
+    if (!document.getElementById('yt-api')) { var sc = document.createElement('script'); sc.id = 'yt-api'; sc.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(sc); }
+  }
+  function videoStop() {
+    if (!VID.cur) return;
+    try { if (VID.yt) VID.yt.destroy(); } catch (e) {}
+    if (VID.el) { VID.el.pause(); VID.el.removeAttribute('src'); VID.el.load(); }
+    $('vbox').innerHTML = ''; VID = {cur: null, el: null, yt: null, ready: false};
+  }
+  function wantPos(vs) { return (vs.pos || 0) + (vs.paused ? 0 : Math.max(0, (Date.now() / 1000 + offset) - (vs.play_at || 0))); }
+  function videoSync(d) {
+    var st = d && d.state, v = d && d.vnow;
+    if (!st || st.mode !== 'video' || !v) { videoStop(); return; }
+    var vs = st.video || {};
+    if (!VID.cur || VID.cur.id !== v.id) {
+      videoStop(); VID.cur = v;
+      if (v.kind === 'file') {
+        var el = document.createElement('video'); el.src = v.src; el.preload = 'auto'; el.playsInline = true; el.muted = !!PREVIEW;
+        $('vbox').appendChild(el); VID.el = el; VID.ready = true;
+      } else {
+        $('vbox').innerHTML = '<div id="ytp"></div>';
+        loadYT(function () {
+          if (!VID.cur || VID.cur.id !== v.id) return;
+          VID.yt = new YT.Player('ytp', {width: 1920, height: 1080, videoId: v.yt,
+            playerVars: {autoplay: 1, controls: 0, rel: 0, modestbranding: 1, playsinline: 1, iv_load_policy: 3, disablekb: 1, start: Math.floor(wantPos(vs))},
+            events: {onReady: function (e) { VID.ready = true; if (PREVIEW) e.target.mute(); else { e.target.unMute(); e.target.setVolume(100); } applyVideo(); }}});
+        });
+      }
+    }
+    VID.vs = vs; applyVideo();
+  }
+  function applyVideo() {
+    if (!VID.cur || !VID.ready || !VID.vs) return;
+    var vs = VID.vs, want = wantPos(vs);
+    if (VID.el) {
+      var el = VID.el;
+      if (el.readyState >= 1 && Math.abs(el.currentTime - want) > 1.5 && (!el.duration || want < el.duration)) el.currentTime = want;
+      if (vs.paused) { if (!el.paused) el.pause(); }
+      else if (el.paused && !el.ended) el.play().catch(function () { el.muted = true; el.play().catch(function () {}); });
+    } else if (VID.yt && VID.yt.getCurrentTime) {
+      var cur = VID.yt.getCurrentTime() || 0, stt = VID.yt.getPlayerState();
+      if (Math.abs(cur - want) > 2.5 && stt !== 0) VID.yt.seekTo(want, true);
+      if (vs.paused) { if (stt === 1) VID.yt.pauseVideo(); }
+      else if (stt !== 1 && stt !== 0 && stt !== 3) VID.yt.playVideo();
+    }
+  }
+
   // ─── Камеры спикеров (видеосервер) ───
   var STAGE = {on: [], muted: [], layout: 'auto'}, MODE = 'waiting', PEOPLE = {}, room = null;
   var EGRESS = {{ (request.args.get('egress') == '1')|tojson }}, signaled = false;
@@ -431,7 +491,7 @@
   }
   function layoutCams() {
     var ids = onStage(), lay = STAGE.layout || 'auto', rects = [], small = false;
-    var grid = lay !== 'hide' && ids.length && (lay === 'speakers' || MODE === 'talk');
+    var grid = lay !== 'hide' && ids.length && MODE !== 'video' && (lay === 'speakers' || MODE === 'talk');
     if (lay !== 'hide' && ids.length && !grid && camRects.length) {
       if (ids.length <= camRects.length) {   // каждому спикеру свое окно («Слайд + 2 камеры»)
         ids.forEach(function (id, i) { var r = camRects[i]; rects.push([r.x, r.y, r.w, r.h]); });

@@ -756,6 +756,7 @@ class EfirEvent(db.Model):
     stream_url = db.Column(db.String(255))         # rtmp://a.rtmp.youtube.com/live2
     stream_key = db.Column(db.String(255))         # ключ трансляции YouTube (виден только команде)
     egress = db.Column(JSON, default=dict)         # {"id", "status", "at", "error"} - отправка экрана в YouTube
+    videos = db.Column(JSON, default=list)         # видео для сцены «Видео»: [{"id","kind":"youtube|file","yt","ext","title","dur"}]
     created_at = db.Column(db.DateTime, default=utcnow)
 
 

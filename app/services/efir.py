@@ -15,7 +15,7 @@ from sqlalchemy import func
 from ..models import EfirAnswer, EfirAsk, EfirEvent, EfirFeedback, EfirQuestion, EfirViewer, User, db, utcnow
 
 SOURCES = ()  # эфиры студии собираются только в конструкторе
-MODES = ("waiting", "talk", "slides", "profile", "question", "reveal", "leaderboard", "ask", "finish")
+MODES = ("waiting", "talk", "slides", "video", "profile", "question", "reveal", "leaderboard", "ask", "finish")
 ONLINE_WINDOW = 45          # секунд: «смотрит сейчас», если страница отвечала за это время
 HEARTBEAT_EVERY = 20        # секунд между записями пульса одного учителя
 GRACE = 25                  # секунд к таймеру вопроса: задержка YouTube и медленная сеть
@@ -167,6 +167,8 @@ def public_state(slug: str) -> dict | None:
         st = dict(ev.state or {})
         out = {"mode": st.get("mode", "waiting"), "v": st.get("v", 0), "now": time.time(), "block": st.get("block"),
                "slide": st.get("slide", 0), "dv": int((ev.deck or {}).get("v", 0))}
+        if out["mode"] == "video":  # видео: какое, с какой секунды и когда пущено (экран считает позицию сам)
+            out["video"] = {k: st.get(k) for k in ("vid", "pos", "play_at", "paused")}
         qid = st.get("qid")
         if out["mode"] in ("question", "reveal") and qid:
             q = db.session.get(EfirQuestion, qid)
