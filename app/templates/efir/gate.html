@@ -29,6 +29,11 @@
     .primary:hover{background:var(--sea)}
     .ghost{border:1px solid var(--line);background:var(--card);color:var(--blue)}
     .foot{color:var(--mute);font-family:var(--f-mono);font-size:11.5px;letter-spacing:.04em;text-align:center;padding:16px}
+    .gpart{max-width:560px;margin:0 auto;padding:0 16px 8px;text-align:center}
+    .gpart .pk{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin-bottom:10px}
+    .gpart .pl{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}
+    .gpart a{display:flex;align-items:center;padding:10px 14px;border:1px solid var(--line);border-radius:12px;background:#fff}
+    .gpart img{max-height:40px;max-width:160px;display:block}
   </style>
 </head>
 <body>
@@ -54,6 +59,8 @@
   <a class="btn primary" href="{{ url_for('auth.register', next=nxt) }}">{{ t('live.gate_register') }}</a>
   <a class="btn ghost" href="{{ url_for('auth.login', next=nxt) }}">{{ t('live.gate_login') }}</a>
 </div>
+{% set plist = efir_partners(ev) %}
+{% if plist %}<div class="gpart"><div class="pk">{{ t('efir.p_with') }}</div><div class="pl">{% for pp in plist %}<a {% if pp.url %}href="{{ pp.url }}" target="_blank" rel="noopener sponsored"{% endif %}><img src="{{ pp.logo }}" alt="{{ pp.name }}"></a>{% endfor %}</div></div>{% endif %}
 <div class="foot">USTEM Foundation · academy.ustem.kz</div>
 </body>
 </html>

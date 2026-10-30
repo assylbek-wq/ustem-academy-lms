@@ -129,6 +129,8 @@ def create(title: dict, starts_at: str | None, user_id: int | None, source: Efir
         from . import efir_deck, efir_video
         efir_deck.copy(source, ev)
         efir_video.copy(source, ev)
+        from . import efir_partners
+        efir_partners.copy(source, ev)
     if source and with_questions:
         for i, q in enumerate(EfirQuestion.query.filter_by(event_id=source.id).order_by(EfirQuestion.position)):
             db.session.add(EfirQuestion(event_id=ev.id, key=f"c{i + 1}", block=q.block, position=i, text=dict(q.text or {}),

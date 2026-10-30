@@ -171,6 +171,15 @@
     .los{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
     @media(max-width:1100px){.los{grid-template-columns:repeat(2,1fr)}}
     @media(max-width:640px){.los{grid-template-columns:1fr}}
+    .padd{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) auto;gap:8px;align-items:center;margin-top:10px}
+    @media(max-width:900px){.padd{grid-template-columns:1fr}}
+    .prow{display:grid;grid-template-columns:150px minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+    .prow .lg{height:56px;border:1px solid var(--line);border-radius:10px;display:flex;align-items:center;justify-content:center;background:#fff;cursor:pointer;position:relative}
+    .prow .lg img{max-height:44px;max-width:130px}
+    .prow .lg:hover::after{content:"🖼";position:absolute;right:4px;bottom:2px;font-size:12px}
+    .prow input.f{padding:7px 10px}
+    .prow .ops{display:flex;gap:2px}
+    @media(max-width:900px){.prow{grid-template-columns:1fr}}
     .vadd{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) auto;gap:8px;align-items:center;margin-bottom:8px}
     @media(max-width:760px){.vadd{grid-template-columns:1fr}}
     .vprog{position:relative;height:30px;border-radius:8px;background:var(--chip);overflow:hidden}
@@ -228,6 +237,7 @@
     <a href="#s-main"><span class="n">1</span>{{ t('live.b_s_main') }}<span class="dot" data-dot="main"></span></a>
     <a href="#s-prog"><span class="n">2</span>{{ t('live.b_s_prog') }}<span class="dot ok"></span></a>
     <a href="#s-deck"><span class="n">3</span>{{ t('live.d_title') }}<span class="dot" data-dot="deck"></span></a>
+    <a href="#s-partners"><span class="n">🤝</span>{{ t('efir.p_h') }}<span class="dot ok"></span></a>
     <a href="#s-video"><span class="n">🎞</span>{{ t('efir.v_h') }}<span class="dot ok"></span></a>
     <a href="#s-q"><span class="n">4</span>{{ t('live.b_s_q') }}<span class="dot" data-dot="q"></span></a>
     <a href="#s-screen"><span class="n">5</span>{{ t('live.b_s_screen') }}<span class="dot ok"></span></a>
@@ -287,6 +297,23 @@
         <div class="dgrid" id="d-grid"></div>
         <div class="dset" id="d-set"></div>
       </div>
+    </section>
+
+    <!-- Партнеры эфира: логотипы на экране, у учителей и в приглашении -->
+    <section class="sec" id="s-partners">
+      <h2><span class="n">🤝</span>{{ t('efir.p_h') }}</h2>
+      <div class="sub">{{ t('efir.p_sub') }}</div>
+      <div class="plist2" id="p-list"></div>
+      <div class="padd">
+        <input type="file" id="p-file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" hidden>
+        <button class="btn soft" type="button" id="p-pick">🖼 {{ t('efir.p_logo') }}</button>
+        <input class="f" id="p-name" placeholder="{{ t('efir.p_name_ph') }}" maxlength="80">
+        <input class="f" id="p-url" placeholder="stemshop.kz" maxlength="300">
+        <input class="f" id="p-label" placeholder="{{ t('efir.p_label_ph') }}" maxlength="60">
+        <button class="btn pri" type="button" id="p-add">＋ {{ t('efir.p_add') }}</button>
+      </div>
+      <div class="hintx" id="p-file-n"></div>
+      <div class="hintx">{{ t('efir.p_hint') }}</div>
     </section>
 
     <!-- Видео: YouTube или файл для сцены «Видео» на пульте -->
@@ -1134,6 +1161,38 @@
     api('/build/speaker', null, fd).then(function () { D.has_photo = false; $('yt-rm').hidden = true; ytRefresh(); });
   };
   ytRefresh();
+  // ─── Партнеры ───
+  function pRender() {
+    $('p-list').innerHTML = (D.partners || []).map(function (pp, i) {
+      return '<div class="prow" data-pid="' + pp.id + '"><label class="lg" title="' + esc({{ t('efir.p_replace')|tojson }}) + '"><img src="' + esc(pp.logo) + '" alt=""><input type="file" accept="image/*" hidden data-plogo></label>' +
+        '<input class="f" data-pf="name" value="' + esc(pp.name) + '" maxlength="80">' +
+        '<input class="f" data-pf="url" value="' + esc(pp.url || '') + '" placeholder="https://..." maxlength="300">' +
+        '<input class="f" data-pf="label" value="' + esc(pp.label || '') + '" placeholder="' + esc({{ t('efir.p_label_ph')|tojson }}) + '" maxlength="60">' +
+        '<span class="ops"><button class="btn ghost sm" type="button" data-pup' + (i ? '' : ' disabled') + '>↑</button><button class="btn ghost sm" type="button" data-pdel>✕</button></span></div>';
+    }).join('');
+    all('[data-pid]').forEach(function (row) {
+      var id = row.dataset.pid;
+      all('[data-pf]', row).forEach(function (inp) { inp.onchange = function () { var b = {id: id}; b[inp.dataset.pf] = inp.value; api('/build/partner', b).then(pDone); }; });
+      row.querySelector('[data-plogo]').onchange = function () { var f = this.files[0]; if (!f) return; var fd = new FormData(); fd.append('id', id); fd.append('logo', f); api('/build/partner', null, fd).then(pDone); };
+      row.querySelector('[data-pdel]').onclick = function () { if (confirm({{ t('efir.p_del_q')|tojson }})) api('/build/partner', {delete: id}).then(pDone); };
+      row.querySelector('[data-pup]').onclick = function () {
+        var ids = (D.partners || []).map(function (x) { return x.id; }), i = ids.indexOf(id);
+        if (i > 0) { ids.splice(i, 1); ids.splice(i - 1, 0, id); api('/build/partner', {order: ids}).then(pDone); }
+      };
+    });
+  }
+  function pDone(d) { if (!d.ok) { toast(d.error || T.err, true); return; } D.partners = d.partners; pRender(); reloadPreview(); }
+  pRender();
+  $('p-pick').onclick = function () { $('p-file').click(); };
+  $('p-file').onchange = function () { $('p-file-n').textContent = this.files[0] ? '🖼 ' + this.files[0].name : ''; };
+  $('p-add').onclick = function () {
+    var f = $('p-file').files[0];
+    if (!f) { toast({{ t('efir.p_err_logo')|tojson }}, true); return; }
+    if (!$('p-name').value.trim()) { $('p-name').focus(); return; }
+    var fd = new FormData(); fd.append('logo', f); fd.append('name', $('p-name').value); fd.append('url', $('p-url').value); fd.append('label', $('p-label').value);
+    api('/build/partner', null, fd).then(function (d) { pDone(d); if (d.ok) { $('p-file').value = ''; $('p-file-n').textContent = ''; $('p-name').value = ''; $('p-url').value = ''; $('p-label').value = ''; } });
+  };
+
   // ─── Видео ───
   function vfmt(x) { if (!x) return ''; return Math.floor(x / 60) + ':' + String(x % 60).padStart(2, '0'); }
   function vRender() {

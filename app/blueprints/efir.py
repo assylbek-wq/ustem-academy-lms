@@ -27,6 +27,7 @@ from ..services import efir_builder as lb
 from ..services import efir_deck as deck_svc
 from ..services import efir_media as media
 from ..services import efir_video as vid_svc
+from ..services import efir_partners as partners_svc
 from ..services.mail import absolute
 
 bp = Blueprint("efir", __name__, url_prefix="/efir")
@@ -591,7 +592,7 @@ def _builder_json(ev: EfirEvent) -> dict:
         "ready": lb.readiness(ev),
         "deck": _deck_json(ev),
         "media_on": media.enabled(), "stream_url": ev.stream_url or "", "has_stream_key": bool(ev.stream_key),
-        "videos": _videos_json(ev),
+        "videos": _videos_json(ev), "partners": partners(ev),
         "stream_key_tail": (ev.stream_key or "")[-4:],
         "urls": {
             "speaker": guest_url(ev),
@@ -1192,3 +1193,53 @@ def control_video(slug):
         return _bad("efir.m_bad")
     st = dict(ev.state or {})
     return jsonify({"ok": True, "state": st, "now": _t.time()})
+
+
+
+# ─── Партнеры эфира: логотипы на экране, на странице учителя и в приглашении ─
+def partners(ev: EfirEvent) -> list[dict]:
+    return [dict(p, logo=url_for("efir.partner_logo", slug=ev.slug, pid=p["id"], v=p.get("v") or None))
+            for p in partners_svc.items(ev)]
+
+
+@bp.app_template_global("efir_partners")
+def _tpl_partners(ev):
+    return partners(ev)
+
+
+@bp.route("/<slug>/partner/<pid>.png")
+def partner_logo(slug, pid):
+    ev = _event(slug)
+    if not re.fullmatch(r"[0-9a-f]{12}", pid) or not partners_svc.get(ev, pid):
+        abort(404)
+    p = partners_svc.path(ev, pid)
+    if not p.exists():
+        abort(404)
+    return send_file(p, mimetype="image/png", max_age=3600)
+
+
+@bp.route("/<slug>/build/partner", methods=["POST"])
+@role_required("methodist", "trainer")
+def build_partner(slug):
+    """Добавить партнера (форма с логотипом), изменить, заменить логотип, удалить, переставить."""
+    ev = _event(slug)
+    f = request.get_json(silent=True) or request.form
+    logo = request.files.get("logo")
+    data = logo.read() if logo and logo.filename else None
+    try:
+        if f.get("delete"):
+            partners_svc.remove(ev, str(f["delete"]))
+        elif f.get("order") is not None:
+            partners_svc.reorder(ev, f.get("order") if isinstance(f.get("order"), list) else str(f["order"]).split(","))
+        elif f.get("id"):
+            partners_svc.update(ev, str(f["id"]), dict(f), logo=data)
+        else:
+            if not data:
+                return _bad("efir.p_err_logo")
+            partners_svc.add(ev, f.get("name") or "", f.get("url"), f.get("label"), data)
+    except partners_svc.PartnerError as e:
+        db.session.rollback()
+        return _bad(str(e))
+    audit("live.partner", "efir_event", ev.id, n=len(partners_svc.items(ev)))
+    db.session.commit()
+    return jsonify({"ok": True, "partners": partners(ev)})

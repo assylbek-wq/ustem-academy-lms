@@ -270,3 +270,45 @@ class EfirMediaTest(AppTestCase):
         d = self.m.post(base + "/build/video", json={"delete": fv["id"]}).get_json()
         self.assertEqual([v["id"] for v in d["videos"]], [yt["id"]])
         self.assertFalse(p.exists())
+
+    def test_partners(self):
+        import io
+        from PIL import Image
+        base = f"/efir/{self.ev.slug}"
+        def png(w=900, h=300, color=(0, 120, 200, 255)):
+            b = io.BytesIO(); im = Image.new("RGBA", (w + 40, h + 40), (0, 0, 0, 0))
+            im.paste(Image.new("RGBA", (w, h), color), (20, 20)); im.save(b, "PNG"); return b.getvalue()
+        teacher = self.new_client("teacher1@academy.demo")
+        self.assertEqual(teacher.post(base + "/build/partner", data={"name": "X", "logo": (io.BytesIO(png()), "l.png")},
+                                      content_type="multipart/form-data").status_code, 403)
+        self.assertEqual(self.m.post(base + "/build/partner", data={"name": "X"}, content_type="multipart/form-data").status_code, 400)
+        self.assertEqual(self.m.post(base + "/build/partner", data={"name": "X", "logo": (io.BytesIO(b"nope"), "l.png")},
+                                     content_type="multipart/form-data").status_code, 400)
+        d = self.m.post(base + "/build/partner", data={"name": "STEMshop", "url": "stemshop.kz", "label": "Партнер",
+                                                       "logo": (io.BytesIO(png()), "logo.png")}, content_type="multipart/form-data").get_json()
+        self.assertTrue(d["ok"], d)
+        p1 = d["partners"][0]
+        self.assertEqual((p1["name"], p1["url"], p1["label"]), ("STEMshop", "https://stemshop.kz", "Партнер"))
+        self.assertEqual((p1["w"], p1["h"]), (600, 200))   # обрезаны прозрачные поля, вписано в 600 x 240
+        anon = self.app.test_client()
+        r = anon.get(p1["logo"])
+        self.assertEqual((r.status_code, r.mimetype), (200, "image/png"))
+        d = self.m.post(base + "/build/partner", data={"name": "USTEM", "logo": (io.BytesIO(png(200, 200)), "u.png")},
+                        content_type="multipart/form-data").get_json()
+        p2 = d["partners"][1]
+        self.assertEqual(self.m.post(base + "/build/partner", json={"id": p1["id"], "url": "bad url"}).status_code, 400)
+        d = self.m.post(base + "/build/partner", json={"order": [p2["id"], p1["id"]]}).get_json()
+        self.assertEqual([x["name"] for x in d["partners"]], ["USTEM", "STEMshop"])
+        # видно на экране, у учителя, в приглашении
+        self.assertIn(p1["logo"], anon.get(base + f"/screen?key={self.ev.screen_key}").get_data(as_text=True).replace("&amp;", "&"))
+        gate = anon.get(base).get_data(as_text=True)
+        self.assertIn("https://stemshop.kz", gate)
+        self.assertIn('rel="noopener sponsored"', self.m.get(base).get_data(as_text=True))
+        # копия эфира получает логотипы
+        cp = self.m.post("/efir/new", json={"title": "Копия", "copy": self.ev.slug}).get_json()
+        cpd = self.m.get(f"/efir/{cp['slug']}/build.json").get_json()
+        self.assertEqual(len(cpd["partners"]), 2)
+        self.assertEqual(anon.get(cpd["partners"][0]["logo"]).status_code, 200)
+        d = self.m.post(base + "/build/partner", json={"delete": p2["id"]}).get_json()
+        self.assertEqual([x["name"] for x in d["partners"]], ["STEMshop"])
+        self.assertEqual(anon.get(p2["logo"]).status_code, 404)

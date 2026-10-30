@@ -5,6 +5,7 @@
   <meta name="google" content="notranslate">  {# видеосервер (Chrome) не должен предлагать перевод: панель попадает в эфир #}
   <title>{{ t('live.screen_title') }} · {{ ev.title|loc }}</title>
   {% include "efir/_style.html" %}
+  {% set plist = efir_partners(ev) %}
   <style>
     html,body{width:100%;height:100%;overflow:hidden;background:#000}
     #stage{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;background:var(--cover);color:#fff;overflow:hidden}
@@ -90,6 +91,15 @@
     .sl-qr svg{width:100%;height:auto;display:block}
     .sl-qr b{display:block;font-size:26px;line-height:1.15;margin-top:10px;font-weight:900}
     .sl-qr small{display:block;font-family:var(--f-mono);font-size:16px;color:#0069da;font-weight:700;margin-top:6px;overflow-wrap:anywhere;line-height:1.2}
+    /* Партнеры: большая полоса на заставке и в финале, маленькие логотипы в подвале */
+    .pstrip{position:absolute;left:96px;right:96px;bottom:120px;display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+    .pstrip .pk{font-family:var(--f-mono);font-size:20px;color:#cdeeff;letter-spacing:.08em;text-transform:uppercase;margin-right:6px}
+    .pstrip .pl{background:#fff;border-radius:18px;height:104px;padding:16px 26px;display:flex;flex-direction:column;align-items:center;justify-content:center;box-shadow:0 20px 40px -24px rgba(0,20,60,.6)}
+    .pstrip .pl img{max-height:64px;max-width:260px;display:block}
+    .pstrip .pl small{font-size:13px;color:#5c6670;font-weight:700;margin-top:4px;white-space:nowrap}
+    .foot .plogos{display:flex;gap:10px;align-items:center}
+    .foot .plogos span{background:#fff;border-radius:10px;height:48px;padding:7px 12px;display:flex;align-items:center}
+    .foot .plogos img{max-height:34px;max-width:140px;display:block}
     /* Сцена «Видео»: YouTube или файл на весь экран */
     #s-video{padding:0;background:#000}
     #vbox,#vbox video,#vbox iframe,#vbox #ytp{position:absolute;left:0;top:0;width:1920px;height:1080px;border:0;background:#000}
@@ -138,9 +148,10 @@
         </div>
       </div>
     </div>
+      {% if plist %}<div class="pstrip"><span class="pk">{{ t('efir.p_with') }}</span>{% for pp in plist %}<div class="pl"><img src="{{ pp.logo }}" alt="{{ pp.name }}">{% if pp.label %}<small>{{ pp.label }}</small>{% endif %}</div>{% endfor %}</div>{% endif %}
   </section>
 
-  <!-- Спикер говорит: фон с QR (обычно поверх идет камера) -->
+
   <section class="scene" id="s-slides">
     <div class="sl-full" id="sl-camph"><span>🎥</span>{{ t('live.d_cam_here') }}</div>
     <div class="sl-full" id="sl-bg"><i></i></div>
@@ -231,6 +242,7 @@
         {% if qrs.bot %}<div class="qrcard"><div class="qr" style="width:220px;height:220px">{{ qrs.bot }}</div><div><div class="t1">{{ t('live.scr_fin_bot') }}</div><div class="url">{{ bot_handle }}</div></div></div>{% endif %}
       </div>
     </div>
+      {% if plist %}<div class="pstrip"><span class="pk">{{ t('efir.p_with') }}</span>{% for pp in plist %}<div class="pl"><img src="{{ pp.logo }}" alt="{{ pp.name }}">{% if pp.label %}<small>{{ pp.label }}</small>{% endif %}</div>{% endfor %}</div>{% endif %}
   </section>
 
   <section class="scene" id="s-video"><div id="vbox"></div></section>
@@ -239,6 +251,7 @@
 
   <div class="foot">
     <div class="brand"><img src="{{ url_for('static', filename='img/ustem-mark.png') }}" alt="">{{ (ev.title|loc).split('·')[0] }}</div>
+    {% if plist %}<div class="plogos">{% for pp in plist[:4] %}<span><img src="{{ pp.logo }}" alt="{{ pp.name }}"></span>{% endfor %}</div>{% endif %}
     <div class="grad-line"></div>
     <div class="counter"><span><span class="dot"></span>{{ t('live.scr_online') }} <b id="c-online">0</b></span><span>{{ t('live.scr_joined') }} <b id="c-joined">0</b></span></div>
   </div>
