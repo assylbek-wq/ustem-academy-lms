@@ -95,6 +95,7 @@
 </header>
 
 <main>
+  {% include "live/_tostudio.html" %}
   {% include "live/_plinks.html" %}
   <div class="sechead"><div><div class="eyebrow">01 · Live</div><h2>{{ t('live.b_all') }}</h2></div></div>
   {% set arch = rows|selectattr('ev.archived')|list %}

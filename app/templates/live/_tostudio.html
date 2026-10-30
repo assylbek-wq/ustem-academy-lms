@@ -1,0 +1,8 @@
+{# Подсказка: новые эфиры собирают в Студии эфиров /efir (спикеры по ссылке, видео, партнеры, эфир без OBS) #}
+<div class="tostudio">
+  <span>✨ {{ t('efir.to_studio') }}</span>
+  <a class="btn pri sm" href="{{ url_for('efir.hub') }}">{{ t('efir.to_studio_btn') }} →</a>
+</div>
+<style>
+  .tostudio{display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:space-between;background:var(--amber-soft);color:var(--amber-ink);border-radius:14px;padding:12px 16px;margin:0 0 18px;font-weight:600;line-height:1.45}
+</style>

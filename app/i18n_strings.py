@@ -1385,6 +1385,8 @@ _S.update({
     'efir.p_err_many': ('Не больше 12 партнеров в эфире.', 'Эфирде 12-ден аспайтын серіктес.', 'No more than 12 partners per live.'),
     'efir.p_err_name': ('Впишите название партнера.', 'Серіктес атауын жазыңыз.', 'Enter the partner name.'),
     'audit.live.partner': ('Эфир: партнеры', 'Эфир: серіктестер', 'Live: partners'),
+    'efir.to_studio': ('Новые эфиры лучше собирать в Студии эфиров: там спикеры по ссылке без OBS, видео, партнеры и два спикера на слайде. Готовый вебинар можно перенести туда кнопкой «Перенести из вебинаров».', 'Жаңа эфирлерді Эфир студиясында жинаған дұрыс: онда OBS-сіз спикерлер сілтеме арқылы, бейне, серіктестер және слайдта екі спикер бар. Дайын вебинарды «Вебинарлардан көшіру» батырмасымен көшіруге болады.', 'Build new lives in the Live studio: speakers join by link without OBS, plus videos, partners and two speakers on a slide. Move a ready webinar there with Import from webinars.'),
+    'efir.to_studio_btn': ('Открыть Студию эфиров', 'Эфир студиясын ашу', 'Open Live studio'),
     'nav.efir': ('Студия эфиров', 'Эфир студиясы', 'Live studio'),
     'live.st_short': ('Аналитика', 'Аналитика', 'Analytics'),
     'live.link_bot': ('новости и напоминания', 'жаңалықтар мен еске салулар', 'news and reminders'),
