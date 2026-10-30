@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import date
+from pathlib import Path
 
 from flask import Blueprint, Response, abort, flash, g, redirect, render_template, request, session, url_for
 
@@ -147,4 +148,6 @@ def robots():
 @bp.route("/healthz")
 def healthz():
     db.session.execute(db.text("select 1"))
-    return {"ok": True}
+    # REVISION пишет deploy/autodeploy.sh перед сборкой: по нему видно, какая версия выложена
+    rev = Path(__file__).resolve().parents[2] / "REVISION"
+    return {"ok": True, "version": rev.read_text().strip() if rev.exists() else ""}
