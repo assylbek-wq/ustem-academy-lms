@@ -925,7 +925,7 @@ def guest_url(ev: EfirEvent) -> str:
 
 def _stage_out(ev: EfirEvent) -> dict:
     s = media.stage(ev)
-    return {"on": s["on"], "muted": s["muted"], "layout": s["layout"], "v": s["v"]}
+    return {"on": s["on"], "muted": s["muted"], "hands": s["hands"], "layout": s["layout"], "v": s["v"]}
 
 
 @bp.route("/<slug>/guest")
@@ -964,10 +964,27 @@ def guest_status(slug):
         abort(404)
     s = media.stage(ev)
     ident = request.args.get("id") or ""
-    resp = jsonify({"on": ident in s["on"], "muted": ident in s["muted"], "on_list": s["on"], "mode": (ev.state or {}).get("mode") or "waiting",
+    resp = jsonify({"on": ident in s["on"], "muted": ident in s["muted"], "hand": ident in s["hands"], "on_list": s["on"], "mode": (ev.state or {}).get("mode") or "waiting",
                     "streaming": (ev.egress or {}).get("status") in media.ACTIVE})
     resp.headers["Cache-Control"] = "no-store"
     return resp
+
+
+@bp.route("/<slug>/guest/hand", methods=["POST"])
+def guest_hand(slug):
+    """Спикер поднимает или опускает руку: ведущий видит ✋ на пульте."""
+    ev = _event(slug)
+    if not _guest_ok(ev):
+        abort(404)
+    f = request.get_json(silent=True) or {}
+    ident = str(f.get("id") or "")[:24]
+    if not ident.startswith("g-"):
+        return _bad("efir.m_bad")
+    s = media.stage(ev)
+    hands = [h for h in s["hands"] if h != ident] + ([ident] if f.get("up") and ident not in s["on"] else [])
+    s = media.set_stage(ev, hands=hands)
+    db.session.commit()
+    return jsonify({"ok": True, "hand": ident in s["hands"]})
 
 
 @bp.route("/<slug>/media.json")
@@ -990,7 +1007,7 @@ def media_json(slug):
 def control_stage(slug):
     ev = _event(slug)
     f = request.get_json(silent=True) or {}
-    s = media.set_stage(ev, on=f.get("on"), muted=f.get("muted"), layout=f.get("layout"))
+    s = media.set_stage(ev, on=f.get("on"), muted=f.get("muted"), layout=f.get("layout"), hands=f.get("hands"))
     audit("live.stage", "efir_event", ev.id, on=s["on"], layout=s["layout"])
     db.session.commit()
     return jsonify({"ok": True, "stage": _stage_out(ev)})

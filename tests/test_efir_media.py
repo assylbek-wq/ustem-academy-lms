@@ -163,3 +163,26 @@ class EfirMediaTest(AppTestCase):
         lb.create({"ru": "Еще эфир"}, None, None)
         self.assertEqual(LiveEvent.query.count(), n)
         self.assertEqual(self.m.get(f"/live/{self.ev.slug}/build").status_code, 404)
+
+    def test_hands_and_mute_all(self):
+        anon = self.app.test_client()
+        page = anon.get(f"/efir/{self.ev.slug}/guest?k={self.ev.guest_key}").get_data(as_text=True)
+        import re
+        h = {"X-CSRF-Token": re.search(r'name="csrf-token" content="([^"]+)"', page).group(1)}
+        base = f"/efir/{self.ev.slug}"
+        self.assertEqual(anon.post(base + "/guest/hand", json={"k": "bad", "id": "g-a", "up": True}, headers=h).status_code, 404)
+        self.assertEqual(anon.post(base + "/guest/hand", json={"k": self.ev.guest_key, "id": "screen-1", "up": True}, headers=h).status_code, 400)
+        for gid in ("g-a", "g-b"):
+            self.assertTrue(anon.post(base + "/guest/hand", json={"k": self.ev.guest_key, "id": gid, "up": True}, headers=h).get_json()["hand"])
+        st = anon.get(base + f"/guest/status?k={self.ev.guest_key}&id=g-a").get_json()
+        self.assertTrue(st["hand"])
+        self.assertFalse(st["on"])                     # за кулисами: микрофон на странице спикера заперт
+        self.assertEqual(self.m.get(base + "/screen.json").get_json()["stage"]["hands"], ["g-a", "g-b"])
+        d = self.m.post(base + "/control/stage", json={"on": ["g-a"]}).get_json()   # вывели в эфир - рука опустилась
+        self.assertEqual(d["stage"]["hands"], ["g-b"])
+        self.assertFalse(anon.post(base + "/guest/hand", json={"k": self.ev.guest_key, "id": "g-a", "up": True}, headers=h).get_json()["hand"])
+        self.assertFalse(anon.post(base + "/guest/hand", json={"k": self.ev.guest_key, "id": "g-b", "up": False}, headers=h).get_json()["hand"])
+        d = self.m.post(base + "/control/stage", json={"muted": ["g-a", "g-b"]}).get_json()   # «Выключить всех»
+        self.assertEqual(d["stage"]["muted"], ["g-a", "g-b"])
+        self.assertTrue(anon.get(base + f"/guest/status?k={self.ev.guest_key}&id=g-a").get_json()["muted"])
+        self.assertEqual(self.m.post(base + "/control/stage", json={"muted": []}).get_json()["stage"]["muted"], [])

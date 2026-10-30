@@ -33,6 +33,9 @@
     .spk .nm small{display:block;font-weight:500;color:var(--mute);font-size:12px}
     .spk .acts{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
     .spk .b.air{background:var(--red);color:#fff;border-color:transparent}
+    .spk .hand{display:none;margin-left:6px;background:var(--amber-soft);color:var(--amber-ink);border-radius:999px;padding:1px 8px;font-size:12px;cursor:pointer}
+    .spk.up .hand{display:inline-block;animation:blink 1.2s infinite}
+    .spk.up{background:var(--amber-soft);margin:0 -8px;padding:10px 8px;border-radius:10px}
     .wrap{max-width:1400px;margin:0 auto;padding:16px;display:grid;grid-template-columns:minmax(0,1fr) 420px;gap:16px}
     @media(max-width:1100px){.wrap{grid-template-columns:1fr}}
     .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:16px;box-shadow:var(--shadow)}
@@ -156,6 +159,8 @@
         <button class="b sm" data-lay="hide">{{ t('efir.c_lay_hide') }}</button>
       </div>
       <div class="hint" style="margin-top:12px;display:flex;align-items:center;gap:8px">{{ t('efir.c_speakers') }} <span id="sp-n"></span><span class="sp"></span><label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="listen"> {{ t('efir.c_listen') }}</label></div>
+      <div class="row" style="margin:6px 0 2px"><button class="b sm" id="mute-all">🔇 {{ t('efir.c_mute_all') }}</button><button class="b sm" id="unmute-all">🔊 {{ t('efir.c_unmute_all') }}</button><span class="hint" id="hands-n" style="margin:0"></span></div>
+      <div class="hint" style="margin:2px 0 4px">{{ t('efir.c_mic_rule') }}</div>
       <div id="spk"><div class="hint" id="spk-empty">{{ t('efir.c_no_speakers') }}</div></div>
     </div>
     <div class="card">
@@ -391,7 +396,7 @@
   var T = {{ {'air_on': t('efir.c_to_air'), 'air_off': t('efir.c_off_air'), 'onair': t('efir.c_onair'), 'back': t('efir.c_back'),
               'kick_q': t('efir.c_kick_q'), 'st': {'': t('efir.c_st_idle'), 'EGRESS_STARTING': t('efir.c_st_starting'), 'EGRESS_ACTIVE': t('efir.c_st_active'),
               'EGRESS_ENDING': t('efir.c_st_ending'), 'EGRESS_COMPLETE': t('efir.c_st_done'), 'EGRESS_FAILED': t('efir.c_st_failed'), 'EGRESS_ABORTED': t('efir.c_st_failed'),
-              'EGRESS_LIMIT_REACHED': t('efir.c_st_failed')}, 'stop_q': t('efir.c_stop_q'), 'max': t('efir.c_max'), 'net': t('live.net')}|tojson }};
+              'EGRESS_LIMIT_REACHED': t('efir.c_st_failed')}, 'hand': t('efir.c_hand'), 'hand_down': t('efir.c_hand_down'), 'stop_q': t('efir.c_stop_q'), 'max': t('efir.c_max'), 'net': t('live.net')}|tojson }};
   var csrf = document.querySelector('meta[name=csrf-token]').content, $ = function (id) { return document.getElementById(id); }, esc = window.liveEsc;
   function post(url, body) { return fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf}, body: JSON.stringify(body)}).then(function (r) { return r.json(); }); }
   function flash(m) { var h = $('sm-hint'); h.textContent = m; h.style.color = 'var(--red)'; }
@@ -429,7 +434,7 @@
       var p = PEOPLE[id], on = (STAGE.on || []).indexOf(id) >= 0, muted = (STAGE.muted || []).indexOf(id) >= 0;
       if (!p.row) {
         p.row = document.createElement('div'); p.row.className = 'spk';
-        p.row.innerHTML = '<div class="th"><i class="lv"></i></div><div><div class="nm"><span></span><small></small></div><div class="acts">' +
+        p.row.innerHTML = '<div class="th"><i class="lv"></i></div><div><div class="nm"><span></span><b class="hand" title="' + T.hand_down + '">✋ ' + T.hand + '</b><small></small></div><div class="acts">' +
           '<button class="b sm" data-a="air"></button><button class="b sm" data-a="mute">🔇</button><button class="b sm" data-a="kick" title="✕">✕</button></div></div>';
         $('spk').appendChild(p.row);
         p.row.querySelector('[data-a=air]').onclick = function () {
@@ -442,11 +447,14 @@
           if (i >= 0) cur.splice(i, 1); else cur.push(id);
           saveStage({muted: cur});
         };
+        p.row.querySelector('.hand').onclick = function () { saveStage({hands: (STAGE.hands || []).filter(function (h) { return h !== id; })}); };
         p.row.querySelector('[data-a=kick]').onclick = function () { if (confirm(T.kick_q)) post('/efir/' + SLUG + '/control/kick', {identity: id}).then(function (d) { if (d.ok) { STAGE = d.stage; paint(); } }); };
       }
       p.row.querySelector('.nm span').textContent = p.name || id;
       p.row.querySelector('.nm small').textContent = (p.role ? p.role + ' · ' : '') + (on ? T.onair : T.back);
       p.row.classList.toggle('onair', on);
+      var up = (STAGE.hands || []).indexOf(id) >= 0; p.row.classList.toggle('up', up);
+      if (up && p.row.previousElementSibling && !p.row.previousElementSibling.classList.contains('up')) $('spk').insertBefore(p.row, $('spk').querySelector('.spk'));
       var ab = p.row.querySelector('[data-a=air]'); ab.textContent = on ? '■ ' + T.air_off : '▶ ' + T.air_on; ab.classList.toggle('air', !on);
       var mb = p.row.querySelector('[data-a=mute]'); mb.textContent = muted ? '🔊' : '🔇'; mb.classList.toggle('on', muted);
       var th = p.row.querySelector('.th');
@@ -455,7 +463,16 @@
       (p.audio || []).forEach(function (a) { a.muted = !$('listen').checked; });
     });
     Object.keys(PEOPLE).forEach(function (id) { if (PEOPLE[id].gone && PEOPLE[id].row) { PEOPLE[id].row.remove(); delete PEOPLE[id]; } });
+    var nh = (STAGE.hands || []).filter(function (h) { return PEOPLE[h]; }).length;
+    $('hands-n').textContent = nh ? '✋ ' + nh : '';
+    if (nh > lastHands) beep();
+    lastHands = nh;
   }
+  var lastHands = 0, actx = null;
+  function beep() { try { actx = actx || new AudioContext(); var o = actx.createOscillator(), g = actx.createGain(); o.frequency.value = 880; g.gain.value = .06; o.connect(g); g.connect(actx.destination); o.start(); o.stop(actx.currentTime + .15); } catch (e) {} }
+  function guests() { return Object.keys(PEOPLE).filter(function (id) { return id.indexOf('g-') === 0 && !PEOPLE[id].gone; }); }
+  $('mute-all').onclick = function () { saveStage({muted: guests()}); };
+  $('unmute-all').onclick = function () { saveStage({muted: []}); };
   $('listen').onchange = function () { if (room) room.startAudio(); paint(); };
   function person(p) {
     var x = PEOPLE[p.identity] = PEOPLE[p.identity] || {audio: []};

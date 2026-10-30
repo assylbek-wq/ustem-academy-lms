@@ -125,17 +125,21 @@ def remove(ev, identity: str) -> None:
 # ─── Сцена: кто в эфире ──────────────────────────────────────────────────
 def stage(ev) -> dict:
     s = dict(ev.stage or {})
-    return {"on": list(s.get("on") or [])[:MAX_ON], "muted": list(s.get("muted") or []),
+    return {"on": list(s.get("on") or [])[:MAX_ON], "muted": list(s.get("muted") or []), "hands": list(s.get("hands") or []),
             "layout": s.get("layout") if s.get("layout") in LAYOUTS else "auto", "v": int(s.get("v") or 0)}
 
 
-def set_stage(ev, on=None, muted=None, layout=None) -> dict:
+def set_stage(ev, on=None, muted=None, layout=None, hands=None) -> dict:
+    """Сцена эфира. Выведенный в эфир спикер опускает руку сам."""
     s = stage(ev)
     clean = lambda xs: [x for x in dict.fromkeys(str(i)[:24] for i in xs) if x.startswith("g-")]
     if on is not None:
         s["on"] = clean(on)[:MAX_ON]
+        s["hands"] = [h for h in s["hands"] if h not in s["on"]]
     if muted is not None:
-        s["muted"] = clean(muted)
+        s["muted"] = clean(muted)[:60]
+    if hands is not None:
+        s["hands"] = [h for h in clean(hands) if h not in s["on"]][:60]
     if layout is not None and layout in LAYOUTS:
         s["layout"] = layout
     s["v"] += 1

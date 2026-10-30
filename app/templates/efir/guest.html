@@ -33,6 +33,8 @@
     .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:14px}
     .ctl{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
     .ctl .btn.off{background:var(--red-soft);color:var(--red);border-color:transparent}
+    .ctl .btn.lock{opacity:.6}
+    .ctl .btn.up{background:var(--amber-soft);color:var(--amber-ink);border-color:transparent}
     .note{color:var(--mute);font-size:13px;line-height:1.5;margin-top:10px}
     .err{color:var(--red);font-size:13px;margin-top:8px}
     h2{font-size:18px;margin:0 0 4px;font-weight:800}
@@ -60,6 +62,7 @@
         <button class="btn" type="button" id="b-mic">🎙 {{ t('efir.g_mic') }}</button>
         <button class="btn" type="button" id="b-cam">🎥 {{ t('efir.g_cam') }}</button>
         <button class="btn" type="button" id="b-scr">🖥 {{ t('efir.g_share') }}</button>
+        <button class="btn" type="button" id="b-hand">✋ {{ t('efir.g_hand') }}</button>
         <span class="sp"></span>
         <button class="btn danger" type="button" id="b-leave">{{ t('efir.g_leave') }}</button>
       </div>
@@ -94,13 +97,14 @@
   var CSRF = document.querySelector('meta[name=csrf-token]').content;
   var T = {{ {'back': t('efir.g_back'), 'on': t('efir.g_on'), 'muted': t('efir.g_muted_by'), 'nocam': t('efir.g_nocam'),
               'err_name': t('efir.g_err_name'), 'err_dev': t('efir.g_err_dev'), 'net': t('live.net'), 'left': t('efir.g_left'),
-              'mic_off': t('efir.g_mic_off'), 'cam_off': t('efir.g_cam_off'), 'share_stop': t('efir.g_share_stop')}|tojson }};
+              'mic_off': t('efir.g_mic_off'), 'mic_back': t('efir.g_mic_back'), 'mic_live': t('efir.g_mic_live'),
+              'hand': t('efir.g_hand'), 'hand_down': t('efir.g_hand_down'), 'hand_sent': t('efir.g_hand_sent'), 'cam_off': t('efir.g_cam_off'), 'share_stop': t('efir.g_share_stop')}|tojson }};
   var $ = function (id) { return document.getElementById(id); };
   function toast(m, e) { var el = $('toast'); el.textContent = m; el.className = 'toast on' + (e ? ' err' : ''); setTimeout(function () { el.className = 'toast'; }, 2800); }
   function ls(k, v) { try { if (v === undefined) return localStorage.getItem('efir.' + k) || ''; localStorage.setItem('efir.' + k, v); } catch (e) { return ''; } }
   $('nm').value = ls('name'); $('rl').value = ls('role');
 
-  var tracks = [], room = null, ident = '', meterCtx = null, meterRaf = 0, micOn = true, camOn = true, forcedMute = false;
+  var tracks = [], room = null, ident = '', meterCtx = null, meterRaf = 0, micOn = true, camOn = true, lock = 'back', handUp = false;
   function trackOf(kind) { return tracks.filter(function (t) { return t.kind === kind; })[0]; }
   function showMe() {
     var v = trackOf('video');
@@ -183,6 +187,7 @@
           .on(LK.RoomEvent.ParticipantConnected, function (p) { tileFor(p); })
           .on(LK.RoomEvent.Disconnected, function () { toast(T.left); });
         return room.connect(d.url, d.token).then(function () {
+          setMic(false);  // в студию входят с выключенным микрофоном: за кулисами никого не перебивают
           return Promise.all(tracks.map(function (t) { return room.localParticipant.publishTrack(t, t.kind === 'video' ? {simulcast: true} : {}); }));
         });
       }).then(function () {
@@ -197,9 +202,22 @@
   function setMic(on) {
     var a = trackOf('audio'); micOn = on;
     if (a) (on ? a.unmute() : a.mute());
-    $('b-mic').classList.toggle('off', !on); $('b-mic').textContent = on ? '🎙 ' + {{ t('efir.g_mic')|tojson }} : '🔇 ' + T.mic_off;
+    $('b-mic').classList.toggle('off', !on); $('b-mic').classList.toggle('lock', !!lock && !!room);
+    $('b-mic').textContent = on ? '🎙 ' + {{ t('efir.g_mic')|tojson }} : '🔇 ' + T.mic_off;
   }
-  $('b-mic').onclick = function () { if (forcedMute) { toast(T.muted, true); return; } setMic(!micOn); };
+  $('b-mic').onclick = function () {
+    if (lock === 'back') { toast(T.mic_back, true); return; }
+    if (lock === 'host') { toast(T.muted, true); return; }
+    setMic(!micOn);
+  };
+  function paintHand() { var b = $('b-hand'); b.classList.toggle('up', handUp); b.textContent = handUp ? '✋ ' + T.hand_down : '✋ ' + T.hand; }
+  $('b-hand').onclick = function () {
+    var up = !handUp;
+    fetch('/efir/' + SLUG + '/guest/hand', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': CSRF},
+      body: JSON.stringify({k: K, id: ident, up: up})}).then(function (r) { return r.json(); }).then(function (d) {
+        if (d.ok) { handUp = d.hand; paintHand(); if (handUp) toast(T.hand_sent); }
+      });
+  };
   $('b-cam').onclick = function () {
     var v = trackOf('video'); if (!v) return; camOn = !camOn; camOn ? v.unmute() : v.mute();
     this.classList.toggle('off', !camOn); this.textContent = camOn ? '🎥 ' + {{ t('efir.g_cam')|tojson }} : '🚫 ' + T.cam_off;
@@ -219,8 +237,14 @@
         var st = $('st'); st.className = 'status ' + (s.on ? 'on' : 'back'); $('st-t').textContent = s.on ? T.on : T.back;
         $('me').classList.toggle('onair', !!s.on);
         Array.prototype.forEach.call(document.querySelectorAll('#others .vid'), function (el) { el.classList.toggle('onair', (s.on_list || []).indexOf(el.id.slice(2)) >= 0); });
-        if (s.muted && !forcedMute) { forcedMute = true; setMic(false); toast(T.muted, true); }
-        if (!s.muted && forcedMute) { forcedMute = false; }
+        // микрофон: за кулисами и по кнопке ведущего выключен, в эфире включается сам
+        var was = lock;
+        lock = !s.on ? 'back' : (s.muted ? 'host' : '');
+        if (lock && micOn) setMic(false);
+        if (lock === 'host' && was !== 'host') toast(T.muted, true);
+        if (!lock && was) { setMic(true); toast(T.mic_live); }
+        setMic(micOn);
+        if (handUp !== !!s.hand) { handUp = !!s.hand; paintHand(); }
       }).catch(function () {}).finally(function () { setTimeout(poll, 2000); });
   }
 })();
