@@ -767,6 +767,39 @@ def build_ai(slug):
     return jsonify({"ok": True, "items": items})
 
 
+@bp.route("/<slug>/build/deck/notes/ai", methods=["POST"])
+@role_required("methodist", "trainer")
+def build_notes_ai(slug):
+    """ИИ пишет подсказки спикеру к слайдам (до 6 слайдов за запрос, конструктор шлет пачками)."""
+    ev = _event(slug)
+    if not lb.ai_enabled():
+        return _bad("live.b_ai_off")
+    f = request.get_json(silent=True) or {}
+    lang = f.get("lang") if f.get("lang") in ("kk", "ru") else (ev.lang or "kk")
+    try:
+        n = deck_svc.ai_notes(ev, [str(i) for i in (f.get("ids") or [])][:6], lang, f.get("focus") or "")
+    except Exception:
+        import logging
+        db.session.rollback()
+        logging.getLogger("academy.live").exception("efir ai notes failed")
+        return _bad("live.b_ai_fail", 502)
+    audit("live.ai_notes", "efir_event", ev.id, n=n, lang=lang)
+    db.session.commit()
+    return jsonify({"ok": True, "n": n, "deck": _deck_json(ev)})
+
+
+@bp.route("/<slug>/guest/notes")
+def guest_notes(slug):
+    """Подсказки спикеру по слайдам: по ключу ссылки спикера и команде (на экран и учителям не идут)."""
+    ev = _event(slug)
+    if not (_guest_ok(ev) or (g.user and g.user.has_role("methodist", "trainer"))):
+        abort(404)
+    lang = request.args.get("lang") if request.args.get("lang") in ("kk", "ru") else (ev.lang or "kk")
+    resp = jsonify({"notes": deck_svc.notes_for(ev, lang), "dv": int((ev.deck or {}).get("v", 0))})
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
 @bp.route("/<slug>/build/add", methods=["POST"])
 @role_required("methodist", "trainer")
 def build_add(slug):

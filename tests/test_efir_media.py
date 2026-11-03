@@ -312,3 +312,56 @@ class EfirMediaTest(AppTestCase):
         d = self.m.post(base + "/build/partner", json={"delete": p2["id"]}).get_json()
         self.assertEqual([x["name"] for x in d["partners"]], ["STEMshop"])
         self.assertEqual(anon.get(p2["logo"]).status_code, 404)
+
+    def test_speaker_notes(self):
+        import io, json as _j
+        from unittest import mock
+        from fpdf import FPDF
+        pdf = FPDF(orientation="L", unit="pt", format=(540, 960))
+        for i in range(3):
+            pdf.add_page(); pdf.set_font("Helvetica", size=40); pdf.text(60, 120, f"Slide {i + 1}")
+        base = f"/efir/{self.ev.slug}"
+        d = self.m.post(base + "/build/deck/upload", data={"pdf": (io.BytesIO(bytes(pdf.output())), "d.pdf")},
+                        content_type="multipart/form-data").get_json()
+        ids = [x["id"] for x in d["deck"]["slides"]]
+        # вручную: сохраняется вместе с раскладкой
+        self.m.post(base + "/build/deck", json={"slides": [{"id": ids[0], "layout": "side", "notes": {"ru": "• Привет", "kk": ""}},
+                                                           {"id": ids[1], "layout": "side"}, {"id": ids[2], "layout": "side"}]})
+        bj = self.m.get(base + "/build.json").get_json()
+        self.assertEqual(bj["deck"]["slides"][0]["notes"], {"ru": "• Привет"})
+        # ИИ: подставной ответ модели, проверяем что он получил картинки слайдов
+        self.app.config["ANTHROPIC_API_KEY"] = "test"
+        seen = {}
+
+        class R:
+            def __init__(self, txt): self.content = [type("B", (), {"type": "text", "text": txt})()]
+
+        def fake(**kw):
+            seen["images"] = sum(1 for c in kw["messages"][0]["content"] if c["type"] == "image")
+            return R("```json\n" + _j.dumps({ids[1]: ["Главная мысль", "- Пример из школы"], ids[2]: ["Итог"]}, ensure_ascii=False) + "\n```")
+        client = mock.MagicMock(); client.messages.create.side_effect = fake
+        try:
+            with mock.patch("app.services.efir_builder._client", return_value=client):
+                d = self.m.post(base + "/build/deck/notes/ai", json={"ids": ids[1:], "lang": "ru"}).get_json()
+        finally:
+            self.app.config["ANTHROPIC_API_KEY"] = ""
+        self.assertTrue(d["ok"], d)
+        self.assertEqual(seen["images"], 2)
+        self.assertEqual(d["deck"]["slides"][1]["notes"]["ru"], "• Главная мысль\n• Пример из школы")
+        # спикер (по ключу) и команда видят, остальные нет
+        anon = self.app.test_client()
+        n = anon.get(base + f"/guest/notes?k={self.ev.guest_key}&lang=ru").get_json()["notes"]
+        self.assertEqual(n, ["• Привет", "• Главная мысль\n• Пример из школы", "• Итог"])
+        self.assertEqual(anon.get(base + f"/guest/notes?k={self.ev.guest_key}&lang=kk").get_json()["notes"][0], "• Привет")  # нет kk - берем ru
+        self.assertEqual(anon.get(base + "/guest/notes").status_code, 404)
+        self.assertEqual(anon.get(base + f"/guest/notes?key={self.ev.screen_key}").status_code, 404)
+        self.assertEqual(self.m.get(base + "/guest/notes?lang=ru").status_code, 200)
+        # на экран эфира и учителям подсказки не идут
+        from app.services import efir as esvc
+        esvc._cache.clear()
+        sj = anon.get(base + f"/screen.json?key={self.ev.screen_key}&dv=0").get_json()
+        self.assertNotIn("Привет", _j.dumps(sj, ensure_ascii=False))
+        self.assertNotIn("Главная мысль", self.m.get(base).get_data(as_text=True))
+        teacher = self.new_client("teacher1@academy.demo")
+        self.assertEqual(teacher.post(base + "/build/deck/notes/ai", json={"ids": ids}).status_code, 403)
+        self.assertFalse(self.m.post(base + "/build/deck/notes/ai", json={"ids": ids}).get_json()["ok"])   # без ключа ИИ

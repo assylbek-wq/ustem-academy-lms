@@ -180,6 +180,9 @@
     .prow input.f{padding:7px 10px}
     .prow .ops{display:flex;gap:2px}
     @media(max-width:900px){.prow{grid-template-columns:1fr}}
+    .notes{margin-top:16px;border-top:1px solid var(--line);padding-top:14px}
+    .notes .nh{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+    .notes textarea{font:500 14px/1.55 var(--f-body)}
     .vadd{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) auto;gap:8px;align-items:center;margin-bottom:8px}
     @media(max-width:760px){.vadd{grid-template-columns:1fr}}
     .vprog{position:relative;height:30px;border-radius:8px;background:var(--chip);overflow:hidden}
@@ -289,6 +292,7 @@
           <div><span class="in-l">{{ t('live.d_cam') }}</span><span class="seg" id="d-cam"><button type="button" data-c="tr">↗ {{ t('live.d_cam_tr') }}</button><button type="button" data-c="br">↘ {{ t('live.d_cam_br') }}</button></span></div>
           <div class="obs" id="d-obs"></div>
           <span class="sp"></span>
+          {% if ai %}<button class="btn soft sm" type="button" id="d-notes-ai">✨ {{ t('efir.n_ai_all') }}</button>{% endif %}
           <button class="btn soft sm" type="button" id="d-add">＋ {{ t('live.d_add_pdf') }}</button>
           <button class="btn ghost sm" type="button" id="d-rep">⟲ {{ t('live.d_replace') }}</button>
           <a class="btn soft sm" id="d-pdf" href="{{ url_for('efir.build_deck_export', slug=ev.slug, kind='pdf') }}" title="{{ t('live.d_dl_pdf_t') }}">⬇ PDF</a>
@@ -904,7 +908,14 @@
       '<input class="f" id="d-qlabel" maxlength="80" value="' + esc(q.label || '') + '" placeholder="' + esc(TD.qr_label) + '"' + (q.on ? '' : ' disabled') + '></div>' +
       '<div id="d-qurlbox" style="margin-top:10px"' + (q.on && q.to === 'url' ? '' : ' hidden') + '><input class="f" id="d-qurl" value="' + esc(q.url || '') + '" placeholder="' + esc(TD.qr_url_ph) + '"></div>' +
       '<div style="margin-top:10px"' + (q.on && sl.layout !== 'side' ? '' : ' hidden') + '><span class="seg" id="d-qpos"><button type="button" data-p="bl"' + (q.pos === 'bl' ? ' class="on"' : '') + '>↙ ' + esc(TD.pos_bl) + '</button><button type="button" data-p="br"' + (q.pos !== 'bl' ? ' class="on"' : '') + '>↘ ' + esc(TD.pos_br) + '</button></span></div>' +
-      '<div class="acts2"><button class="btn soft sm" type="button" id="d-all">⧉ ' + esc(TD.all) + '</button></div>';
+      '<div class="acts2"><button class="btn soft sm" type="button" id="d-all">⧉ ' + esc(TD.all) + '</button></div>' +
+      '<div class="notes"><div class="nh"><b>🗒 ' + esc(NT.h) + '</b><span class="hintx" style="margin:0">' + esc(NT.sub) + '</span><span class="sp"></span>' +
+      '<span class="seg" id="d-nl"><button type="button" data-nl="kk"' + (NL === 'kk' ? ' class="on"' : '') + '>KK</button><button type="button" data-nl="ru"' + (NL === 'ru' ? ' class="on"' : '') + '>RU</button></span>' +
+      (AI ? '<button class="btn soft sm" type="button" id="d-nai">✨ ' + esc(NT.one) + '</button>' : '') + '</div>' +
+      '<textarea class="f" id="d-notes" rows="5" maxlength="1500" placeholder="' + esc(NT.ph) + '">' + esc((sl.notes || {})[NL] || '') + '</textarea></div>';
+    $('d-notes').oninput = function () { sl.notes = sl.notes || {}; sl.notes[NL] = this.value; deckChanged(false); };
+    all('#d-nl button').forEach(function (b) { b.onclick = function () { NL = b.dataset.nl; renderDset(); }; });
+    var nai = $('d-nai'); if (nai) nai.onclick = function () { notesAI([sl.id], nai); };
     all('[data-lay]').forEach(function (el) { el.onclick = function () { sl.layout = el.dataset.lay; deckChanged(true); }; });
     all('[data-mv]').forEach(function (b) { b.onclick = function () {
       var j = dSel + +b.dataset.mv; var x = DK.slides.splice(dSel, 1)[0]; DK.slides.splice(j, 0, x); dSel = j; deckChanged(true);
@@ -920,11 +931,36 @@
       deckChanged(true); toast(TD.all_done);
     };
   }
+  // ─── Подсказки спикеру: ИИ смотрит на слайды пачками по 5 ───
+  var AI = {{ ai|tojson }}, NL = D.lang || 'kk', NT = {{ {'h': t('efir.n_h'), 'sub': t('efir.n_sub'), 'one': t('efir.n_ai_one'), 'ph': t('efir.n_ph'),
+    'work': t('efir.n_work'), 'done': t('efir.n_done'), 'all_q': t('efir.n_all_q')}|tojson }};
+  function notesAI(ids, btn, focus) {
+    var batches = []; for (var i = 0; i < ids.length; i += 5) batches.push(ids.slice(i, i + 5));
+    var done = 0, total = ids.length; if (btn) btn.disabled = true;
+    function next() {
+      if (!batches.length) { if (btn) btn.disabled = false; toast(NT.done.replace('{n}', done)); renderDset(); return; }
+      toast(NT.work.replace('{n}', done).replace('{of}', total));
+      var b = batches.shift();
+      api('/build/deck/notes/ai', {ids: b, lang: NL, focus: focus || ''}).then(function (d) {
+        if (!d.ok) { toast(d.error || T.err, true); if (btn) btn.disabled = false; return; }
+        var byId = {}; d.deck.slides.forEach(function (x) { byId[x.id] = x.notes; });
+        DK.slides.forEach(function (x) { if (byId[x.id]) x.notes = byId[x.id]; });
+        done += b.length; next();
+      }).catch(function () { toast(T.net, true); if (btn) btn.disabled = false; });
+    }
+    next();
+  }
+  var nall = $('d-notes-ai');
+  if (nall) nall.onclick = function () {
+    var focus = prompt(NT.all_q, '');
+    if (focus === null) return;
+    notesAI(DK.slides.map(function (x) { return x.id; }), nall, focus);
+  };
   function deckChanged(redraw) {
     if (redraw) renderDeck();
     status('saving'); clearTimeout(dT);
     dT = setTimeout(function () {
-      api('/build/deck', {cam: DK.cam, slides: DK.slides.map(function (x) { return {id: x.id, layout: x.layout, qr: x.qr}; })}).then(function (d) {
+      api('/build/deck', {cam: DK.cam, slides: DK.slides.map(function (x) { return {id: x.id, layout: x.layout, qr: x.qr, notes: x.notes || {}}; })}).then(function (d) {
         if (!d.ok) { status('err'); return; }
         status('ok'); showSlide();
       }).catch(function () { status('err'); toast(T.net, true); });

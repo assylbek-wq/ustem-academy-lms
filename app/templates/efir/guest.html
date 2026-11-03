@@ -47,6 +47,10 @@
     .strip img{height:64px;aspect-ratio:16/9;object-fit:cover;border-radius:8px;border:2px solid transparent;cursor:pointer;flex:none;background:var(--chip)}
     .strip img.on{border-color:var(--blue)}
     .slctl.off .strip img{cursor:default}
+    .gnotes{margin-top:14px;background:var(--amber-soft);border-radius:14px;padding:14px 16px}
+    .gnotes .gnh{display:flex;align-items:center;gap:10px;margin-bottom:6px;color:var(--amber-ink)}
+    .gnotes ul{margin:0;padding-left:20px;font-size:17px;line-height:1.5;color:var(--text)}
+    .gnotes li{margin:4px 0}
   </style>
 </head>
 <body>
@@ -73,6 +77,10 @@
         <span class="note" id="sl-hint" style="margin:0">{{ t('efir.g_slide_hint') }}</span>
       </div>
       <div class="strip">{% for u in thumbs %}<img src="{{ u }}" data-i="{{ loop.index0 }}" alt="{{ loop.index }}" loading="lazy">{% endfor %}</div>
+      <div class="gnotes" id="gnotes" hidden>
+        <div class="gnh"><b id="gn-h"></b><span class="sp"></span><span class="note" style="margin:0" id="gn-next"></span></div>
+        <ul id="gn-list"></ul>
+      </div>
     </div>
     {% endif %}
   </div>
@@ -122,6 +130,7 @@
   var T = {{ {'back': t('efir.g_back'), 'on': t('efir.g_on'), 'muted': t('efir.g_muted_by'), 'nocam': t('efir.g_nocam'),
               'err_name': t('efir.g_err_name'), 'err_dev': t('efir.g_err_dev'), 'net': t('live.net'), 'left': t('efir.g_left'),
               'mic_off': t('efir.g_mic_off'), 'mic_back': t('efir.g_mic_back'), 'mic_live': t('efir.g_mic_live'),
+              'notes_h': t('efir.n_guest_h'), 'notes_next': t('efir.n_guest_next'),
               'slide_back': t('efir.g_slide_back'), 'slide_hint': t('efir.g_slide_hint'), 'slide_on': t('efir.g_slide_on'),
               'hand': t('efir.g_hand'), 'hand_down': t('efir.g_hand_down'), 'hand_sent': t('efir.g_hand_sent'), 'cam_off': t('efir.g_cam_off'), 'share_stop': t('efir.g_share_stop')}|tojson }};
   var $ = function (id) { return document.getElementById(id); };
@@ -257,9 +266,26 @@
 
   // ─── Слайды: спикер в эфире листает сам ───
   var NSL = document.querySelectorAll('.strip img').length, curSlide = 0, onAir = false;
+  var NOTES = [];
+  function loadNotes() {
+    fetch('/efir/' + SLUG + '/guest/notes?k=' + encodeURIComponent(K) + '&lang=' + {{ locale|tojson }}, {cache: 'no-store'})
+      .then(function (r) { return r.json(); }).then(function (d) { NOTES = d.notes || []; paintNotes(); }).catch(function () {})
+      .finally(function () { setTimeout(loadNotes, 20000); });
+  }
+  function paintNotes() {
+    var txt = NOTES[curSlide] || '', box = $('gnotes'); if (!box) return;
+    box.hidden = !NOTES.some(function (x) { return x; });
+    $('gn-h').textContent = T.notes_h.replace('{n}', curSlide + 1);
+    $('gn-list').innerHTML = txt.split('\n').map(function (l) { return l.replace(/^[•\-–\s]+/, '').trim(); }).filter(Boolean)
+      .map(function (l) { return '<li>' + window.liveEsc(l) + '</li>'; }).join('');
+    var nx = NOTES[curSlide + 1] || '';
+    $('gn-next').textContent = curSlide + 1 < NSL ? T.notes_next.replace('{n}', curSlide + 2) + (nx ? ': ' + nx.split('\n')[0].replace(/^[•\-–\s]+/, '').slice(0, 70) : '') : '';
+  }
+  if (NSL) loadNotes();
   function paintSlide(i) {
     if (!NSL) return;
     if (i !== null && i !== undefined) curSlide = i;
+    paintNotes();
     $('sl-n').textContent = (curSlide + 1) + ' / ' + NSL;
     Array.prototype.forEach.call(document.querySelectorAll('.strip img'), function (im) { im.classList.toggle('on', +im.dataset.i === curSlide); });
     $('slctl').classList.toggle('off', !onAir);

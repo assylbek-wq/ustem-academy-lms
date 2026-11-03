@@ -21,6 +21,9 @@
     .pill-st.warn{background:var(--amber-soft);color:var(--amber-ink)}
     .stream{border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:12px;background:var(--card2)}
     .b[disabled]{opacity:.45;pointer-events:none}
+    .cnotes{margin-top:10px;background:var(--amber-soft);border-radius:12px;padding:10px 14px}
+    .cnotes b{color:var(--amber-ink);font-size:13px}
+    .cnotes ul{margin:6px 0 0;padding-left:18px;line-height:1.5}
     .vlist .vrow{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
     .vlist .vrow:last-child{border-bottom:0}
     .vk{font-size:11px;font-weight:700;border-radius:999px;padding:3px 9px;background:var(--chip);color:var(--mute);white-space:nowrap}
@@ -130,6 +133,7 @@
         <button class="b big go" id="sl-next" title="→">→</button>
       </div>
       <div class="strip" id="sl-strip">{% for s in deck.slides %}<img data-sl="{{ loop.index0 }}" src="{{ url_for('efir.slide_img', slug=ev.slug, name=s.id ~ '-t.jpg') }}" alt="{{ loop.index }}" loading="lazy">{% endfor %}</div>
+      <div class="cnotes" id="cnotes" hidden><b id="cn-h"></b><ul id="cn-list"></ul></div>
       <div class="hint">{{ t('live.d_ctrl_hint') }}</div>
     </div>
     {% endif %}
@@ -232,8 +236,21 @@
   // ─── Слайды: кнопки, миниатюры, клавиши и пульт-кликер ───
   var SLIDES = {{ deck.slides|map(attribute='img')|list|tojson }}, lastSlide = 0;
   try { lastSlide = Math.min(+(localStorage.getItem('slide:' + SLUG) || 0), Math.max(0, SLIDES.length - 1)); } catch (e) {}
+  var CNOTES = [], CN_H = {{ t('efir.n_guest_h')|tojson }};
+  function paintCNotes(i) {
+    var txt = CNOTES[i] || '', box = $('cnotes'); if (!box) return;
+    box.hidden = !txt; if (!txt) return;
+    $('cn-h').textContent = '🗒 ' + CN_H.replace('{n}', i + 1);
+    $('cn-list').innerHTML = txt.split('\n').map(function (l) { return l.replace(/^[•\-–\s]+/, '').trim(); }).filter(Boolean).map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('');
+  }
+  function loadCNotes() {
+    fetch('/efir/' + SLUG + '/guest/notes?lang=' + {{ locale|tojson }}, {cache: 'no-store'}).then(function (r) { return r.json(); })
+      .then(function (d) { CNOTES = d.notes || []; paintCNotes(lastSlide); }).catch(function () {}).finally(function () { setTimeout(loadCNotes, 30000); });
+  }
+  if (SLIDES.length) loadCNotes();
   function showCur(i, live) {
     if (!SLIDES.length) return;
+    paintCNotes(i);
     $('sl-img').src = SLIDES[i]; $('sl-n').textContent = (i + 1) + ' / ' + SLIDES.length;
     document.querySelector('.slcur').classList.toggle('off', !live);
     Array.prototype.forEach.call(document.querySelectorAll('[data-sl]'), function (im) { im.classList.toggle('on', +im.dataset.sl === i); });

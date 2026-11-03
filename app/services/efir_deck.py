@@ -31,6 +31,7 @@ def cam_rects(deck: dict, lay: str) -> list[dict]:
         return []
     return [dict(c) for c in CAM2] if lay == "duo" else [dict(CAM[deck["cam"]])]
 MAX_SLIDES = 120
+NOTES_MAX = 1500
 WIDTH = 1920
 THUMB = 480
 
@@ -120,6 +121,8 @@ def save(ev: EfirEvent, f: dict) -> dict:
             s = dict(have[x["id"]])
             if x.get("layout") in LAYOUTS:
                 s["layout"] = x["layout"]
+            if isinstance(x.get("notes"), dict):  # подсказки спикеру {kk, ru}: видят только спикер и команда
+                s["notes"] = {l: str(x["notes"].get(l) or "").strip()[:NOTES_MAX] for l in ("kk", "ru") if x["notes"].get(l)}
             q = x.get("qr") if isinstance(x.get("qr"), dict) else {}
             if q:
                 url = (q.get("url") or "").strip()[:400]
@@ -495,3 +498,67 @@ def youtube_cover(ev: EfirEvent, lang: str, labels: dict, url: str) -> bytes:
     out = io.BytesIO()
     img.convert("RGB").save(out, "JPEG", quality=90, optimize=True, progressive=True)
     return out.getvalue()
+
+
+
+# ─── Подсказки спикеру к слайдам (пишет ИИ, правит методист, видят спикер и пульт) ─
+def notes_for(ev: EfirEvent, lang: str) -> list[str]:
+    """Подсказки по порядку слайдов на языке lang (если нет - на другом)."""
+    other = "ru" if lang == "kk" else "kk"
+    return [((s.get("notes") or {}).get(lang) or (s.get("notes") or {}).get(other) or "") for s in get(ev)["slides"]]
+
+
+def _small_jpeg(path, width: int = 1280) -> bytes:
+    from PIL import Image
+    import io
+    im = Image.open(path).convert("RGB")
+    if im.width > width:
+        im = im.resize((width, round(im.height * width / im.width)), Image.LANCZOS)
+    buf = io.BytesIO()
+    im.save(buf, "JPEG", quality=80)
+    return buf.getvalue()
+
+
+def ai_notes(ev: EfirEvent, ids: list[str], lang: str, focus: str = "") -> int:
+    """ИИ смотрит на слайды ids (картинки) и пишет к каждому 3-5 пунктов: о чем сказать спикеру. Возвращает число слайдов."""
+    import base64
+    import json as _json
+    from .efir_builder import _client
+    deck = get(ev)
+    order = {s["id"]: i for i, s in enumerate(deck["slides"])}
+    todo = [s for s in deck["slides"] if s["id"] in set(ids or [])][:6]
+    if not todo:
+        return 0
+    title = (ev.title or {}).get(lang) or (ev.title or {}).get("ru") or (ev.title or {}).get("kk") or ""
+    sub = (ev.subtitle or {}).get(lang) or (ev.subtitle or {}).get("ru") or ""
+    lname = "казахском (литературный, без калек)" if lang == "kk" else "русском (без буквы «ё» и без длинного тире)"
+    content = []
+    for s in todo:
+        content.append({"type": "text", "text": f"Слайд {order[s['id']] + 1} (id {s['id']}):"})
+        content.append({"type": "image", "source": {"type": "base64", "media_type": "image/jpeg",
+                                                     "data": base64.standard_b64encode(_small_jpeg(folder(ev) / f"{s['id']}.jpg")).decode()}})
+    content.append({"type": "text", "text": (
+        f"Это слайды вебинара для учителей школ Казахстана «{title}»" + (f" ({sub})" if sub else "") +
+        f", всего в презентации {len(deck['slides'])} слайдов. Спикер ведет эфир по ним вживую.\n"
+        + (f"Акценты от организаторов: {focus.strip()[:500]}\n" if focus.strip() else "") +
+        f"Для каждого слайда напиши подсказку спикеру на {lname} языке: 3-5 коротких пунктов, до 120 символов каждый. "
+        "Что сказать своими словами (не читать слайд вслух), главная мысль, живой пример из школы или вопрос к учителям, "
+        "на последнем пункте - переход к следующему слайду. Цифры и названия бери только со слайда, не придумывай. "
+        "Термины FIRST, FLL, FTC, STEM, USTEM не переводи. Если слайд титульный или пустой - 1-2 пункта.\n"
+        'Ответ - только JSON-объект без пояснений: {"<id слайда>": ["пункт", "пункт"], ...}')})
+    resp = _client().messages.create(model=current_app.config["AI_MODEL"], max_tokens=4000,
+                                     messages=[{"role": "user", "content": content}])
+    out = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
+    m = re.search(r"```(?:json)?\s*(.+?)```", out, re.S)
+    data = _json.loads(m.group(1) if m else out[out.find("{"):out.rfind("}") + 1])
+    n = 0
+    for s in deck["slides"]:
+        pts = data.get(s["id"]) if isinstance(data, dict) else None
+        if s["id"] in {t["id"] for t in todo} and isinstance(pts, list):
+            text = "\n".join("• " + " ".join(str(x).split()).lstrip("•-– ").strip() for x in pts if str(x).strip())
+            if text:
+                s["notes"] = dict(s.get("notes") or {}, **{lang: text[:NOTES_MAX]})
+                n += 1
+    ev.deck = dict(deck, v=int(deck["v"]) + 1)
+    db.session.commit()
+    return n
