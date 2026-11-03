@@ -167,6 +167,9 @@ def public_state(slug: str) -> dict | None:
         st = dict(ev.state or {})
         out = {"mode": st.get("mode", "waiting"), "v": st.get("v", 0), "now": time.time(), "block": st.get("block"),
                "slide": st.get("slide", 0), "dv": int((ev.deck or {}).get("v", 0))}
+        m = (ev.stage or {}).get("msg")
+        if isinstance(m, dict) and (m.get("text") or m.get("url")):  # сообщение спикера: текст и ссылка
+            out["msg"] = {k: m.get(k) or "" for k in ("id", "text", "url", "by")}
         if out["mode"] == "video":  # видео: какое, с какой секунды и когда пущено (экран считает позицию сам)
             out["video"] = {k: st.get(k) for k in ("vid", "pos", "play_at", "paused")}
         qid = st.get("qid")

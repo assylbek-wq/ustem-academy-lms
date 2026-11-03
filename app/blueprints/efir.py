@@ -8,6 +8,7 @@
 """
 from __future__ import annotations
 
+import functools
 import io
 import re
 import hashlib
@@ -966,7 +967,26 @@ def guest_url(ev: EfirEvent) -> str:
 
 def _stage_out(ev: EfirEvent) -> dict:
     s = media.stage(ev)
-    return {"on": s["on"], "muted": s["muted"], "hands": s["hands"], "layout": s["layout"], "v": s["v"]}
+    out = {"on": s["on"], "muted": s["muted"], "hands": s["hands"], "layout": s["layout"], "v": s["v"], "msg": s["msg"]}
+    if s["msg"] and s["msg"]["url"]:
+        out["msg"] = dict(s["msg"], qr=_msg_qr(s["msg"]["url"]), pretty=_pretty(s["msg"]["url"]))
+    return out
+
+
+@functools.lru_cache(maxsize=64)
+def _msg_qr(url: str) -> str:
+    return str(qr_svg(url))
+
+
+def _msg_post(ev: EfirEvent, f: dict, by: str, who: str):
+    """Общая часть для спикера и пульта: показать или убрать сообщение на экране."""
+    try:
+        m = media.set_msg(ev, f.get("text"), f.get("url"), by=by, hide=bool(f.get("hide")))
+    except media.MediaError as e:
+        return _bad(str(e))
+    audit("live.msg", "efir_event", ev.id, by=who, hide=bool(f.get("hide")), url=(m or {}).get("url") or None)
+    db.session.commit()
+    return jsonify({"ok": True, "stage": _stage_out(ev)})
 
 
 @bp.route("/<slug>/guest")
@@ -1012,7 +1032,7 @@ def guest_status(slug):
     st = ev.state or {}
     resp = jsonify({"on": ident in s["on"], "muted": ident in s["muted"], "hand": ident in s["hands"], "on_list": s["on"],
                     "slide": st.get("slide", 0) if st.get("mode") == "slides" else None, "mode": (ev.state or {}).get("mode") or "waiting",
-                    "streaming": (ev.egress or {}).get("status") in media.ACTIVE})
+                    "streaming": (ev.egress or {}).get("status") in media.ACTIVE, "msg": s["msg"]})
     resp.headers["Cache-Control"] = "no-store"
     return resp
 
@@ -1055,6 +1075,27 @@ def guest_hand(slug):
     s = media.set_stage(ev, hands=hands)
     db.session.commit()
     return jsonify({"ok": True, "hand": ident in s["hands"]})
+
+
+@bp.route("/<slug>/guest/msg", methods=["POST"])
+def guest_msg(slug):
+    """Спикер в эфире пишет на экран: текст, ссылку (с QR-кодом) или убирает сообщение."""
+    ev = _event(slug)
+    if not _guest_ok(ev):
+        abort(404)
+    f = request.get_json(silent=True) or {}
+    ident = str(f.get("id") or "")[:24]
+    if ident not in media.stage(ev)["on"]:
+        return _bad("efir.g_msg_back", 403)
+    return _msg_post(ev, f, by=str(f.get("name") or ""), who=ident)
+
+
+@bp.route("/<slug>/control/msg", methods=["POST"])
+@role_required("methodist", "trainer")
+def control_msg(slug):
+    ev = _event(slug)
+    f = request.get_json(silent=True) or {}
+    return _msg_post(ev, f, by=str(f.get("by") or ""), who=f"user:{g.user.id}")
 
 
 @bp.route("/<slug>/media.json")

@@ -73,7 +73,10 @@
     .q .n{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
     .q .acts{display:flex;gap:6px;justify-content:flex-end}
     .blk{font-weight:800;margin:14px 0 4px;color:var(--blue)}
-    input.in{width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 10px;font-size:14px;font-family:inherit}
+    #mcard textarea.in{resize:vertical;min-height:70px}
+    #mg-cur{margin-top:10px;background:var(--tint);border-radius:10px;padding:9px 11px;font-size:13px;line-height:1.45;white-space:pre-line;overflow-wrap:anywhere}
+    #mg-cur b{display:block;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--blue);margin-bottom:2px}
+    input.in,textarea.in{width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 10px;font-size:14px;font-family:inherit}
     .row{display:flex;gap:8px;align-items:center;margin-top:8px}
     .copy{display:flex;gap:6px;align-items:center;margin-top:6px}
     .copy code{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:var(--chip);border-radius:8px;padding:7px 9px;font-size:12px}
@@ -191,6 +194,15 @@
       <div class="row" style="margin:6px 0 2px"><button class="b sm" id="mute-all">🔇 {{ t('efir.c_mute_all') }}</button><button class="b sm" id="unmute-all">🔊 {{ t('efir.c_unmute_all') }}</button><span class="hint" id="hands-n" style="margin:0"></span></div>
       <div class="hint" style="margin:2px 0 4px">{{ t('efir.c_mic_rule') }}</div>
       <div id="spk"><div class="hint" id="spk-empty">{{ t('efir.c_no_speakers') }}</div></div>
+    </div>
+    <div class="card" id="mcard">
+      <h2>💬 {{ t('efir.msg_title') }}</h2>
+      <div class="hint" style="margin-top:0">{{ t('efir.msg_hint') }}</div>
+      <textarea class="in" id="mg-t" maxlength="280" rows="2" placeholder="{{ t('efir.msg_text_ph') }}"></textarea>
+      <input class="in" id="mg-u" maxlength="300" inputmode="url" placeholder="{{ t('efir.msg_url') }}: https://..." style="margin-top:8px">
+      <div class="row"><button class="b go" id="mg-show" style="flex:1">{{ t('efir.msg_show') }}</button><button class="b" id="mg-hide" hidden style="flex:1">{{ t('efir.msg_hide') }}</button></div>
+      <div class="hint" id="mg-err" style="color:var(--red)"></div>
+      <div id="mg-cur"></div>
     </div>
     <div class="card">
       <h2>YouTube</h2>
@@ -473,7 +485,8 @@
   var T = {{ {'air_on': t('efir.c_to_air'), 'air_off': t('efir.c_off_air'), 'onair': t('efir.c_onair'), 'back': t('efir.c_back'),
               'kick_q': t('efir.c_kick_q'), 'st': {'': t('efir.c_st_idle'), 'EGRESS_STARTING': t('efir.c_st_starting'), 'EGRESS_ACTIVE': t('efir.c_st_active'),
               'EGRESS_ENDING': t('efir.c_st_ending'), 'EGRESS_COMPLETE': t('efir.c_st_done'), 'EGRESS_FAILED': t('efir.c_st_failed'), 'EGRESS_ABORTED': t('efir.c_st_failed'),
-              'EGRESS_LIMIT_REACHED': t('efir.c_st_failed')}, 'hand': t('efir.c_hand'), 'hand_down': t('efir.c_hand_down'), 'stop_q': t('efir.c_stop_q'), 'max': t('efir.c_max'), 'net': t('live.net')}|tojson }};
+              'EGRESS_LIMIT_REACHED': t('efir.c_st_failed')}, 'hand': t('efir.c_hand'), 'hand_down': t('efir.c_hand_down'), 'stop_q': t('efir.c_stop_q'), 'max': t('efir.c_max'), 'net': t('live.net'),
+              'msg_now': t('efir.msg_now'), 'msg_none': t('efir.msg_none')}|tojson }};
   var csrf = document.querySelector('meta[name=csrf-token]').content, $ = function (id) { return document.getElementById(id); }, esc = window.liveEsc;
   function post(url, body) { return fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf}, body: JSON.stringify(body)}).then(function (r) { return r.json(); }); }
   function flash(m) { var h = $('sm-hint'); h.textContent = m; h.style.color = 'var(--red)'; }
@@ -582,10 +595,28 @@
       });
     }).catch(function () { $('lk-st').className = 'pill-st warn'; setTimeout(connect, 5000); });
   }
+  // ─── Сообщение на экран ───
+  function paintMsg() {
+    var m = STAGE.msg, c = $('mg-cur');
+    $('mg-hide').hidden = !m;
+    if (!m) { c.innerHTML = '<b>' + esc(T.msg_none) + '</b>'; return; }
+    c.innerHTML = '<b>' + esc(T.msg_now) + (m.by ? ' · ' + esc(m.by) : '') + '</b>' + esc(m.text || '') + (m.url ? (m.text ? '\n' : '') + '🔗 ' + esc(m.url) : '');
+  }
+  function sendMsg(hide) {
+    $('mg-err').textContent = '';
+    post('/efir/' + SLUG + '/control/msg', {text: $('mg-t').value, url: $('mg-u').value, hide: hide}).then(function (d) {
+      if (!d.ok) { $('mg-err').textContent = d.error || T.net; return; }
+      STAGE = d.stage; paintMsg();
+      if (!hide) { $('mg-t').value = ''; $('mg-u').value = ''; }
+    }).catch(function () { $('mg-err').textContent = T.net; });
+  }
+  $('mg-show').onclick = function () { sendMsg(false); };
+  $('mg-hide').onclick = function () { sendMsg(true); };
+  paintMsg();
   connect();
   setInterval(function () {  // сцену могут менять с другого пульта
     fetch('/efir/' + SLUG + '/screen.json', {cache: 'no-store'}).then(function (r) { return r.json(); }).then(function (d) {
-      if (d.stage && d.stage.v !== STAGE.v) { STAGE = d.stage; paintLay(); paint(); }
+      if (d.stage && d.stage.v !== STAGE.v) { STAGE = d.stage; paintLay(); paint(); paintMsg(); }
     }).catch(function () {});
   }, 3000);
 })();

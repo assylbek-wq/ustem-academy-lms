@@ -29,6 +29,12 @@
     .soon .big{font-variant-numeric:tabular-nums}
     .unmute{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:#fff;color:#0057c8;border:0;border-radius:999px;font-weight:800;font-size:14px;padding:10px 16px;box-shadow:0 8px 30px rgba(0,0,0,.4);cursor:pointer;z-index:5}
     .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:var(--shadow)}
+    .smsg{border-left:6px solid var(--blue);display:flex;flex-direction:column;gap:8px;animation:fadein .4s ease}
+    .smsg .by{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--blue);font-weight:600}
+    .smsg .tx{font-size:17px;font-weight:700;line-height:1.4;white-space:pre-line;overflow-wrap:anywhere}
+    .smsg .ln{align-self:flex-start;background:var(--blue);color:#fff;border-radius:10px;padding:8px 14px;font-weight:700;text-decoration:none;overflow-wrap:anywhere;max-width:100%}
+    .smsg .by:empty,.smsg .tx:empty{display:none}
+    @keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
     .card h3{margin:0 0 6px;font-size:17px;font-weight:700}
     .muted{color:var(--mute);font-size:13px;line-height:1.45}
     .stack{display:grid;gap:12px}
@@ -117,6 +123,7 @@
         <button class="unmute hide" id="unmute">🔊 {{ t('live.unmute') }}</button>
       </div>
     </div>
+    <div class="card smsg hide" id="smsg"><div class="by" id="sm-by"></div><div class="tx" id="sm-tx"></div><a class="ln" id="sm-ln" target="_blank" rel="noopener nofollow"></a></div>
     {% set plist = efir_partners(ev) %}
     {% if plist %}<div class="card partners">
       <div class="pk">{{ t('efir.p_with') }}</div>
@@ -215,7 +222,7 @@
     'ask_ok': t('live.ask_ok'), 'late': t('live.late'), 'closed': t('live.closed'), 'already': t('live.already'),
     'sec': t('live.sec'), 'net': t('live.net'), 'waiting': t('live.waiting'), 'waiting_sub': t('live.waiting_sub'),
     'your_score': t('live.your_score'), 'fb_r': [t('live.fb_r1'), t('live.fb_r2'), t('live.fb_r3'), t('live.fb_r4'), t('live.fb_r5')],
-    'fb_need': t('live.fb_need'), 'ask_wait': t('live.ask_wait_btn'), 'ask_send': t('live.ask_send')
+    'fb_need': t('live.fb_need'), 'ask_wait': t('live.ask_wait_btn'), 'ask_send': t('live.ask_send'), 'msg_open': t('efir.msg_open')
   }|tojson }};
   var csrf = document.querySelector('meta[name=csrf-token]').content;
   var $ = function (id) { return document.getElementById(id); };
@@ -359,6 +366,16 @@
     });
   }
 
+  // ─── Сообщение спикера: текст и ссылка ───
+  var msgId = '';
+  function showMsg(m) {
+    var id = m ? m.id : ''; if (id === msgId) return; msgId = id;
+    $('smsg').classList.toggle('hide', !m); if (!m) return;
+    $('sm-by').textContent = m.by || ''; $('sm-tx').textContent = m.text || '';
+    var a = $('sm-ln'); a.hidden = !m.url;
+    if (m.url) { a.href = m.url; a.textContent = '🔗 ' + T.msg_open + ': ' + m.url.replace(/^https?:\/\//, '').replace(/\/$/, ''); }
+  }
+
   // ─── Опрос состояния ───────────────────────────────────
   var failures = 0;
   function poll() {
@@ -370,6 +387,7 @@
       me = d.me || me;
       if (keepAnswer) me.answer = prev;  // ответ отправлен, но сервер еще не видит его в кеше
       setVideo(d.yt);
+      showMsg(d.msg);
       render();
     }).catch(function () { failures++; }).finally(function () {
       var mode = state && state.mode;

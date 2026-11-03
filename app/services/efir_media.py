@@ -16,6 +16,7 @@ import base64
 import hashlib
 import hmac
 import json
+import re
 import secrets
 import time
 import urllib.error
@@ -126,7 +127,8 @@ def remove(ev, identity: str) -> None:
 def stage(ev) -> dict:
     s = dict(ev.stage or {})
     return {"on": list(s.get("on") or [])[:MAX_ON], "muted": list(s.get("muted") or []), "hands": list(s.get("hands") or []),
-            "layout": s.get("layout") if s.get("layout") in LAYOUTS else "auto", "v": int(s.get("v") or 0)}
+            "layout": s.get("layout") if s.get("layout") in LAYOUTS else "auto", "v": int(s.get("v") or 0),
+            "msg": msg_of(s)}
 
 
 def set_stage(ev, on=None, muted=None, layout=None, hands=None) -> dict:
@@ -145,6 +147,46 @@ def set_stage(ev, on=None, muted=None, layout=None, hands=None) -> dict:
     s["v"] += 1
     ev.stage = s
     return s
+
+
+# ─── Сообщение на экран: текст и ссылка от спикера или ведущего ─────────
+MSG_MAX = 280
+
+
+def msg_of(s: dict | None) -> dict | None:
+    m = (s or {}).get("msg")
+    if isinstance(m, dict) and (m.get("text") or m.get("url")):
+        return {k: m.get(k) or "" for k in ("id", "text", "url", "by")}
+    return None
+
+
+def clean_url(u) -> str:
+    u = str(u or "").strip()[:300]
+    if not u:
+        return ""
+    if not re.match(r"https?://", u, re.I):
+        u = "https://" + u
+    if not re.fullmatch(r"https?://[^\s<>\"'`]+\.[^\s<>\"'`]+", u):
+        raise MediaError("efir.msg_err_url")
+    return u
+
+
+def set_msg(ev, text=None, url=None, by: str = "", hide: bool = False) -> dict | None:
+    """Показать сообщение на экране эфира (и у учителей) или убрать его. Новое сообщение заменяет старое."""
+    s = dict(ev.stage or {})
+    if hide:
+        s["msg"] = None
+    else:
+        text = "\n".join(" ".join(ln.split()) for ln in str(text or "").strip().splitlines()).strip()[:MSG_MAX]
+        text = re.sub(r"\n{3,}", "\n\n", text)
+        url = clean_url(url)
+        if not text and not url:
+            raise MediaError("efir.msg_err_empty")
+        s["msg"] = {"id": secrets.token_hex(4), "text": text, "url": url, "by": " ".join(str(by or "").split())[:80],
+                    "at": int(time.time())}
+    s["v"] = int(s.get("v") or 0) + 1
+    ev.stage = s
+    return msg_of(s)
 
 
 # ─── Трансляция в YouTube ────────────────────────────────────────────────

@@ -51,6 +51,10 @@
     .gnotes .gnh{display:flex;align-items:center;gap:10px;margin-bottom:6px;color:var(--amber-ink)}
     .gnotes ul{margin:0;padding-left:20px;font-size:17px;line-height:1.5;color:var(--text)}
     .gnotes li{margin:4px 0}
+    .smsg.off textarea,.smsg.off input,.smsg.off .btn{opacity:.5;pointer-events:none}
+    .smsg textarea.f{min-height:84px;resize:vertical;font:inherit}
+    .smsg .cur{margin-top:12px;background:var(--tint);border-radius:12px;padding:10px 12px;font-size:13.5px;line-height:1.45;white-space:pre-line;overflow-wrap:anywhere}
+    .smsg .cur b{display:block;font:600 11px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--blue);margin-bottom:3px}
   </style>
 </head>
 <body>
@@ -116,6 +120,14 @@
       <h2 id="j-name"></h2><div class="note" style="margin-top:0" id="j-role"></div>
       <div class="note">{{ t('efir.g_joined_note') }}</div>
     </div>
+    <div class="card smsg off" id="smsg" hidden>
+      <h2>💬 {{ t('efir.msg_title') }}</h2>
+      <div class="note" style="margin-top:0" id="sm-hint">{{ t('efir.msg_back') }}</div>
+      <div class="fld"><label class="in-l" for="sm-t">{{ t('efir.msg_text') }}</label><textarea class="f" id="sm-t" maxlength="280" placeholder="{{ t('efir.msg_text_ph') }}"></textarea></div>
+      <div class="fld"><label class="in-l" for="sm-u">{{ t('efir.msg_url') }}</label><input class="f" id="sm-u" maxlength="300" inputmode="url" placeholder="https://..."></div>
+      <div class="row" style="margin-top:12px"><button class="btn pri" type="button" id="sm-show">{{ t('efir.msg_show') }}</button><button class="btn" type="button" id="sm-hide" hidden>{{ t('efir.msg_hide') }}</button></div>
+      <div class="cur" id="sm-cur"></div>
+    </div>
   </div>
   {% endif %}
 </main>
@@ -132,7 +144,8 @@
               'mic_off': t('efir.g_mic_off'), 'mic_back': t('efir.g_mic_back'), 'mic_live': t('efir.g_mic_live'),
               'notes_h': t('efir.n_guest_h'), 'notes_next': t('efir.n_guest_next'),
               'slide_back': t('efir.g_slide_back'), 'slide_hint': t('efir.g_slide_hint'), 'slide_on': t('efir.g_slide_on'),
-              'hand': t('efir.g_hand'), 'hand_down': t('efir.g_hand_down'), 'hand_sent': t('efir.g_hand_sent'), 'cam_off': t('efir.g_cam_off'), 'share_stop': t('efir.g_share_stop')}|tojson }};
+              'hand': t('efir.g_hand'), 'hand_down': t('efir.g_hand_down'), 'hand_sent': t('efir.g_hand_sent'), 'cam_off': t('efir.g_cam_off'), 'share_stop': t('efir.g_share_stop'),
+              'msg_now': t('efir.msg_now'), 'msg_none': t('efir.msg_none'), 'msg_back': t('efir.msg_back'), 'msg_hint': t('efir.msg_hint')}|tojson }};
   var $ = function (id) { return document.getElementById(id); };
   function toast(m, e) { var el = $('toast'); el.textContent = m; el.className = 'toast on' + (e ? ' err' : ''); setTimeout(function () { el.className = 'toast'; }, 2800); }
   function ls(k, v) { try { if (v === undefined) return localStorage.getItem('efir.' + k) || ''; localStorage.setItem('efir.' + k, v); } catch (e) { return ''; } }
@@ -309,6 +322,30 @@
     });
   }
 
+  // ─── Сообщение на экран: текст и ссылка ───
+  var curMsg = null;
+  function paintMsg(m) {
+    curMsg = m || null;
+    $('smsg').classList.toggle('off', !onAir);
+    $('sm-hint').textContent = onAir ? T.msg_hint : T.msg_back;
+    $('sm-hide').hidden = !curMsg;
+    var c = $('sm-cur');
+    if (!curMsg) { c.innerHTML = '<b>' + window.liveEsc(T.msg_none) + '</b>'; return; }
+    c.innerHTML = '<b>' + window.liveEsc(T.msg_now) + (curMsg.by ? ' · ' + window.liveEsc(curMsg.by) : '') + '</b>' + window.liveEsc(curMsg.text || '') + (curMsg.url ? (curMsg.text ? '\n' : '') + '🔗 ' + window.liveEsc(curMsg.url) : '');
+  }
+  function sendMsg(hide) {
+    if (!onAir) { toast(T.msg_back, true); return; }
+    fetch('/efir/' + SLUG + '/guest/msg', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': CSRF},
+      body: JSON.stringify({k: K, id: ident, name: $('nm').value, text: $('sm-t').value, url: $('sm-u').value, hide: hide})})
+      .then(function (r) { return r.json(); }).then(function (d) {
+        if (!d.ok) { toast(d.error, true); return; }
+        paintMsg(d.stage && d.stage.msg);
+        if (!hide) { $('sm-t').value = ''; $('sm-u').value = ''; }
+      }).catch(function () { toast(T.net, true); });
+  }
+  $('sm-show').onclick = function () { sendMsg(false); };
+  $('sm-hide').onclick = function () { sendMsg(true); };
+
   // ─── В эфире или за кулисами ───
   function poll() {
     fetch('/efir/' + SLUG + '/guest/status?k=' + encodeURIComponent(K) + '&id=' + encodeURIComponent(ident), {cache: 'no-store'})
@@ -325,6 +362,7 @@
         setMic(micOn);
         if (handUp !== !!s.hand) { handUp = !!s.hand; paintHand(); }
         onAir = !!s.on; paintSlide(s.slide);
+        $('smsg').hidden = false; paintMsg(s.msg);
       }).catch(function () {}).finally(function () { setTimeout(poll, 2000); });
   }
 })();

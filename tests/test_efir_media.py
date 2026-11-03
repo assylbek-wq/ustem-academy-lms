@@ -187,6 +187,45 @@ class EfirMediaTest(AppTestCase):
         self.assertTrue(anon.get(base + f"/guest/status?k={self.ev.guest_key}&id=g-a").get_json()["muted"])
         self.assertEqual(self.m.post(base + "/control/stage", json={"muted": []}).get_json()["stage"]["muted"], [])
 
+    def test_screen_message(self):
+        """Сообщение на экран: спикер в эфире или ведущий пишет текст и ссылку, экран рисует QR, учителя видят ссылку."""
+        anon = self.app.test_client()
+        page = anon.get(f"/efir/{self.ev.slug}/guest?k={self.ev.guest_key}").get_data(as_text=True)
+        import re
+        h = {"X-CSRF-Token": re.search(r'name="csrf-token" content="([^"]+)"', page).group(1)}
+        base = f"/efir/{self.ev.slug}"
+        body = {"k": self.ev.guest_key, "id": "g-a", "name": "Асылбек", "text": "Регистрация\n\n\n\nдо 15 ноября", "url": "stemshop.kz/fll"}
+        self.assertEqual(anon.post(base + "/guest/msg", json=body, headers=h).status_code, 403)       # за кулисами
+        self.assertEqual(anon.post(base + "/guest/msg", json=dict(body, k="bad"), headers=h).status_code, 404)
+        self.m.post(base + "/control/stage", json={"on": ["g-a"]})
+        d = anon.post(base + "/guest/msg", json=body, headers=h).get_json()
+        self.assertTrue(d["ok"])
+        m = d["stage"]["msg"]
+        self.assertEqual((m["text"], m["url"], m["by"]), ("Регистрация\n\nдо 15 ноября", "https://stemshop.kz/fll", "Асылбек"))
+        self.assertIn("<svg", m["qr"])
+        self.assertEqual(m["pretty"], "stemshop.kz/fll")
+        # экран, страница учителя и статус спикера видят сообщение; сцена (раскладка) его не теряет
+        self.m.post(base + "/control/stage", json={"layout": "speakers"})
+        self.assertEqual(self.m.get(base + "/screen.json").get_json()["stage"]["msg"]["id"], m["id"])
+        st = anon.get(base + "/state").get_json()
+        self.assertEqual(st["msg"]["url"], "https://stemshop.kz/fll")
+        self.assertNotIn("qr", st["msg"])
+        self.assertEqual(anon.get(base + f"/guest/status?k={self.ev.guest_key}&id=g-a").get_json()["msg"]["id"], m["id"])
+        # плохие ссылки и пустое сообщение
+        for bad in ("javascript:alert(1)", "https://x y.kz", "нет"):
+            self.assertEqual(anon.post(base + "/guest/msg", json=dict(body, url=bad), headers=h).status_code, 400, bad)
+        self.assertEqual(anon.post(base + "/guest/msg", json=dict(body, text=" ", url=""), headers=h).status_code, 400)
+        # ведущий пишет без ссылки, затем убирает; без входа нельзя
+        d = self.m.post(base + "/control/msg", json={"text": "Перерыв 5 минут"}).get_json()
+        self.assertEqual((d["stage"]["msg"]["text"], d["stage"]["msg"]["url"]), ("Перерыв 5 минут", ""))
+        self.assertNotIn("qr", d["stage"]["msg"])
+        self.assertEqual(anon.post(base + "/control/msg", json={"text": "x"}, headers=h).status_code, 302)
+        self.assertIsNone(self.m.post(base + "/control/msg", json={"hide": True}).get_json()["stage"]["msg"])
+        from app.services import efir as svc
+        svc._cache.clear()
+        self.assertNotIn("msg", anon.get(base + "/state").get_json())
+        self.assertEqual(len(self.m.post(base + "/control/msg", json={"text": "я" * 400}).get_json()["stage"]["msg"]["text"]), 280)
+
     def test_guest_preview_and_slides(self):
         self._on()
         from fpdf import FPDF
