@@ -260,6 +260,7 @@
   <section class="scene" id="s-video"><div id="vbox"></div></section>
 
   <div id="cams"></div>
+  <button id="snd" hidden style="position:absolute;left:40px;top:40px;z-index:9;border:0;border-radius:18px;background:#fff;color:#0057c8;font:800 30px var(--f-sans,sans-serif);padding:18px 30px;box-shadow:0 20px 40px -20px rgba(0,0,0,.6);cursor:pointer">🔊 {{ t('efir.v_sound') }}</button>
 
   <div id="smsg"><div class="mb"><div class="by"></div><div class="tx"></div><div class="ln"></div></div><div class="qr"></div></div>
 
@@ -480,6 +481,14 @@
     }
     VID.vs = vs; applyVideo();
   }
+  // Браузер не дает включить звук без клика: видео идет без звука, пока на экран не нажмут (в трансляции звук есть всегда)
+  function sndBtn(on) { if (!PREVIEW) $('snd').hidden = !on; }
+  function sndOn() {
+    if (VID.el && !PREVIEW) { VID.el.muted = false; if (!VID.vs || !VID.vs.paused) VID.el.play().catch(function () {}); }
+    if (VID.yt && VID.yt.unMute && !PREVIEW) { VID.yt.unMute(); VID.yt.setVolume(100); }
+    sndBtn(false);
+  }
+  document.addEventListener('click', sndOn); document.addEventListener('keydown', sndOn);
   function applyVideo() {
     if (!VID.cur || !VID.ready || !VID.vs) return;
     var vs = VID.vs, want = wantPos(vs);
@@ -487,7 +496,7 @@
       var el = VID.el;
       if (el.readyState >= 1 && Math.abs(el.currentTime - want) > 1.5 && (!el.duration || want < el.duration)) el.currentTime = want;
       if (vs.paused) { if (!el.paused) el.pause(); }
-      else if (el.paused && !el.ended) el.play().catch(function () { el.muted = true; el.play().catch(function () {}); });
+      else if (el.paused && !el.ended) el.play().catch(function () { el.muted = true; sndBtn(true); el.play().catch(function () {}); });
     } else if (VID.yt && VID.yt.getCurrentTime) {
       var cur = VID.yt.getCurrentTime() || 0, stt = VID.yt.getPlayerState();
       if (Math.abs(cur - want) > 2.5 && stt !== 0) VID.yt.seekTo(want, true);

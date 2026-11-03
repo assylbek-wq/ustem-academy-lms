@@ -1413,6 +1413,7 @@ _S.update({
     'efir.msg_err_url': ('Ссылка выглядит неверно.', 'Сілтеме қате сияқты.', 'The link looks wrong.'),
     'efir.msg_err_empty': ('Напишите текст или ссылку.', 'Мәтін немесе сілтеме жазыңыз.', 'Write some text or a link.'),
     'efir.g_msg_back': ('Писать на экран может спикер в эфире. Вы пока за кулисами.', 'Экранға эфирдегі спикер жаза алады. Сіз әзірге сахна артындасыз.', 'Only a speaker on air can write on screen. You are backstage.'),
+    'efir.v_sound': ('Нажмите, чтобы включить звук видео', 'Видеоның дыбысын қосу үшін басыңыз', 'Click to turn on video sound'),
     'nav.efir': ('Студия эфиров', 'Эфир студиясы', 'Live studio'),
     'live.st_short': ('Аналитика', 'Аналитика', 'Analytics'),
     'live.link_bot': ('новости и напоминания', 'жаңалықтар мен еске салулар', 'news and reminders'),
