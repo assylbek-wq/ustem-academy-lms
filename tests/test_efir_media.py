@@ -338,7 +338,7 @@ class EfirMediaTest(AppTestCase):
 
         def fake(**kw):
             seen["images"] = sum(1 for c in kw["messages"][0]["content"] if c["type"] == "image")
-            return R("```json\n" + _j.dumps({ids[1]: ["Главная мысль", "- Пример из школы"], ids[2]: ["Итог"]}, ensure_ascii=False) + "\n```")
+            return R("```json\n" + _j.dumps({ids[1]: ["Главная мысль", "- Пример из школы"], ids[2]: ["Итог — вывод"]}, ensure_ascii=False) + "\n```")
         client = mock.MagicMock(); client.messages.create.side_effect = fake
         try:
             with mock.patch("app.services.efir_builder._client", return_value=client):
@@ -351,7 +351,7 @@ class EfirMediaTest(AppTestCase):
         # спикер (по ключу) и команда видят, остальные нет
         anon = self.app.test_client()
         n = anon.get(base + f"/guest/notes?k={self.ev.guest_key}&lang=ru").get_json()["notes"]
-        self.assertEqual(n, ["• Привет", "• Главная мысль\n• Пример из школы", "• Итог"])
+        self.assertEqual(n, ["• Привет", "• Главная мысль\n• Пример из школы", "• Итог - вывод"])
         self.assertEqual(anon.get(base + f"/guest/notes?k={self.ev.guest_key}&lang=kk").get_json()["notes"][0], "• Привет")  # нет kk - берем ru
         self.assertEqual(anon.get(base + "/guest/notes").status_code, 404)
         self.assertEqual(anon.get(base + f"/guest/notes?key={self.ev.screen_key}").status_code, 404)

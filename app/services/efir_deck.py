@@ -531,7 +531,7 @@ def ai_notes(ev: EfirEvent, ids: list[str], lang: str, focus: str = "") -> int:
         return 0
     title = (ev.title or {}).get(lang) or (ev.title or {}).get("ru") or (ev.title or {}).get("kk") or ""
     sub = (ev.subtitle or {}).get(lang) or (ev.subtitle or {}).get("ru") or ""
-    lname = "казахском (литературный, без калек)" if lang == "kk" else "русском (без буквы «ё» и без длинного тире)"
+    lname = "казахском (литературный, без калек, без длинного тире)" if lang == "kk" else "русском (без буквы «ё» и без длинного тире)"
     content = []
     for s in todo:
         content.append({"type": "text", "text": f"Слайд {order[s['id']] + 1} (id {s['id']}):"})
@@ -555,7 +555,8 @@ def ai_notes(ev: EfirEvent, ids: list[str], lang: str, focus: str = "") -> int:
     for s in deck["slides"]:
         pts = data.get(s["id"]) if isinstance(data, dict) else None
         if s["id"] in {t["id"] for t in todo} and isinstance(pts, list):
-            text = "\n".join("• " + " ".join(str(x).split()).lstrip("•-– ").strip() for x in pts if str(x).strip())
+            text = "\n".join("• " + " ".join(str(x).split()).lstrip("•-–— ").strip() for x in pts if str(x).strip())
+            text = text.replace("—", "-").replace("–", "-")  # правило текстов Академии: без длинного тире
             if text:
                 s["notes"] = dict(s.get("notes") or {}, **{lang: text[:NOTES_MAX]})
                 n += 1
