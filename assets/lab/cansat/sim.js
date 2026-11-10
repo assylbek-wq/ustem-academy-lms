@@ -97,9 +97,13 @@ export function createSim(config, flight) {
   return sim;
 }
 
-/** Прореживание записи для передачи в интерфейс (сцена полета): шаг 0,1 с */
+/** Прореживание записи для передачи в интерфейс (сцена полета): шаг 0,05 с; ro - накопленный угол вращения вокруг оси */
 function thin(rows) {
-  const out = []; let next = -1;
-  for (const r of rows) if (r.t >= next) { out.push({ t: r.t, x: +r.x.toFixed(2), z: +r.z.toFixed(2), th: +r.th.toFixed(3), ph: r.ph }); next = r.t + 0.1 - 1e-9; }
+  const out = []; let next = -1, ro = 0, pt = null;
+  for (const r of rows) {
+    if (pt != null && r.ph > 0 && r.ph < 4) ro += (((r.gz || 0) * Math.PI) / 180) * (r.t - pt);
+    pt = r.t;
+    if (r.t >= next) { out.push({ t: r.t, x: +r.x.toFixed(2), z: +r.z.toFixed(2), th: +r.th.toFixed(3), ph: r.ph, vx: +r.vx.toFixed(1), vz: +r.vz.toFixed(1), ro: +ro.toFixed(2) }); next = r.t + 0.05 - 1e-9; }
+  }
   return out;
 }

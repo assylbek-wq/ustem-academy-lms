@@ -17,6 +17,12 @@ const SCRIPT_SRC = (document.currentScript && document.currentScript.src) || "/s
 const WORKER_URL = SCRIPT_SRC.replace(/satsim\.js/, "satworker.js");
 const MP_BASE = new URL("/static/spikesim/", location.href).href;
 const TIMEOUT = 25000;
+// 3D-сцена и 3D-конструктор CanSat лежат отдельным файлом (three.js) и грузятся только там, где нужны
+const S3D_URL = SCRIPT_SRC.replace(/satsim\.js.*$/, "sat3d.js") + "?v=" + (typeof __S3D_V__ === "string" ? __S3D_V__ : "dev");
+let s3dP = null;
+const load3d = () => s3dP || (s3dP = import(S3D_URL).catch(() => null));
+const webglOk = () => { try { const c = document.createElement("canvas"); return !!(c.getContext("webgl2") || c.getContext("webgl")); } catch (e) { return false; } };
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
 
 const h = (tag, attrs = {}, ...kids) => {
   const e = document.createElement(tag);
@@ -39,8 +45,10 @@ class SatLab {
     this.root = root; this.K = KINDS[kind]; this.kind = kind; this.presetName = preset; this.storageKey = "satlab:" + preset;
     this.res = null; this.play = null; this.solvedSent = false; this.exported = false; this.mode = "build";
     this.scene = new Scene(kind);
+    this.use3d = kind === "cansat" && webglOk(); this.view3d = true; this.xray = true; this.s3d = null;
     this.build();
     this.load();
+    if (this.use3d) load3d().then((m) => { this.s3d = m; if (!m) this.use3d = false; this.viewBar.hidden = !this.use3d; this.camBar.hidden = !this.use3d; if (this.config) this.drawAll(); });
   }
 
   // ─────────────── Разметка ───────────────
@@ -60,6 +68,14 @@ class SatLab {
     this.modeBar = h("div", { class: "sl-seg", role: "tablist" });
     this.side = h("div", { class: "sl-side" });
     this.bp = h("canvas", { class: "sl-bp" });
+    this.b3dHost = h("div", { class: "sl-b3d", hidden: true });
+    const vbtn = (text, title, fn) => h("button", { type: "button", title, onclick: fn }, text);
+    this.btn3d = vbtn("3D", "Объемная модель: поверните мышью или пальцем", () => { this.view3d = true; this.drawBp(); });
+    this.btn2d = vbtn("Чертеж", "Чертеж с размерами", () => { this.view3d = false; this.drawBp(); });
+    this.btnXray = h("button", { type: "button", class: "sl-chip", title: "Сделать корпус прозрачным и показать, что внутри", onclick: () => { this.xray = !this.xray; this.drawBp(); } }, "Разрез");
+    this.btnExpl = h("button", { type: "button", class: "sl-chip", title: "Разнести платы, чтобы увидеть порядок сборки", onclick: () => { this.explode = !this.explode; this.drawBp(); } }, "Разобрать");
+    this.viewBar = h("div", { class: "sl-viewbar", hidden: true }, h("div", { class: "sl-seg" }, this.btn3d, this.btn2d), this.btnXray, this.btnExpl,
+      h("span", { class: "sl-grow" }), h("span", { class: "sl-viewhint" }, "Поверните модель мышью"));
     this.gauges = h("div", { class: "sl-gauges" });
     this.preflight = h("div", { class: "sl-preflight" });
     this.forecastBox = h("div", { class: "sl-forecast" });
@@ -68,32 +84,51 @@ class SatLab {
       h("div", { class: "sl-desk" },
         h("div", { class: "sl-desk-top" }, this.modeBar, h("span", { class: "sl-grow" }),
           h("button", { type: "button", class: "sl-btn sl-btn-sm", title: "Таблица масс и энергии для технической документации", onclick: () => this.exportBudget() }, "Скачать бюджет CSV")),
-        h("div", { class: "sl-sheet" }, this.bp), this.gauges, this.forecastBox, this.preflight, this.condBox));
+        h("div", { class: "sl-sheet" }, this.viewBar, this.b3dHost, this.bp), this.gauges, this.forecastBox, this.preflight, this.condBox));
 
     // полет
     this.pyDiv = h("div", { class: "sl-python" });
     this.btnRun = h("button", { type: "button", class: "sl-launch", title: "Запустить полет (F5)", onclick: () => (this.worker ? this.stopRun() : this.run()) }, h("i", { class: "sl-ico-run" }), h("span", {}, "Запустить"));
     this.btnStop = h("button", { type: "button", class: "sl-stopbtn", title: "Остановить", onclick: () => this.stopRun() }, h("i", { class: "sl-ico-stop" }), h("span", {}, "Стоп"));
     this.speedSel = h("select", { class: "sl-select", title: "Скорость проигрывания полета", "aria-label": "Скорость проигрывания" },
-      ...(this.kind === "cansat" ? [[1, "×1"], [2, "×2"], [5, "×5"], [15, "×15"]] : [[10, "×10"], [30, "×30"], [60, "×60"], [150, "×150"]])
-        .map(([v, t], i) => h("option", { value: v, selected: i === 2 }, t)));
-    this.speedSel.addEventListener("change", () => { if (this.play) this.play.speed = +this.speedSel.value; });
-    this.btnSkip = h("button", { type: "button", class: "sl-btn", title: "Сразу к концу полета", onclick: () => this.skip(), disabled: true }, "В конец");
+      ...(this.kind === "cansat" ? [[0, "Авто"], [1, "×1"], [2, "×2"], [5, "×5"], [15, "×15"]] : [[10, "×10"], [30, "×30"], [60, "×60"], [150, "×150"]])
+        .map(([v, t], i) => h("option", { value: v, selected: this.kind === "cansat" ? i === 0 : i === 2 }, t)));
+    this.btnSkip = h("button", { type: "button", class: "sl-btn sl-btn-sm", title: "Сразу к концу полета", onclick: () => this.skip(), disabled: true }, "В конец");
     this.sceneCv = h("canvas", { class: "sl-scene" });
+    this.s3Host = h("div", { class: "sl-s3", hidden: true });
     this.hud = h("div", { class: "sl-hud" });
+    this.countEl = h("div", { class: "sl-count3", hidden: true, "data-notr": true });
+    this.sumBox = h("div", { class: "sl-sum", hidden: true });
+    const CAMS = [["follow", "Слежение", "Камера летит рядом. Поверните мышью, колесо - ближе или дальше"], ["station", "Со станции", "Вид в объектив с наземной станции"],
+      ["onboard", "С борта", "Камера на ракете, после отделения - на CanSat"], ["wide", "Весь полет", "Общий вид с высотной линейкой и траекториями"]];
+    this.camBtns = CAMS.map(([id, text, title], i) => h("button", { type: "button", class: i ? "" : "on", title, onclick: () => this.setCam(id) }, text));
+    this.camBar = h("div", { class: "sl-cams", hidden: true }, h("div", { class: "sl-seg sl-seg-dark" }, this.camBtns),
+      h("button", { type: "button", class: "sl-zoom", title: "Ближе", "aria-label": "Ближе", onclick: () => this.fs && this.fs.zoom(0.8) }, "+"),
+      h("button", { type: "button", class: "sl-zoom", title: "Дальше", "aria-label": "Дальше", onclick: () => this.fs && this.fs.zoom(1.25) }, "−"));
+    this.camIds = CAMS.map((c) => c[0]);
+    // лента времени: пауза, перемотка, отметки событий
+    this.btnPlay = h("button", { type: "button", class: "sl-tl-play", title: "Пауза или продолжить", "aria-label": "Пауза или продолжить", onclick: () => this.togglePlay() }, h("i"));
+    this.btnAgain = h("button", { type: "button", class: "sl-tl-btn", title: "Показать полет сначала", "aria-label": "Показать полет сначала", onclick: () => this.replayAgain(), disabled: true }, "⟲");
+    this.scrub = h("input", { type: "range", class: "sl-scrub", min: 0, max: 100, step: 0.05, value: 0, "aria-label": "Время полета", disabled: true });
+    this.scrub.addEventListener("input", () => this.seek(+this.scrub.value));
+    this.tlMarks = h("div", { class: "sl-tl-marks" });
+    this.tlTime = h("span", { class: "sl-tl-time", "data-notr": true }, "00:00");
+    this.btnRun2 = h("button", { type: "button", class: "sl-go-btn", title: "Запустить полет", onclick: () => (this.worker ? this.stopRun() : this.run()) }, h("i", { class: "sl-ico-run" }), h("span", {}, "Запустить"));
+    const timeline = h("div", { class: "sl-tl" }, this.btnPlay, this.btnAgain, h("div", { class: "sl-tl-track" }, this.tlMarks, this.scrub), this.tlTime,
+      h("label", { class: "sl-speed" }, h("span", {}, "Скорость"), this.speedSel), this.btnSkip, this.btnRun2);
     this.toastBox = h("div", { class: "sl-toasts", "aria-live": "polite" });
     this.gsBox = h("div", { class: "sl-console", role: "log" });
     this.chart = h("canvas", { class: "sl-chart" });
     this.seriesSel = h("select", { class: "sl-select", title: "Что показать на графике", "aria-label": "Ряд графика", onchange: () => this.drawChart(this.play ? this.play.t : undefined) });
     const flightPane = h("section", { class: "sl-flight" },
       h("div", { class: "sl-code" },
-        h("div", { class: "sl-bar" }, this.btnRun, this.btnStop, h("span", { class: "sl-sep" }), h("label", { class: "sl-speed" }, "Проигрывание", this.speedSel), this.btnSkip, h("span", { class: "sl-grow" }),
+        h("div", { class: "sl-bar" }, this.btnRun, this.btnStop, h("span", { class: "sl-grow" }),
           h("button", { type: "button", class: "sl-btn sl-btn-sm", title: "Скачать main.py", onclick: () => download("main.py", this.code(), "text/x-python") }, "Скачать main.py")),
         h("div", { class: "sl-filetabs" }, h("span", {}, "main.py")),
         this.pyDiv,
         h("div", { class: "sl-shell" }, h("div", { class: "sl-shell-h" }, "Оболочка"), this.shell = h("div", { class: "sl-shell-b", role: "log" }))),
       h("div", { class: "sl-sky" },
-        h("div", { class: "sl-scenewrap" }, this.sceneCv, this.hud, this.toastBox),
+        this.sceneWrap = h("div", { class: "sl-scenewrap" }, this.sceneCv, this.s3Host, this.hud, this.camBar, this.countEl, this.toastBox, this.sumBox), timeline,
         h("div", { class: "sl-panels" },
           h("div", { class: "sl-panel sl-panel-dark" }, h("div", { class: "sl-panel-h" }, "Наземная станция", h("span", {}, "принятые пакеты")), this.gsBox),
           h("div", { class: "sl-panel" }, h("div", { class: "sl-panel-h" }, "График", this.seriesSel), this.chart))));
@@ -322,6 +357,22 @@ class SatLab {
   }
 
   drawBp() {
+    const on3 = !!(this.use3d && this.s3d && this.view3d);
+    this.b3dHost.hidden = !on3; this.bp.hidden = on3;
+    this.btn3d.classList.toggle("on", this.view3d); this.btn2d.classList.toggle("on", !this.view3d);
+    this.btnXray.hidden = this.btnExpl.hidden = !on3; if (this.mode === "rocket") this.btnExpl.hidden = true;
+    this.btnXray.classList.toggle("on", !!this.xray); this.btnExpl.classList.toggle("on", !!this.explode);
+    if (on3) {
+      if (this.b3dHost.offsetParent === null) return;
+      try {
+        if (!this.b3d) this.b3d = new this.s3d.BuilderView(this.b3dHost);
+        const K = this.K, lift = this.ins.rocket.lift;
+        this.b3d.set({ mode: this.mode === "rocket" ? "rocket" : "can", rocket: K.rocketOf(this.config), parts: K.items(this.config), cg: lift.cg, cp: lift.cp,
+          labels: { cg: `ЦТ ${fmt(lift.cg)} мм`, cp: `ЦД ${fmt(lift.cp)} мм`, can: "CanSat", motor: "Двигатель РД1-100-7М", chute: "Парашют ракеты" } });
+        this.b3d.setXray(!!this.xray); this.b3d.setExplode(this.mode !== "rocket" && !!this.explode);
+        return;
+      } catch (e) { this.use3d = false; this.viewBar.hidden = true; this.camBar.hidden = true; this.b3dHost.hidden = true; this.bp.hidden = false; }
+    }
     if (!this.bp.isConnected || this.bp.offsetParent === null) return;
     this.K.draw(this.bp, this.mode, this.config, this.ins);
   }
@@ -333,7 +384,9 @@ class SatLab {
     if (on && !on.ok) { this.showTab("build"); this.toast("Не включится: нужен бортовой компьютер и питание", "bad"); return; }
     this.res = null; this.renderFlightIdle("Полет рассчитывается...");
     this.shell.replaceChildren(); this.shellLog(">>> %Run main.py", "muted");
-    this.btnRun.classList.add("on");
+    this.btnRun.classList.add("on"); this.btnRun2.classList.add("on");
+    // сцена должна быть на виду: на узком экране она выше редактора
+    try { const r = this.sceneWrap.getBoundingClientRect(); if (r.top < 0 || r.bottom > window.innerHeight) this.sceneWrap.scrollIntoView({ block: "nearest", behavior: "smooth" }); } catch (e) { /* старый браузер */ }
     const w = new Worker(WORKER_URL, { type: "module" });
     this.worker = w;
     this.killT = setTimeout(() => this.fail("Программа зависла: в бесконечном цикле нет sleep(). Время полета идет только в sleep() и при работе с датчиками."), TIMEOUT);
@@ -346,7 +399,8 @@ class SatLab {
     clearTimeout(this.killT);
     if (this.worker) { this.worker.terminate(); this.worker = null; if (!silent) this.renderFlightIdle(); }
     if (this.play) { cancelAnimationFrame(this.play.raf); this.play = null; }
-    this.btnRun.classList.remove("on"); this.btnSkip.disabled = true;
+    this.btnRun.classList.remove("on"); this.btnRun2.classList.remove("on"); this.btnSkip.disabled = true;
+    this.sumBox.hidden = true; this.syncTl();
   }
 
   shellLog(text, kind = "") {
@@ -374,15 +428,22 @@ class SatLab {
   renderFlightIdle(text) {
     this.gsBox.innerHTML = "";
     this.log(text || "Ожидание пакетов. Нажмите «Запустить»: программа выполнится на борту, а здесь появятся пакеты, которые примет станция.", "muted");
-    this.hud.replaceChildren();
+    this.hud.replaceChildren(); this.hudEls = null; this.countEl.hidden = true; this.sumBox.hidden = true;
     this.seriesSel.innerHTML = ""; this.series = [];
-    this.drawScene(0); this.drawChart();
+    this.drawScene(0); this.drawChart(); this.syncTl();
+  }
+
+  shellHead() {
+    const res = this.res;
+    this.shell.replaceChildren(); this.shellLog(">>> %Run main.py", "muted");
+    if (res && res.error) { const ex = explainError(res.error); this.shellLog(ex.text, "err"); if (ex.hint) this.shellLog("Подсказка: " + ex.hint, "hint"); return ex; }
+    return null;
   }
 
   startReplay() {
     const res = this.res, K = this.K;
     this.gsBox.innerHTML = "";
-    if (res.error) { const ex = explainError(res.error); this.shellLog(ex.text, "err"); if (ex.hint) this.shellLog("Подсказка: " + ex.hint, "hint"); if (ex.line) this.gotoLine(ex.line); }
+    const ex = this.shellHead(); if (ex && ex.line) this.gotoLine(ex.line);
     this.buildSeries();
     this.events = [
       ...res.packets.map((p) => ({ t: p.t, kind: "pkt", p })),
@@ -395,20 +456,44 @@ class SatLab {
     this.events.sort((a, b) => a.t - b.t);
     const t0 = this.kind === "cansat" ? Math.max(0, res.flight.tLaunch - 4) : 0;
     // события до начала проигрывания показываем сразу
-    this.play = { t: t0, last: performance.now(), speed: +this.speedSel.value, ei: 0, raf: 0 };
-    this.btnRun.classList.remove("on"); this.btnSkip.disabled = false;
+    this.play = { t: t0, t0, last: performance.now(), ei: 0, raf: 0, paused: false, done: false };
+    this.btnRun.classList.remove("on"); this.btnRun2.classList.remove("on"); this.btnSkip.disabled = false; this.sumBox.hidden = true;
+    this.scrub.min = t0; this.scrub.max = res.flight.tEnd; this.renderMarks();
     this.flush(t0, true);
+    this.tick(t0);
+    this.loop();
+  }
+
+  /** Скорость проигрывания. «Авто»: старт, отделение и посадка в реальном времени, остальное быстрее */
+  speedAt(t) {
+    const v = +this.speedSel.value; if (v) return v;
+    const f = this.res.flight;
+    if (t < (f.tBurnout || f.tLaunch) + 2.5) return 1;
+    if (t < f.tEject - 1.5) return 2.5;
+    if (t < f.tEject + 3.5) return 1;
+    if (t < f.tLand - 3) return f.tLand - f.tEject > 45 ? 6 : 4;
+    if (t < f.tLand + 2) return 1.5;
+    return 4;
+  }
+
+  loop() {
+    const pl = this.play; if (!pl || pl.raf || pl.paused || pl.done) return;
+    const tEnd = this.res.flight.tEnd;
+    pl.last = performance.now();
     const step = (now) => {
-      const pl = this.play; if (!pl) return;
-      const prev = pl.t;
-      pl.t = Math.min(res.flight.tEnd, pl.t + ((now - pl.last) / 1000) * pl.speed); pl.last = now;
-      this.flush(pl.t, pl.t - prev > 3); // перемотка «В конец»: без всплывающих сообщений
-      this.drawScene(pl.t); this.drawChart(pl.t);
-      if (pl.t >= res.flight.tEnd) { this.endReplay(); return; }
+      pl.raf = 0;
+      if (this.play !== pl || pl.paused || pl.done) return;
+      const dt = Math.min(0.25, (now - pl.last) / 1000); pl.last = now;
+      pl.t = Math.min(tEnd, pl.t + dt * this.speedAt(pl.t));
+      this.flush(pl.t, false);
+      this.tick(pl.t);
+      if (pl.t >= tEnd) { this.endReplay(); return; }
       pl.raf = requestAnimationFrame(step);
     };
-    this.play.raf = requestAnimationFrame(step);
+    pl.raf = requestAnimationFrame(step);
   }
+
+  tick(t) { this.drawScene(t); this.drawChart(t); this.syncTl(); }
 
   flush(t, quiet) {
     const pl = this.play;
@@ -427,15 +512,74 @@ class SatLab {
     }
   }
 
-  skip() { if (this.play) { this.play.t = this.res.flight.tEnd; this.play.last = performance.now(); } }
+  /** Перемотка: журналы пересобираются до выбранного момента */
+  seek(t) {
+    const pl = this.play, res = this.res; if (!pl || !res) return;
+    t = clamp(t, pl.t0, res.flight.tEnd);
+    if (t < pl.t) { this.gsBox.innerHTML = ""; this.shellHead(); pl.ei = 0; pl.logged = false; }
+    pl.t = t; this.flush(t, true);
+    if (t >= res.flight.tEnd) { this.endReplay(); return; }
+    pl.done = false; this.sumBox.hidden = true; this.btnSkip.disabled = false;
+    this.tick(t);
+    this.loop();
+  }
+  skip() { if (this.play) this.seek(this.res.flight.tEnd); }
+  togglePlay() {
+    const pl = this.play;
+    if (!pl || !this.res) { if (!this.worker) this.run(); return; }
+    if (pl.done) { this.replayAgain(); return; }
+    pl.paused = !pl.paused; this.syncTl(); this.drawScene(pl.t); this.loop();
+  }
+  replayAgain() { const pl = this.play; if (!pl) return; pl.paused = false; pl.done = false; this.seek(pl.t0); this.loop(); }
 
   endReplay() {
-    const s = this.score;
-    if (this.play) cancelAnimationFrame(this.play.raf);
-    this.play = null; this.btnSkip.disabled = true;
-    this.drawScene(this.res.flight.tEnd); this.drawChart();
-    this.log(`Полет окончен. ${s.title}: ${s.total} из ${s.max}${s.bonus ? `, бонус +${s.bonus}` : ""}. Подробно на вкладке «Разбор».`, "phase");
-    this.evalTask();
+    const s = this.score, pl = this.play, tEnd = this.res.flight.tEnd;
+    if (pl) { cancelAnimationFrame(pl.raf); pl.raf = 0; pl.t = tEnd; pl.done = true; pl.paused = true; }
+    this.btnSkip.disabled = true;
+    this.tick(tEnd);
+    if (pl && !pl.logged) { pl.logged = true; this.log(`Полет окончен. ${s.title}: ${s.total} из ${s.max}${s.bonus ? `, бонус +${s.bonus}` : ""}. Подробно на вкладке «Разбор».`, "phase"); }
+    this.evalTask(); this.showSummary();
+  }
+
+  syncTl() {
+    const pl = this.play, on = !!(pl && this.res);
+    this.scrub.disabled = !on; this.btnAgain.disabled = !on;
+    if (on) this.scrub.value = pl.t;
+    const txt = on ? `${fmtT(pl.t)} / ${fmtT(this.res.flight.tEnd)}` : "00:00";
+    if (this.tlTime.textContent !== txt) this.tlTime.textContent = txt;
+    this.btnPlay.classList.toggle("playing", on && !pl.paused && !pl.done);
+    this.sceneWrap.classList.toggle("paused", on && pl.paused && !pl.done);
+    if (on) this.scrub.style.setProperty("--k", (((pl.t - pl.t0) / Math.max(0.01, this.res.flight.tEnd - pl.t0)) * 100).toFixed(2) + "%");
+    else { this.scrub.style.setProperty("--k", "0%"); this.tlMarks.replaceChildren(); }
+  }
+
+  renderMarks() {
+    const f = this.res.flight, pl = this.play, span = Math.max(0.01, f.tEnd - pl.t0);
+    this.tlMarks.replaceChildren(...this.K.phases(f).filter(([k]) => f[k] != null).map(([k, text]) =>
+      h("button", { type: "button", class: "sl-tl-mark", style: `left:${(((f[k] - pl.t0) / span) * 100).toFixed(2)}%`, title: text, "aria-label": text, onclick: () => this.seek(Math.max(pl.t0, f[k] - 0.6)) })));
+  }
+
+  showSummary() {
+    const s = this.score, res = this.res, box = this.sumBox;
+    const got = res.packets.filter((p) => p.ok).length, sent = res.packets.length;
+    const rows = [];
+    if (res.ev) { rows.push(["Апогей", `${fmt(res.ev.apogee)} м`]); if (!res.ev.crash) rows.push(["Посадка CanSat", `${fmt(res.ev.vLandCan, 1)} м/с`]); }
+    rows.push(["Принято пакетов", `${got} из ${sent}`]);
+    const warns = (res.ev && res.ev.warnings) || [];
+    box.replaceChildren(
+      h("button", { type: "button", class: "sl-sum-x", title: "Закрыть", "aria-label": "Закрыть", onclick: () => { box.hidden = true; } }, "×"),
+      h("div", { class: "sl-sum-h" }, "Полет окончен"),
+      h("div", { class: "sl-sum-score" }, h("span", {}, s.title), h("b", { "data-notr": true }, `${s.total} / ${s.max}`)),
+      h("dl", {}, rows.map(([k, v]) => [h("dt", {}, k), h("dd", { "data-notr": true }, v)])),
+      h("ul", { class: "sl-sum-w", hidden: !warns.length }, warns.map((w) => h("li", {}, w))),
+      h("div", { class: "sl-sum-a" }, h("button", { type: "button", class: "sl-btn sl-btn-pri", onclick: () => this.showTab("debrief") }, "Разбор полета"),
+        h("button", { type: "button", class: "sl-btn", onclick: () => this.replayAgain() }, "Повторить")));
+    box.hidden = false;
+  }
+
+  setCam(id) {
+    this.cam = id; this.camBtns.forEach((b, i) => b.classList.toggle("on", this.camIds[i] === id));
+    if (this.fs) this.fs.setCamera(id);
   }
 
   gotoLine(n) {
@@ -485,19 +629,65 @@ class SatLab {
   }
 
   drawScene(t) {
-    const cv = this.sceneCv; if (!this.config || cv.offsetParent === null) return;
-    const fl = this.ins ? this.ins.flight : this.K.flightPlan(this.flight);
-    const st = { res: this.res, t, flight: fl, speed: this.play ? this.play.speed : 30, playing: !!this.play, wind: this.K.sceneWind(fl),
-      yagi: this.K.items(this.config).some((p) => p.cat === "station" && !p.omni) };
-    if (this.kind === "cansat" && !this.res) { const p = this.K.forecast(this.config, fl); st.pred = p.ev; st.predPath = p.path; }
-    this.scene.draw(cv, st);
-    if (this.res) {
-      const hd = this.K.hud(this.res, t);
-      const got = this.res.packets.filter((p) => p.t <= t && p.ok).length, sent = this.res.packets.filter((p) => p.t <= t).length;
-      if (hd) this.hud.replaceChildren(
+    if (!this.config || this.sceneWrap.offsetParent === null) return;
+    const K = this.K, pl = this.play, playing = !!(pl && !pl.paused && !pl.done);
+    const fl = this.ins ? this.ins.flight : K.flightPlan(this.flight);
+    const yagi = K.items(this.config).some((p) => p.cat === "station" && !p.omni);
+    if (this.use3d && this.s3d && this.flight3d()) {
+      const fs = this.fs;
+      fs.setConfig({ rocket: K.rocketOf(this.config), parts: K.items(this.config), canChute: this.config.canChute || 0, wind: K.sceneWind(fl), station: fl.station, yagi });
+      if (this.fsRes !== this.res) { this.fsRes = this.res; fs.setFlight(this.res); }
+      const p = this.res ? null : K.forecast(this.config, fl);
+      if (this.fsPred !== p) { this.fsPred = p; fs.setPrediction(p); }
+      fs.setTime(t, playing);
+    } else {
+      const st = { res: this.res, t, flight: fl, speed: this.res && pl ? this.speedAt(t) : 30, playing: !!pl, wind: K.sceneWind(fl), yagi };
+      if (this.kind === "cansat" && !this.res) { const p = K.forecast(this.config, fl); st.pred = p.ev; st.predPath = p.path; }
+      this.scene.draw(this.sceneCv, st);
+    }
+    this.renderHud(t);
+  }
+
+  /** 3D-сцена полета создается при первом показе вкладки; если видеокарта отказала, остается плоская сцена */
+  flight3d() {
+    if (this.fs) return this.fs;
+    try {
+      this.s3Host.hidden = false; this.sceneCv.hidden = true;
+      this.fs = new this.s3d.FlightScene(this.s3Host, { station: "Станция", pad: "Стартовый стол", rocket: "Ракета", apogee: "Апогей" });
+      if (this.cam) this.fs.setCamera(this.cam);
+      this.sceneWrap.classList.add("is3d");
+    } catch (e) { this.fs = null; this.use3d = false; this.s3Host.hidden = true; this.sceneCv.hidden = false; this.camBar.hidden = true; }
+    return this.fs;
+  }
+
+  renderHud(t) {
+    const res = this.res;
+    if (!res) { if (this.hud.firstChild) this.hud.replaceChildren(); this.hudEls = null; this.countEl.hidden = true; return; }
+    const hd = this.K.hud(res, t); if (!hd) return;
+    const got = res.packets.filter((p) => p.t <= t && p.ok).length, sent = res.packets.filter((p) => p.t <= t).length;
+    if (this.kind !== "cansat") {
+      this.hud.replaceChildren(
         h("span", { class: "sl-hud-t" }, fmtT(t)), h("span", {}, this.K.PHASE[hd.phase] || ""), h("span", {}, `${fmt(hd.alt)} м`),
         ...hd.extra.map((x) => h("span", { class: x === "выключен" ? "bad" : "" }, x)), h("span", {}, `принято ${got} из ${sent}`));
+      return;
     }
+    // приборы CanSat: подписи ставятся один раз, каждый кадр меняются только числа
+    if (!this.hudEls) {
+      const tile = (label, unit, cls = "") => { const b = h("b", { "data-notr": true }, "0"); return [h("div", { class: "sl-tile " + cls }, h("span", {}, label), h("div", {}, b, unit ? h("em", {}, unit) : null)), b]; };
+      const [a, alt] = tile("Высота", "м", "sl-tile-big"), [b, vz] = tile("Скорость", "м/с"), [c, g] = tile("Перегрузка", "g"), [d, rx] = tile("Принято пакетов", "");
+      const phase = h("span", { class: "sl-phase" }), off = h("span", { class: "sl-phase bad", hidden: true }, "Борт выключен");
+      this.hud.classList.add("sl-hud3");
+      this.hud.replaceChildren(h("div", { class: "sl-tiles" }, a, b, c, d), h("div", { class: "sl-phases" }, phase, off));
+      this.hudEls = { alt, vz, g, rx, phase, off, last: "" };
+    }
+    const tl = res.timeline[Math.min(res.timeline.length - 1, Math.max(0, Math.round(t * 10)))], E = this.hudEls;
+    const set = (el, v) => { if (el.textContent !== v) el.textContent = v; };
+    set(E.alt, fmt(hd.alt)); set(E.vz, (tl.vz > 0.5 ? "↑ " : tl.vz < -0.5 ? "↓ " : "") + fmt(Math.abs(tl.vz), 1)); set(E.g, fmt(tl.g, 1)); set(E.rx, `${got} / ${sent}`);
+    if (E.last !== hd.phase) { E.last = hd.phase; E.phase.textContent = this.K.PHASE[hd.phase] || ""; }
+    E.off.hidden = hd.alive !== false;
+    const n = Math.ceil(res.flight.tLaunch - t);
+    const show = n >= 1 && n <= 3;
+    this.countEl.hidden = !show; if (show) set(this.countEl, String(n));
   }
 
   // ─────────────── Разбор ───────────────
@@ -544,7 +734,7 @@ class SatLab {
     if (!this.pd || !this.checkList) return;
     const checks = this.pd.checks || [];
     if (!checks.length) return;
-    const ev = this.K.evalChecks(checks, { config: this.config, flight: this.flight, res: this.play ? null : this.res, mission: this.pd.mission, extra: { exported: this.exported } });
+    const ev = this.K.evalChecks(checks, { config: this.config, flight: this.flight, res: this.play && !this.play.done ? null : this.res, mission: this.pd.mission, extra: { exported: this.exported } });
     this.checkList.replaceChildren(...checks.map((c, i) => {
       const r = ev.results[i];
       return h("li", { class: r.ok ? "ok" : r.pending ? "" : "bad" }, h("span", {}, c.label), r.value && !r.pending ? h("em", {}, r.value) : null);
