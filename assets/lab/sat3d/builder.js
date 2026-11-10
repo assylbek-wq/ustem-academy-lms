@@ -5,7 +5,8 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { buildRocket } from "./rocket.js";
-import { buildCan, CAN_H } from "./can.js";
+import { buildCan } from "./can.js";
+import { buildCube } from "./cube.js";
 import { canvasTex, dispose, softDot, clamp } from "./util.js";
 
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
@@ -87,10 +88,10 @@ export class BuilderView {
   }
 
   makeCan(o) {
-    const can = buildCan(o.parts || [], { detail: true });
+    const can = o.mode === "cube" ? buildCube(o.parts || [], { detail: true }) : buildCan(o.parts || [], { detail: true });
     const wrap = new THREE.Group(), turn = new THREE.Group();
     turn.add(can.group); wrap.add(turn);
-    return { kind: "can", wrap, turn, can, size: CAN_H, radius: can.R };
+    return { kind: "can", wrap, turn, can, size: can.H, radius: can.R };
   }
 
   setXray(on) { this.xray = on; this.applyView(); this.updateMarkers(); this.kick(); }
@@ -112,12 +113,13 @@ export class BuilderView {
       this.shadow.scale.set(m.size * 1.05, m.radius * 2.6, 1); this.shadow.position.set(0, -m.radius - 0.02, 0);
     } else {
       // банка крупно; длинный штырь антенны может уходить за край кадра
-      const k = this.explode, top = Math.max(CAN_H / 2 + 0.012, m.can.stackTop + k * m.can.boards.length * 0.017 + 0.012);
+      const CAN_H = m.can.H, cube = !!m.can.step;
+      const k = this.explode, top = Math.max(CAN_H / 2 + (cube ? 0.03 : 0.012), m.can.stackTop + k * m.can.boards.length * (m.can.step || 0.017) + 0.012);
       const hh = (top + CAN_H / 2) / 2 + 0.012, ww = m.radius * (1.25 + 2.4 * k) + 0.02;
       dist = Math.max(hh / t, ww / (t * asp)) * 1.12;
       target.set(-0.05 * k + 0.012, (top - CAN_H / 2) / 2, 0);
       az = 0.5; elv = 0.3 + 0.12 * k;
-      this.shadow.scale.set(0.16 + 0.12 * k, 0.16, 1); this.shadow.position.set(-0.05 * k, -CAN_H / 2 - 0.001, 0);
+      this.shadow.scale.set(m.radius * 4.8 + 0.12 * k, m.radius * 4.8, 1); this.shadow.position.set(-0.05 * k, -CAN_H / 2 - (cube ? 0.008 : 0.001), 0);
     }
     this.dist = dist;
     if (reset || !this.touched) {

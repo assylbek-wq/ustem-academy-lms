@@ -80,12 +80,13 @@ USTEM Academy - LMS для подготовки учителей. Flask + SQLAlc
   Виды: `assets/lab/cubesat/` (аэростат, ветер и трос, оценка FLT) и `assets/lab/cansat/` (`model.js` - массы, ЦТ и ЦД по
   Barrowman, `physics.js` - полет на РД1-100-7М, замедлитель 7 с, парашюты и снос, `score.js` - критерии B, C, D, E), в каждом
   `catalog.js`, `sim.js`, `checks.js`, `kind.js` (что показывает интерфейс). Сборка `bash deploy/build-lab.sh` ->
-  `app/static/js/satsim.js`, `satworker.js` (MicroPython из `static/spikesim/`). CanSat в 3D: `assets/lab/sat3d/` (three.js, отдельный
+  `app/static/js/satsim.js`, `satworker.js` (MicroPython из `static/spikesim/`). CanSat и CubeSat в 3D: `assets/lab/sat3d/` (three.js, отдельный
   файл `app/static/js/sat3d.js`, грузится из `sat/ui.js` по требованию, хеш вшивается в `satsim.js` при сборке): `builder.js` -
   3D-конструктор (разрез, разнесенный вид, ЦТ и ЦД), `flight.js` - сцена полета (камеры «Слежение», «Со станции», «С борта»,
-  «Весь полет»; картина зависит только от времени полета, поэтому есть пауза и перемотка), `world.js` - полигон, `fx.js` - дым и
-  радиоимпульсы, `rocket.js`, `can.js`, `chute.js` - модели из параметров конструктора. Без WebGL остаются чертеж и плоская сцена
-  (`sat/scene.js`, она же у CubeSat). Физику полета 3D не меняет: сцена читает запись `trip` из `cansat/sim.js`. Задания: `python3 assets/lab/cubesat_presets.py`
+  «Весь полет»; картина зависит только от времени полета, поэтому есть пауза и перемотка), `stage.js` - общая основа сцен (рендер, свет, тени, подписи), `balloon.js` - сцена CubeSat
+  (аэростат на тросе, движение из `K.env()` = `cubesat/flight.js`), `world.js` - полигон, `fx.js` - дым и
+  радиоимпульсы, `rocket.js`, `can.js`, `cube.js`, `chute.js`, `modules.js` - модели из параметров конструктора. Без WebGL остаются чертеж и плоская сцена
+  (`sat/scene.js`). Физику полета 3D не меняет: сцена читает запись `trip` из `cansat/sim.js`. Задания: `python3 assets/lab/cubesat_presets.py`
   и `cansat_presets.py` -> `app/static/<вид>/presets/*.json`. В уроке блок `<div class="cubesat-sim-ИМЯ"></div>` или
   `<div class="cansat-sim-ИМЯ"></div>`, песочницы `/lab/cubesat`, `/lab/cansat`. Сквозная проверка без браузера:
   `node tests/e2e/sat_solutions.mjs` и `--negative`. Пути `wso-cubesat` и `wso-cansat` (программы Connect `WSO_CUBESAT`,

@@ -5,6 +5,9 @@ import { evalChecks, needsFlight } from "./checks.js";
 import { score } from "./score.js";
 import { drawCube } from "../sat/blueprint.js";
 import { fields } from "../sat/core.js";
+import { Environment } from "./flight.js";
+
+let envKey = "", envObj = null;
 
 const fmt = (x, d = 0) => Number(x).toLocaleString("ru-RU", { minimumFractionDigits: d, maximumFractionDigits: d });
 
@@ -43,6 +46,8 @@ export default {
   },
   facts: (fl) => `Привязной аэростат: ${fl.altMax} м, подъем ${fl.ascent} м/с, висение ${fmt(fl.hold / 60, fl.hold % 60 ? 1 : 0)} мин, ветер у земли ${fl.wind} м/с. Станция в ${fl.station} м от лебедки.`,
   sceneWind: (fl) => fl.wind || 0,
+  /** Движение аэростата и спутника для 3D-сцены: те же формулы, что в полете */
+  env(fl) { const k = JSON.stringify(fl); if (k !== envKey) { envKey = k; envObj = new Environment(fl); } return envObj; },
   phases: (f) => [["tLaunch", "Старт! Лебедка отпускает трос"], ["tTop", "Высота достигнута, висение"], ["tDescend", "Начался спуск"], ["tLand", "Посадка"]],
   PHASE: { pre: "Подготовка", ascent: "Подъем", hold: "Висение", descent: "Спуск", landed: "На земле" },
 
