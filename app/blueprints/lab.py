@@ -38,6 +38,7 @@ LABS = [
     {"key": "arduino", "group": "robotics", "endpoint": "lab.arduino", "solved": "lab-", "dir": "lab/presets", "glob": "*.json"},
     {"key": "spike", "group": "robotics", "endpoint": "lab.spike", "solved": "spike-", "dir": "spikesim/presets", "glob": "spike-*.json"},
     {"key": "ftc", "group": "robotics", "endpoint": "lab.ftc", "solved": "ftc-", "dir": "ftcsim/presets", "glob": "ftc-*.json"},
+    {"key": "fllsim", "group": "robotics", "endpoint": "lab.fllsim", "solved": "fllsim-", "dir": "fllsim", "glob": "presets-*.json"},
     {"key": "ursim", "group": "robotics", "endpoint": "lab.ursim", "solved": "ursim-", "dir": "ursim", "glob": "presets-*.json"},
     {"key": "robots", "group": "robotics", "endpoint": "lab.robots", "solved": "robot-", "dir": "robots/presets", "glob": "robot-*.json"},
     {"key": "cubesat", "group": "space", "endpoint": "lab.cubesat", "solved": "cubesat-", "dir": "cubesat/presets", "glob": "cubesat-*.json"},
@@ -115,6 +116,26 @@ def cansat():
 def ursim():
     """UrSim команды URAN92 (MIT): вождение робота FTC на поле BIOBUZZ, собранная игра в static/ursim."""
     return render_template("lab/ursim.html")
+
+
+@bp.route("/lab/fll-bioglow")
+@login_required
+def fllsim():
+    """Симулятор игры FLL BIOGLOW (github.com/AendeGitHub/fll-bioglow-sim): собранное приложение в static/fllsim."""
+    return render_template("lab/fllsim.html")
+
+
+@bp.after_app_request
+def fllsim_isolation(resp):
+    """Пауза и «Стоп» программы в симуляторе FLL идут через SharedArrayBuffer: ему нужна изоляция страницы и фрейма."""
+    if request.path.startswith("/static/fllsim/"):
+        resp.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+        resp.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
+        resp.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+    elif request.endpoint == "lab.fllsim":
+        resp.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+        resp.headers["Cross-Origin-Embedder-Policy"] = "credentialless"     # шрифты с другого домена грузятся без куки
+    return resp
 
 
 @bp.route("/lab/robots")

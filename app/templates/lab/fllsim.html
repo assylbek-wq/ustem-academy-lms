@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% from "lab/_bar.html" import lab_bar with context %}
+{% block title %}{{ t('fllsim.title') }}{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ static_v('css/labhub.css') }}">
+{# симулятору нужна вся ширина окна: поле, код и протокол очков стоят в три колонки #}
+<style>main { max-width: 1800px !important; padding-left: 20px !important; padding-right: 20px !important; }</style>{% endblock %}
+{% block content %}
+{{ lab_bar(t('labhub.fllsim.name')) }}
+<iframe id="fllsim" class="ursim-frame" title="{{ t('fllsim.title') }}" allow="fullscreen; cross-origin-isolated"
+  src="{{ url_for('static', filename='fllsim/index.html') }}"></iframe>
+<div class="ursim-tools">
+  <p>{{ t('fllsim.credit') }}</p>
+  <button type="button" onclick="var f=document.getElementById('fllsim');(f.requestFullscreen||f.webkitRequestFullscreen).call(f);f.focus()">{{ t('ursim.fullscreen') }}</button>
+</div>
+{% endblock %}

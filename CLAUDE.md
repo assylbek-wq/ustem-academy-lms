@@ -103,6 +103,12 @@ USTEM Academy - LMS для подготовки учителей. Flask + SQLAlc
 - UrSim (`/lab/ursim`): готовая игра-симулятор вождения FTC BIOBUZZ команды URAN92 (MIT, TypeScript + three.js + Rapier),
   исходники как есть в `vendor/ursim/` (наши правки: казахский `src/ui/i18n.kk.json`, язык из `?lang=`), сборка
   `bash deploy/build-ursim.sh` -> `app/static/ursim/` (в гите), на странице во фрейме; рекорды на `ursim.onrender.com`.
+- Симулятор игры FLL BIOGLOW (`/lab/fll-bioglow`): готовое приложение github.com/AendeGitHub/fll-bioglow-sim (Vite + three.js +
+  Rapier + Pyodide; поле с 15 миссиями, конструктор робота SPIKE Prime, Python в стиле Pybricks и SPIKE 3), исходники в
+  `vendor/fllsim/` (наши правки: русские тексты без «е с точками» и длинного тире), сборка `bash deploy/build-fllsim.sh` ->
+  `app/static/fllsim/` (в гите, около 23 МБ вместе с Pyodide), на странице во фрейме. Пауза и «Стоп» программы идут через
+  SharedArrayBuffer, поэтому странице и файлам `/static/fllsim/` ставятся заголовки изоляции (`fllsim_isolation` в
+  `blueprints/lab.py`). В репозитории автора нет файла лицензии; интерфейс только на русском.
 - Казахский язык симуляторов (`<html lang="kk">`): строки в коде остаются русскими, перевод в словаре
   `assets/lab/i18n/kk.json` (ru -> kk; правила и термины - `i18n/GLOSSARY.md`, без калек). `i18n/index.js`:
   `localize(root)` переводит текст и подписи внутри симулятора (MutationObserver), canvas и confirm, `trPreset`/`trCode` -
